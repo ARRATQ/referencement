@@ -1,0 +1,2530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commission de Référencement — Maroc PME</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #F5F4F0;
+  --surface: #FFFFFF;
+  --surface2: #EEEDE8;
+  --border: #D8D6CE;
+  --border2: #C8C6BC;
+  --text: #1A1916;
+  --text2: #5A5850;
+  --text3: #9A9888;
+  --accent: #A94443;
+  --accent2: #8A3332;
+  --green: #0E9353;
+  --green2: #0A7040;
+  --amber: #C07820;
+  --red: #C03030;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans Arabic', sans-serif;
+  --radius: 6px;
+  --radius2: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+/* LAYOUT */
+.app-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.sidebar { background: var(--text); color: #EEE; padding: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+.sidebar-logo { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sidebar-logo .org { font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,0.4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+.sidebar-logo .app-name { font-size: 15px; font-weight: 600; color: #FFF; line-height: 1.3; }
+.sidebar-logo .version { font-size: 10px; font-family: var(--mono); color: var(--accent); margin-top: 2px; }
+.sidebar-nav { padding: 12px 0; flex: 1; }
+.nav-section { padding: 16px 20px 6px; font-size: 10px; font-family: var(--mono); color: rgba(255,255,255,0.3); letter-spacing: 0.12em; text-transform: uppercase; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.6); transition: all 0.15s; border-left: 3px solid transparent; }
+.nav-item:hover { background: rgba(255,255,255,0.05); color: #FFF; }
+.nav-item.active { background: rgba(169,68,67,0.2); color: #FFF; border-left-color: var(--accent); }
+.nav-item .icon { width: 16px; text-align: center; font-size: 15px; }
+.sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+.conn-status { font-size: 11px; font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
+.conn-dot { width: 6px; height: 6px; border-radius: 50%; background: #666; }
+.conn-dot.ok { background: var(--green); }
+.conn-dot.err { background: var(--red); }
+
+.main { background: var(--bg); overflow-y: auto; }
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.topbar-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.topbar-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.content { padding: 28px; }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* CARDS */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); padding: 20px 24px; margin-bottom: 16px; }
+.card-title { font-size: 12px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.card-title::before { content: ''; display: inline-block; width: 3px; height: 12px; background: var(--accent); border-radius: 2px; }
+
+/* FORM */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field.full { grid-column: 1 / -1; }
+label { font-size: 11px; font-family: var(--mono); color: var(--text2); letter-spacing: 0.05em; }
+input, select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--sans);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 80px; }
+select { cursor: pointer; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: var(--radius); font-size: 13px; font-family: var(--sans); font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+.btn-primary { background: var(--accent); color: #FFF; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-green { background: var(--green); color: #FFF; }
+.btn-green:hover { background: var(--green2); }
+.btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--surface2); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-family: var(--mono); font-weight: 500; }
+.badge-green { background: #D6F0E4; color: #0A5E32; }
+.badge-amber { background: #FDE9C0; color: #7A4A00; }
+.badge-red { background: #FDDEDE; color: #7A1010; }
+.badge-gray { background: var(--surface2); color: var(--text2); }
+.badge-blue { background: #DCE8FB; color: #1A3A7A; }
+
+/* METRICS */
+.metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); padding: 16px 18px; }
+.metric-label { font-size: 11px; font-family: var(--mono); color: var(--text3); margin-bottom: 6px; }
+.metric-value { font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; }
+.metric-value.accent { color: var(--accent); }
+.metric-value.green { color: var(--green); }
+.metric-value.amber { color: var(--amber); }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { font-size: 11px; font-family: var(--mono); color: var(--text3); padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); letter-spacing: 0.06em; }
+td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+tr:hover td { background: #F8F7F2; }
+.td-action { display: flex; gap: 6px; }
+
+/* SCORE SYSTEM */
+.score-live { background: var(--text); color: #FFF; border-radius: var(--radius2); padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 20px; }
+.score-big { font-size: 36px; font-weight: 600; font-family: var(--mono); line-height: 1; }
+.score-big.ok { color: #4ADE80; }
+.score-big.mid { color: #FBB424; }
+.score-big.ko { color: #F87171; }
+.progress-track { flex: 1; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.score-verdict { font-size: 13px; font-weight: 500; }
+.score-verdict.ok { color: #4ADE80; }
+.score-verdict.mid { color: #FBB424; }
+.score-verdict.ko { color: #F87171; }
+.score-detail { font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+/* CRITERIA */
+.rubric-section { margin-bottom: 20px; }
+.rubric-section-title { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; padding: 10px 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 0; display: flex; align-items: center; justify-content: space-between; }
+.criteria-item { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.criteria-item:last-child { border-bottom: none; }
+.criteria-text { flex: 1; }
+.criteria-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.criteria-desc { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+.criteria-obs { width: 100%; margin-top: 6px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; background: var(--bg); color: var(--text); font-family: var(--sans); resize: none; height: 36px; }
+.score-btns { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+.sbtn { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 600; font-family: var(--mono); background: var(--surface); color: var(--text3); transition: all 0.12s; }
+.sbtn:hover { border-color: var(--border2); color: var(--text); }
+.sbtn.s0.sel { background: #FDDEDE; border-color: var(--red); color: var(--red); }
+.sbtn.s1.sel { background: #FDE9C0; border-color: var(--amber); color: var(--amber); }
+.sbtn.s2.sel { background: #D6F0E4; border-color: var(--green); color: var(--green); }
+.prio-tag { font-size: 9px; font-family: var(--mono); background: #FDE9C0; color: #7A4A00; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+
+/* AI PANEL */
+.ai-panel { background: linear-gradient(135deg, #1A1916 0%, #2A2820 100%); border-radius: var(--radius2); padding: 20px 24px; margin-bottom: 16px; border: 1px solid #3A3830; }
+.ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ai-badge { font-size: 10px; font-family: var(--mono); background: rgba(169,68,67,0.3); color: #F4A0A0; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.08em; }
+.ai-title { font-size: 13px; font-weight: 500; color: #FFF; }
+.ai-content { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.7; white-space: pre-wrap; }
+.ai-content.loading { color: rgba(255,255,255,0.3); font-family: var(--mono); font-size: 12px; }
+.ai-actions { display: flex; gap: 8px; margin-top: 14px; }
+.ai-btn { padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-family: var(--sans); cursor: pointer; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+.ai-btn:hover { background: rgba(255,255,255,0.15); color: #FFF; }
+.ai-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* TABS */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab { padding: 10px 18px; font-size: 13px; cursor: pointer; color: var(--text3); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+
+/* STEPS */
+.steps-bar { display: flex; align-items: center; gap: 0; margin-bottom: 24px; }
+.step-item { display: flex; align-items: center; gap: 8px; }
+.step-num { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-family: var(--mono); color: var(--text3); }
+.step-num.done { background: var(--green); border-color: var(--green); color: #FFF; }
+.step-num.active { background: var(--accent); border-color: var(--accent); color: #FFF; }
+.step-label { font-size: 12px; color: var(--text3); }
+.step-label.active { color: var(--text); font-weight: 500; }
+.step-sep { width: 32px; height: 1px; background: var(--border); margin: 0 6px; }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: var(--radius2); padding: 28px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); margin-bottom: 20px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+/* DECISION */
+.decision-banner { border-radius: var(--radius2); padding: 20px 24px; margin-bottom: 16px; }
+.decision-banner.ref { background: #D6F0E4; border: 1px solid #A8DCBC; }
+.decision-banner.cond { background: #FDE9C0; border: 1px solid #F0C870; }
+.decision-banner.rej { background: #FDDEDE; border: 1px solid #F0A0A0; }
+.decision-verdict { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.decision-banner.ref .decision-verdict { color: #0A5E32; }
+.decision-banner.cond .decision-verdict { color: #7A4A00; }
+.decision-banner.rej .decision-verdict { color: #7A1010; }
+.decision-motive { font-size: 13px; line-height: 1.6; }
+.decision-banner.ref .decision-motive { color: #0F7840; }
+.decision-banner.cond .decision-motive { color: #8A5800; }
+.decision-banner.rej .decision-motive { color: #8A1818; }
+
+/* NOTIFICATION */
+.notif { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #FFF; padding: 12px 18px; border-radius: var(--radius); font-size: 13px; z-index: 200; display: none; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.notif.show { display: flex; }
+.notif.ok { background: var(--green2); }
+.notif.err { background: var(--red); }
+
+/* MODEL SELECTOR */
+.model-select-wrap { position: relative; }
+.model-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); z-index: 50; max-height: 220px; overflow-y: auto; display: none; }
+.model-list.open { display: block; }
+.model-opt { padding: 8px 12px; font-size: 12px; cursor: pointer; font-family: var(--mono); color: var(--text2); }
+.model-opt:hover { background: var(--surface2); color: var(--text); }
+.model-opt.sel { color: var(--accent); }
+
+/* CAT GRID */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); padding: 16px; cursor: pointer; transition: all 0.15s; }
+.cat-card:hover { border-color: var(--accent); background: #FDF5F5; }
+.cat-card.sel { border-color: var(--accent); background: #FDF5F5; box-shadow: 0 0 0 2px rgba(169,68,67,0.15); }
+.cat-icon { font-size: 22px; margin-bottom: 8px; }
+.cat-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.cat-ex { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: var(--mono); }
+
+/* ATTACHMENT PICKER */
+.att-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin: 12px 0; }
+.att-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.15s; }
+.att-item:hover { border-color: var(--accent); background: #FDF5F5; }
+.att-item.sel { border-color: var(--accent); background: #FDF5F5; box-shadow: 0 0 0 2px rgba(169,68,67,0.15); }
+.att-icon { font-size: 22px; flex-shrink: 0; }
+.att-info { flex: 1; min-width: 0; }
+.att-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.att-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+
+/* MODULES TAGS */
+.module-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 26px; }
+.module-tag { display: inline-flex; align-items: center; gap: 4px; background: var(--accent); color: #fff; border-radius: 4px; padding: 3px 10px; font-size: 11px; font-family: var(--mono); }
+.module-tag .tag-del { cursor: pointer; opacity: 0.65; margin-left: 4px; font-size: 15px; line-height: 1; }
+.module-tag .tag-del:hover { opacity: 1; }
+/* ATTESTATION PICKER — multi-select */
+.att-item-check { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.15s; }
+.att-item-check:hover { border-color: var(--accent); background: #FDF5F5; }
+.att-item-check.sel { border-color: var(--accent); background: #FDF5F5; box-shadow: 0 0 0 2px rgba(169,68,67,0.15); }
+.att-item-check input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+
+/* UTILS */
+.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row-between { display: flex; align-items: center; justify-content: space-between; }
+.mt8 { margin-top: 8px; }
+.mt16 { margin-top: 16px; }
+.mt20 { margin-top: 20px; }
+.mb8 { margin-bottom: 8px; }
+.gap8 { gap: 8px; }
+.text-mono { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+.text-sm { font-size: 12px; color: var(--text3); }
+.font-500 { font-weight: 500; }
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text3); }
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+.empty-title { font-size: 15px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #FFF; border-radius: 50%; animation: spin 0.7s linear infinite; }
+.spinner-dark { border-color: rgba(0,0,0,0.15); border-top-color: var(--text); }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="org">Maroc PME</div>
+      <div class="app-name">Commission de Référencement</div>
+      <div class="version">v1.0 — Data Center</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Navigation</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">◈</span> Tableau de bord</div>
+      <div class="nav-item" onclick="showPage('dossiers')"><span class="icon">⊞</span> Dossiers Jira</div>
+      <div class="nav-item" onclick="showPage('evaluation')"><span class="icon">◉</span> Évaluation en cours</div>
+      <div class="nav-section">Outils</div>
+      <div class="nav-item" onclick="showPage('settings')"><span class="icon">⚙</span> Configuration</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="conn-status">
+        <span class="conn-dot" id="jira-dot"></span>
+        <span id="jira-status-text" class="text-mono">Jira non configuré</span>
+      </div>
+      <div class="conn-status mt8">
+        <span class="conn-dot" id="ai-dot"></span>
+        <span id="ai-status-text" class="text-mono">IA non configurée</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="page-title">Tableau de bord</div>
+        <div class="topbar-sub" id="page-sub">Vue d'ensemble des dossiers</div>
+      </div>
+      <div class="topbar-actions">
+        <div id="model-indicator" class="text-mono" style="font-size:11px; color:var(--text3);"></div>
+        <button class="btn btn-primary btn-sm" onclick="showPage('evaluation'); startNewEval()">+ Nouvelle évaluation</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+        <div class="metrics-row">
+          <div class="metric"><div class="metric-label">Total dossiers</div><div class="metric-value accent" id="m-total">404</div></div>
+          <div class="metric"><div class="metric-label">Référencés</div><div class="metric-value green" id="m-ref">63</div></div>
+          <div class="metric"><div class="metric-label">En attente</div><div class="metric-value amber" id="m-att">336</div></div>
+          <div class="metric"><div class="metric-label">Rejetés</div><div class="metric-value" id="m-rej">5</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Accès rapide</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="showPage('dossiers')">⊞ &nbsp;Parcourir les dossiers Jira</button>
+            <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="showPage('evaluation'); startNewEval()">◉ &nbsp;Démarrer une évaluation</button>
+            <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="showPage('settings')">⚙ &nbsp;Configurer Jira & OpenRouter</button>
+            <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="loadJiraDossiers()">↻ &nbsp;Synchroniser depuis Jira</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Répartition par catégorie de solution</div>
+          <table>
+            <thead><tr><th>Catégorie</th><th>En attente</th><th>Référencés</th><th>Taux</th></tr></thead>
+            <tbody>
+              <tr><td>ERP généraliste</td><td>187</td><td>46</td><td><span class="badge badge-green">20%</span></td></tr>
+              <tr><td>Comptabilité & finance</td><td>48</td><td>8</td><td><span class="badge badge-amber">14%</span></td></tr>
+              <tr><td>Industrie & production</td><td>32</td><td>4</td><td><span class="badge badge-amber">11%</span></td></tr>
+              <tr><td>E-commerce</td><td>18</td><td>2</td><td><span class="badge badge-red">10%</span></td></tr>
+              <tr><td>RH & paie</td><td>14</td><td>2</td><td><span class="badge badge-red">12%</span></td></tr>
+              <tr><td>Autres secteurs</td><td>37</td><td>1</td><td><span class="badge badge-red">3%</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DOSSIERS -->
+      <div id="page-dossiers" class="page">
+        <div class="row-between mb8">
+          <div class="row gap8">
+            <select id="filter-status" onchange="filterDossiers()" style="width:160px;">
+              <option value="">Tous les statuts</option>
+              <option value="Action inscrite">En attente</option>
+              <option value="Action référencée">Référencés</option>
+              <option value="Demande rejetée">Rejetés</option>
+            </select>
+            <input type="text" id="filter-search" placeholder="Rechercher solution ou prestataire..." style="width:260px;" oninput="filterDossiers()">
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadJiraDossiers()">↻ Sync Jira</button>
+        </div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div class="table-wrap">
+            <table id="dossiers-table">
+              <thead><tr><th>#</th><th>Solution</th><th>Secteur</th><th>Prestataire</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead>
+              <tbody id="dossiers-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="dossiers-empty" class="empty-state" style="display:none;">
+          <div class="empty-icon">⊞</div>
+          <div class="empty-title">Aucun dossier chargé</div>
+          <div class="text-sm mt8">Configurez Jira et synchronisez ou chargez les données manuellement.</div>
+          <div class="mt16"><button class="btn btn-primary" onclick="loadSampleData()">Charger données exemple</button></div>
+        </div>
+      </div>
+
+      <!-- ÉVALUATION -->
+      <div id="page-evaluation" class="page">
+        <div id="eval-step-0">
+          <!-- Sélection catégorie -->
+          <div class="steps-bar">
+            <div class="step-item"><div class="step-num active">1</div><div class="step-label active">Catégorie</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">2</div><div class="step-label">Dossier</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">3</div><div class="step-label">Solution</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">4</div><div class="step-label">Intégrateur</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">5</div><div class="step-label">Décision</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Sélectionner la catégorie de la solution</div>
+            <div class="cat-grid" id="cat-grid"></div>
+          </div>
+          <div class="row-between mt16">
+            <div></div>
+            <button class="btn btn-primary" onclick="goEvalStep(1)" id="btn-next-cat" disabled>Suivant →</button>
+          </div>
+        </div>
+
+        <div id="eval-step-1" style="display:none;">
+          <!-- Infos dossier -->
+          <div class="steps-bar">
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Catégorie</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num active">2</div><div class="step-label active">Dossier</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">3</div><div class="step-label">Solution</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">4</div><div class="step-label">Intégrateur</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">5</div><div class="step-label">Décision</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Informations du dossier</div>
+            <div class="form-grid">
+              <div class="field"><label>Ticket Jira</label><input id="f-jira-key" placeholder="EX: REF-1234" oninput="updateAiContext()"></div>
+              <div class="field"><label>Prestataire / Société</label><input id="f-prestataire" placeholder="Nom de la société" oninput="updateAiContext()"></div>
+              <div class="field"><label>Solution présentée</label><input id="f-solution" placeholder="ex. Odoo 17, SAP Business One..." oninput="updateAiContext()"></div>
+              <div class="field"><label>Date de la démo</label><input type="date" id="f-date"></div>
+              <div class="field"><label>Rapporteur</label><input id="f-rapporteur" placeholder="Nom du rapporteur"></div>
+              <div class="field"><label>Origine de la solution</label>
+                <select id="f-origine"><option value="">—</option><option>Marocaine</option><option>Étrangère</option></select></div>
+              <div class="field"><label>Nature du prestataire</label>
+                <select id="f-nature"><option value="">—</option><option>Éditeur</option><option>Intégrateur</option><option>Éditeur-Intégrateur</option></select></div>
+              <div class="field"><label>Mode d'acquisition</label>
+                <select id="f-mode"><option value="">—</option><option>Propriétaire</option><option>Open Source</option><option>SaaS</option></select></div>
+              <div class="field"><label>Secteur cible</label><input id="f-secteur" placeholder="ex. Tourisme, Agro-alimentaire, Tous secteurs..."></div>
+              <div class="field"><label>Type intervenant</label>
+                <select id="f-intervenant"><option value="">—</option><option>Éditeur - Intégrateur SI national</option><option>Éditeur - Intégrateur SI international</option><option>Consultant national</option><option>Consultant international</option><option>Formateur</option></select></div>
+            </div>
+            <!-- Modules référencés -->
+            <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <label>Modules objet du référencement</label>
+                <button class="btn btn-ghost btn-sm" onclick="loadModulesFromJira()" id="btn-load-modules" title="Charger depuis le champ Jira configuré (cf_modules dans les paramètres)">↓ Depuis Jira</button>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <input id="module-input" placeholder="Ex : Comptabilité, Stock, Paie — Entrée pour ajouter" onkeydown="handleModuleKeydown(event)">
+                <button class="btn btn-secondary btn-sm" onclick="addModuleFromInput()">+ Ajouter</button>
+              </div>
+              <div class="module-tags" id="module-tags"><span style="font-size:11px; color:var(--text3); font-family:var(--mono);">Aucun module renseigné</span></div>
+            </div>
+          </div>
+          <div id="ai-briefing-panel" class="ai-panel">
+            <div class="ai-header">
+              <span class="ai-badge">IA — OpenRouter</span>
+              <span class="ai-title">Briefing pré-démo</span>
+            </div>
+            <div class="ai-content loading" id="ai-briefing-content">Renseignez le prestataire et la solution, puis lancez le briefing IA.</div>
+            <div class="ai-actions">
+              <button class="ai-btn" onclick="generateBriefing()" id="btn-briefing">◈ Générer le briefing</button>
+            </div>
+          </div>
+          <div id="ai-cv-panel" class="ai-panel">
+            <div class="ai-header">
+              <span class="ai-badge">IA — Analyse CV</span>
+              <span class="ai-title">Concordances & incohérences — CV consultant vs dossier référencé</span>
+            </div>
+            <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.35); margin-bottom:10px;">
+              Fonctionne avec les modèles Claude · PDF scanné non-OCérisé supporté (lecture visuelle)
+            </div>
+            <div class="ai-content" id="ai-cv-content">Cliquez sur "Charger CV depuis Jira" pour sélectionner et analyser le CV du consultant.</div>
+            <div class="ai-actions">
+              <button class="ai-btn" onclick="openCVPicker()" id="btn-load-cv">↓ Charger CV depuis Jira</button>
+              <button class="ai-btn" onclick="autoFillFromCV()" id="btn-autofill" style="display:none;" title="Pré-remplit les champs profil, les critères intégrateur et la grille solution avec des propositions IA">◈ Pré-remplir le dossier</button>
+            </div>
+          </div>
+          <div id="ai-att-panel" class="ai-panel">
+            <div class="ai-header">
+              <span class="ai-badge">IA — Attestations</span>
+              <span class="ai-title">Vérification des attestations de référence</span>
+            </div>
+            <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.35); margin-bottom:10px;">
+              Vérifie : concordance solution/modules · présence du consultant · cohérence des dates avec le CV
+            </div>
+            <div class="ai-content" id="ai-att-content">Cliquez sur "Charger attestations" pour sélectionner et analyser les attestations de référence du consultant.</div>
+            <div class="ai-actions">
+              <button class="ai-btn" onclick="openAttPicker()" id="btn-load-att">↓ Charger attestations depuis Jira</button>
+            </div>
+          </div>
+          <div class="row-between mt16">
+            <button class="btn btn-ghost" onclick="goEvalStep(0)">← Retour</button>
+            <button class="btn btn-primary" onclick="goEvalStep(2)">Suivant → Évaluation solution</button>
+          </div>
+        </div>
+
+        <div id="eval-step-2" style="display:none;">
+          <!-- Évaluation solution -->
+          <div class="steps-bar">
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Catégorie</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Dossier</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num active">3</div><div class="step-label active">Solution</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">4</div><div class="step-label">Intégrateur</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">5</div><div class="step-label">Décision</div></div>
+          </div>
+          <div class="score-live">
+            <div>
+              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Score solution</div>
+              <div class="score-big" id="sol-score-num">—</div>
+            </div>
+            <div style="flex:1;">
+              <div class="progress-track"><div class="progress-fill" id="sol-progress" style="width:0%; background:#4ADE80;"></div></div>
+              <div class="score-detail mt8">Seuil référencement: 60% &nbsp;|&nbsp; <span id="sol-answered">0</span> critères évalués</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="score-verdict" id="sol-verdict">En attente</div>
+              <div class="score-detail">volet solution</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" id="sol-cat-title">Grille fonctionnelle</div>
+            <div id="sol-criteria"></div>
+          </div>
+          <div id="ai-coherence-panel" class="ai-panel" style="display:none;">
+            <div class="ai-header">
+              <span class="ai-badge">IA — Analyse</span>
+              <span class="ai-title">Cohérence de la notation</span>
+            </div>
+            <div class="ai-content" id="ai-coherence-content"></div>
+          </div>
+          <div class="row-between mt16">
+            <button class="btn btn-ghost" onclick="goEvalStep(1)">← Retour</button>
+            <div class="row gap8">
+              <button class="ai-btn" style="background:var(--surface2); color:var(--text2); border:1px solid var(--border); padding:9px 14px; border-radius:var(--radius); font-size:13px;" onclick="checkCoherence()">◈ Vérifier cohérence</button>
+              <button class="btn btn-primary" onclick="goEvalStep(3)">Suivant → Intégrateur</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="eval-step-3" style="display:none;">
+          <!-- Évaluation intégrateur -->
+          <div class="steps-bar">
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Catégorie</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Dossier</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Solution</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num active">4</div><div class="step-label active">Intégrateur</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num">5</div><div class="step-label">Décision</div></div>
+          </div>
+          <div class="score-live">
+            <div>
+              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Score intégrateur</div>
+              <div class="score-big" id="int-score-num">—</div>
+            </div>
+            <div style="flex:1;">
+              <div class="progress-track"><div class="progress-fill" id="int-progress" style="width:0%; background:#4ADE80;"></div></div>
+              <div class="score-detail mt8">Seuil requis: 55% &nbsp;|&nbsp; <span id="int-answered">0</span> critères évalués</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="score-verdict" id="int-verdict">En attente</div>
+              <div class="score-detail">volet intégrateur</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Profil & compétences de l'intégrateur</div>
+            <div class="form-grid mb8" style="margin-bottom:16px;">
+              <div class="field"><label>Formation / Diplôme</label><input id="cv-diplome" placeholder="ex. Ingénieur informatique, Bac+5..." oninput="evalIntegrateur()"></div>
+              <div class="field"><label>Établissement</label><input id="cv-etablissement" placeholder="ex. ENSIAS, ENCG, EM Lyon..."></div>
+              <div class="field"><label>Expérience totale (années)</label><input type="number" id="cv-exp" min="0" max="40" placeholder="ex. 12" oninput="evalIntegrateur()"></div>
+              <div class="field"><label>Expérience sur cette solution (années)</label><input type="number" id="cv-exp-sol" min="0" max="40" placeholder="ex. 5" oninput="evalIntegrateur()"></div>
+              <div class="field"><label>Poste principal occupé</label><input id="cv-poste" placeholder="ex. Chef de projet ERP, Consultant..."></div>
+              <div class="field"><label>Secteur d'expérience principale</label><input id="cv-secteur-exp" placeholder="ex. Industrie, Tourisme, Multi-secteur..."></div>
+              <div class="field full"><label>Références clients vérifiables au Maroc</label><textarea id="cv-refs" placeholder="Listez les références clients avec contact si possible..." style="height:60px;"></textarea></div>
+              <div class="field"><label>Taille de l'équipe dédiée</label><input type="number" id="cv-equipe" min="1" placeholder="Nombre de personnes" oninput="evalIntegrateur()"></div>
+              <div class="field"><label>Certifications solution</label><input id="cv-certif" placeholder="ex. Odoo Gold Partner, SAP Certified..."></div>
+            </div>
+            <hr class="divider">
+            <div class="card-title">Critères d'évaluation du profil</div>
+            <div id="int-criteria"></div>
+          </div>
+          <div id="cv-ref-panel" class="ai-panel" style="display:none;">
+            <div class="ai-header">
+              <span class="ai-badge">IA — Référence CV</span>
+              <span class="ai-title">Analyse CV (effectuée à l'étape Dossier)</span>
+            </div>
+            <div class="ai-content" id="cv-ref-content" style="font-size:12px;"></div>
+            <div class="ai-actions">
+              <button class="ai-btn" onclick="goEvalStep(1); setTimeout(openCVPicker, 100)">↺ Relancer l'analyse CV</button>
+            </div>
+          </div>
+          <div class="row-between mt16">
+            <button class="btn btn-ghost" onclick="goEvalStep(2)">← Retour</button>
+            <button class="btn btn-primary" onclick="goEvalStep(4)">Suivant → Décision finale</button>
+          </div>
+        </div>
+
+        <div id="eval-step-4" style="display:none;">
+          <!-- Décision finale -->
+          <div class="steps-bar">
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Catégorie</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Dossier</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Solution</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num done">✓</div><div class="step-label">Intégrateur</div></div>
+            <div class="step-sep"></div>
+            <div class="step-item"><div class="step-num active">5</div><div class="step-label active">Décision</div></div>
+          </div>
+          <div id="decision-banner-container"></div>
+          <div class="card">
+            <div class="card-title">Scores consolidés</div>
+            <div class="form-grid">
+              <div class="metric"><div class="metric-label">Score solution</div><div class="metric-value" id="final-sol-score">—</div></div>
+              <div class="metric"><div class="metric-label">Score intégrateur</div><div class="metric-value" id="final-int-score">—</div></div>
+              <div class="metric"><div class="metric-label">Score global pondéré</div><div class="metric-value accent" id="final-global-score">—</div></div>
+              <div class="metric"><div class="metric-label">Décision</div><div class="metric-value" id="final-decision-label" style="font-size:14px;">—</div></div>
+            </div>
+          </div>
+          <div class="ai-panel">
+            <div class="ai-header">
+              <span class="ai-badge">IA — Rédaction</span>
+              <span class="ai-title">Procès-verbal de commission — généré automatiquement</span>
+            </div>
+            <div class="ai-content loading" id="ai-pv-content">Cliquez sur "Générer le PV" pour rédiger le procès-verbal officiel.</div>
+            <div class="ai-actions">
+              <button class="ai-btn" onclick="generatePV()" id="btn-pv">◈ Générer le PV</button>
+              <button class="ai-btn" onclick="copyPV()" id="btn-copy-pv" style="display:none;">⎘ Copier le PV</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Décision finale de la commission</div>
+            <div class="form-grid">
+              <div class="field"><label>Décision officielle</label>
+                <select id="decision-officielle">
+                  <option value="référencé">Référencé</option>
+                  <option value="conditionnel">Référencé conditionnel</option>
+                  <option value="rejeté">Rejeté</option>
+                </select>
+              </div>
+              <div class="field"><label>Date de décision</label><input type="date" id="decision-date"></div>
+              <div class="field full"><label>Observations complémentaires de la commission</label><textarea id="decision-obs" placeholder="Points particuliers notés par la commission..."></textarea></div>
+              <div class="field full"><label>Conditions (si conditionnel)</label><textarea id="decision-conditions" placeholder="Points à corriger sous 3 mois avant nouveau passage en commission..." style="height:60px;"></textarea></div>
+            </div>
+          </div>
+          <div class="row-between mt16">
+            <button class="btn btn-ghost" onclick="goEvalStep(3)">← Retour</button>
+            <div class="row gap8">
+              <button class="btn btn-secondary" onclick="exportPDF()">↓ Exporter PDF</button>
+              <button class="btn btn-green" onclick="submitToJira()">↑ Soumettre à Jira</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="page-settings" class="page">
+        <div class="card">
+          <div class="card-title">Connexion Jira Data Center</div>
+          <div class="form-grid">
+            <div class="field full"><label>URL du Proxy CORS</label><input id="s-proxy-url" placeholder="http://localhost:3001 — ou URL de votre proxy déployé"><small style="font-size:11px;color:var(--text3);margin-top:3px;display:block;">Le proxy élimine les erreurs CORS entre le navigateur et Jira. Déployez proxy/server.js sur votre serveur.</small></div>
+            <div class="field full"><label>URL Jira (interne)</label><input id="s-jira-url" placeholder="https://jisr.marocpme.gov.ma/jira"></div>
+            <div class="field"><label>Clé du projet</label><input id="s-jira-project" placeholder="ex. REF, PREST, SOL"></div>
+            <div class="field"><label>Type d'authentification</label>
+              <select id="s-jira-auth">
+                <option value="pat">Token personnel (PAT)</option>
+                <option value="basic">Basic (login + mot de passe)</option>
+              </select>
+            </div>
+            <div class="field" id="s-pat-field"><label>Personal Access Token (PAT)</label><input type="password" id="s-jira-pat" placeholder="Token Jira Data Center"></div>
+            <div class="field" id="s-user-field" style="display:none;"><label>Nom d'utilisateur</label><input id="s-jira-user" placeholder="username"></div>
+            <div class="field" id="s-pass-field" style="display:none;"><label>Mot de passe</label><input type="password" id="s-jira-pass" placeholder="password"></div>
+            <div class="field"><label>Champ custom — Solution démo</label><input id="s-cf-solution" placeholder="ex. customfield_10001"></div>
+            <div class="field"><label>Champ custom — Secteur</label><input id="s-cf-secteur" placeholder="ex. customfield_10002"></div>
+            <div class="field"><label>Champ custom — Évaluation CV</label><input id="s-cf-cv" placeholder="ex. customfield_10010"></div>
+            <div class="field"><label>Champ custom — Modules référencés</label><input id="s-cf-modules" placeholder="ex. customfield_10030"></div>
+            <div class="field"><label>Champ custom — Score solution</label><input id="s-cf-score-sol" placeholder="ex. customfield_10020"></div>
+            <div class="field"><label>Champ custom — Score intégrateur</label><input id="s-cf-score-int" placeholder="ex. customfield_10021"></div>
+          </div>
+          <div class="row gap8 mt16">
+            <button class="btn btn-primary" onclick="saveJiraConfig()">Enregistrer</button>
+            <button class="btn btn-secondary" onclick="testJiraConnection()">Tester la connexion</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Intelligence artificielle — OpenRouter</div>
+          <div class="form-grid">
+            <div class="field full"><label>Clé API OpenRouter</label><input type="password" id="s-or-key" placeholder="sk-or-v1-..."></div>
+            <div class="field full">
+              <label>Modèle IA</label>
+              <input id="s-or-model-input" placeholder="Saisir ou sélectionner un modèle..." oninput="filterModels()" onclick="openModelList()">
+              <div class="model-list" id="model-list"></div>
+            </div>
+            <div class="field"><label>Température</label><input type="number" id="s-or-temp" value="0.3" min="0" max="1" step="0.1"></div>
+            <div class="field"><label>Langue des sorties IA</label>
+              <select id="s-or-lang"><option value="fr">Français</option><option value="ar">Arabe</option></select>
+            </div>
+          </div>
+          <div class="row gap8 mt16">
+            <button class="btn btn-primary" onclick="saveAIConfig()">Enregistrer</button>
+            <button class="btn btn-secondary" onclick="testAIConnection()">Tester la connexion IA</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Documents de référence — AMI &amp; Canevas CV</div>
+          <p style="font-size:12px; color:var(--text2); margin-bottom:16px; line-height:1.7;">
+            Chargez les fichiers officiels (<code style="background:var(--surface2);padding:1px 5px;border-radius:3px;">.docx</code> ou <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;">.txt</code>). Le texte est extrait et injecté dans toutes les analyses IA. Des valeurs par défaut GO SIYAHA V04/V02 sont pré-chargées — remplacez-les si une nouvelle version est publiée.
+          </p>
+          <!-- AMI -->
+          <div style="margin-bottom:20px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+              <label>AMI — Appel à Manifestation d'Intérêt <span style="color:var(--accent); font-family:var(--mono); font-size:10px;">PTC GO SIYAHA V04</span></label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span id="ami-file-info" style="font-size:11px; font-family:var(--mono); color:var(--text3);"></span>
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer; margin:0; padding:5px 10px;">
+                  ↑ Charger fichier
+                  <input type="file" accept=".docx,.txt,.doc" onchange="handleAmiFile(this.files[0])" style="display:none;">
+                </label>
+              </div>
+            </div>
+            <textarea id="s-doc-ami" rows="9" style="font-size:12px; font-family:var(--mono); width:100%;"></textarea>
+            <small style="font-size:11px; color:var(--text3); margin-top:4px; display:block;">Utilisé dans : analyse CV · vérification attestations · auto-remplissage</small>
+          </div>
+          <!-- Canevas CV -->
+          <div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+              <label>Canevas CV — Template officiel Maroc PME <span style="color:var(--accent); font-family:var(--mono); font-size:10px;">GO SIYAHA_V02</span></label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span id="canvas-file-info" style="font-size:11px; font-family:var(--mono); color:var(--text3);"></span>
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer; margin:0; padding:5px 10px;">
+                  ↑ Charger fichier
+                  <input type="file" accept=".docx,.txt,.doc" onchange="handleCanvasFile(this.files[0])" style="display:none;">
+                </label>
+              </div>
+            </div>
+            <textarea id="s-doc-canvas-cv" rows="7" style="font-size:12px; font-family:var(--mono); width:100%;"></textarea>
+            <small style="font-size:11px; color:var(--text3); margin-top:4px; display:block;">Utilisé dans : analyse CV — conformité structure (sections, rubriques, signatures)</small>
+          </div>
+          <div class="row gap8 mt16">
+            <button class="btn btn-primary" onclick="saveDocsConfig()">Enregistrer</button>
+            <button class="btn btn-ghost btn-sm" onclick="resetDocsToDefaults()" title="Restaurer le contenu GO SIYAHA V04/V02 par défaut">↺ Défauts GO SIYAHA</button>
+            <span id="docs-saved-info" style="font-size:11px; font-family:var(--mono); color:var(--text3); align-self:center; flex:1; text-align:right;"></span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div>
+
+<!-- CV PICKER MODAL -->
+<div class="modal-overlay" id="cv-picker-overlay" onclick="if(event.target===this)closeCVPicker()">
+  <div class="modal" style="width:580px; max-width:95vw;">
+    <div class="modal-title">Sélectionner le CV du consultant</div>
+    <div class="modal-sub" id="cv-picker-ticket">Pièces jointes du ticket Jira</div>
+    <div class="att-list" id="cv-att-list">
+      <div style="text-align:center; color:var(--text3); padding:24px; font-family:var(--mono); font-size:12px;">Chargement des pièces jointes...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCVPicker()">Annuler</button>
+      <button class="btn btn-primary" id="btn-analyze-cv" onclick="analyzeSelectedCV()" disabled>◈ Analyser ce CV avec l'IA</button>
+    </div>
+  </div>
+</div>
+
+<!-- ATTESTATION PICKER MODAL -->
+<div class="modal-overlay" id="att-picker-overlay" onclick="if(event.target===this)closeAttPicker()">
+  <div class="modal" style="width:620px; max-width:95vw;">
+    <div class="modal-title">Sélectionner les attestations de référence</div>
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:14px;">
+      <input id="att-picker-key" placeholder="Clé du ticket Jira (ex: REF-1234)" style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; font-size:13px; outline:none;" onkeydown="if(event.key==='Enter')loadAttForTicket()">
+      <button class="btn btn-secondary btn-sm" onclick="loadAttForTicket()">Charger</button>
+    </div>
+    <div class="modal-sub" id="att-picker-info">Sélectionnez une ou plusieurs attestations (PDF ou image)</div>
+    <div class="att-list" id="att-list-container" style="margin:12px 0;">
+      <div style="text-align:center; color:var(--text3); padding:24px; font-family:var(--mono); font-size:12px;">Entrez une clé de ticket et cliquez sur Charger</div>
+    </div>
+    <div style="font-size:11px; color:var(--text3); font-family:var(--mono); padding:2px 0 8px;">
+      <span id="att-sel-count">0</span> attestation(s) sélectionnée(s)
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAttPicker()">Annuler</button>
+      <button class="btn btn-primary" id="btn-analyze-att" onclick="analyzeSelectedAttestations()" disabled>◈ Analyser les attestations</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIF -->
+<div class="notif" id="notif"></div>
+
+<script>
+// ============================================================
+// CONFIG & STATE
+// ============================================================
+
+// URL du proxy — même origine que l'app (pas de CORS)
+// En dev local : http://localhost:3001
+// En production Coolify : http://proxy:3001 (réseau Docker interne)
+// Si proxy exposé sur un sous-domaine : https://proxy.marocpme.gov.ma
+const PROXY_URL = window.PROXY_URL || 'http://localhost:3001';
+
+const CONFIG = {
+  jira: { url:'', project:'', auth:'pat', pat:'', user:'', pass:'',
+    cf_solution:'', cf_secteur:'', cf_cv:'', cf_score_sol:'', cf_score_int:'', cf_modules:'' },
+  ai: { key:'', model:'anthropic/claude-sonnet-4-5', temp:0.3, lang:'fr' },
+  docs: { ami: '', cvCanvas: '' }
+};
+
+const STATE = {
+  currentCat: null,
+  solScores: {}, solObs: {},
+  intScores: {}, intObs: {},
+  dossiers: [],
+  pvText: '',
+  currentAttachments: [],
+  selectedCV: null,
+  cvAnalysis: '',
+  _sortedAttachments: [],
+  modules: [],
+  selectedAttestations: [],
+  attAnalysis: '',
+  _attSortedList: []
+};
+
+const MODELS = [
+  'anthropic/claude-sonnet-4-5',
+  'anthropic/claude-opus-4',
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'openai/o3-mini',
+  'mistralai/mistral-large',
+  'mistralai/mistral-medium',
+  'google/gemini-2.5-pro',
+  'google/gemini-flash-1.5',
+  'meta-llama/llama-3.3-70b-instruct',
+  'deepseek/deepseek-chat',
+  'qwen/qwen-2.5-72b-instruct'
+];
+
+// ============================================================
+// CATEGORIES & CRITERIA
+// ============================================================
+const CATEGORIES = {
+  erp: { label:'ERP généraliste', icon:'🏭', ex:'Odoo, SAP, Sage, Dynamics…',
+    criteria:[
+      {n:'Comptabilité & finances',d:'Saisie, clôture, bilan, TVA, multi-devises',w:2},
+      {n:'Gestion des achats',d:'BC, réception, facture fournisseur, relances',w:2},
+      {n:'Gestion des ventes',d:'Devis, BL, facturation client, CRM',w:2},
+      {n:'Gestion des stocks',d:'Mouvements, inventaire, multi-dépôts',w:2},
+      {n:'Production & MRP',d:'Gammes, nomenclatures, ordres de fabrication',w:1},
+      {n:'Reporting & BI intégrée',d:'Indicateurs natifs, exports, tableaux de bord',w:2},
+      {n:'Droits & workflow',d:'Profils, rôles, approbations configurables',w:1},
+      {n:'Localisation Maroc (CGNC, TVA, IS, IR, CNSS)',d:'Plan comptable marocain, déclarations fiscales',w:2},
+      {n:'Ergonomie & prise en main',d:'Interface claire, formation courte requise',w:1},
+      {n:'Support & maintenance locale',d:'Équipe support Maroc, SLA défini',w:2},
+      {n:'Hébergement & sécurité',d:'Cloud/on-premise, backup, conformité RGPD',w:1},
+      {n:'Intégrations & API',d:'Connexion banque, douane, partenaires tiers',w:1}
+    ]},
+  compta: { label:'Comptabilité & finance', icon:'💰', ex:'EBP, Cegid, Sage 100…',
+    criteria:[
+      {n:'Plan comptable CGNC',d:'Conformité plan comptable marocain',w:2},
+      {n:'Saisie & clôture comptable',d:'Journaux, lettrage, clôture mensuelle/annuelle',w:2},
+      {n:'Gestion TVA',d:'Déclarations CA, prorata, remboursement',w:2},
+      {n:'États financiers réglementaires',d:'Bilan, CPC, ESG, TF aux normes OMPIC',w:2},
+      {n:'Gestion de la paie',d:'Salaires, CNSS, IR, bulletins de paie',w:2},
+      {n:'Trésorerie & rapprochement bancaire',d:'Suivi encaissements, rapprochement',w:1},
+      {n:'Analytique & centres de coûts',d:'Ventilation analytique, budget vs réel',w:1},
+      {n:'Multi-société & multi-exercice',d:'Consolidation, exercices parallèles',w:1},
+      {n:'Déclarations fiscales (IS, IR, TVA)',d:'Génération automatique des déclarations DGI',w:2},
+      {n:'Support & mises à jour fiscales Maroc',d:'Équipe locale, mises à jour réglementaires',w:2}
+    ]},
+  ecom: { label:'E-commerce', icon:'🛒', ex:'WooCommerce, Shopify, Magento…',
+    criteria:[
+      {n:'Catalogue & gestion produits',d:'Variantes, attributs, stock temps réel',w:2},
+      {n:'Tunnel d\'achat & panier',d:'UX fluide, abandon panier, relances',w:2},
+      {n:'Paiement en ligne Maroc (CMI, PayZone…)',d:'Intégration passerelles paiement marocaines',w:2},
+      {n:'Gestion commandes & livraisons',d:'Suivi statuts, BL, retours',w:2},
+      {n:'Gestion clients & CRM',d:'Comptes client, historique, segmentation',w:1},
+      {n:'Marketing & promotions',d:'Codes promo, soldes, newsletter',w:1},
+      {n:'SEO & performance',d:'URLs propres, vitesse, balises meta',w:1},
+      {n:'Back-office & reporting',d:'Tableau de bord ventes, exports',w:1},
+      {n:'Mobile-first & responsive',d:'Expérience mobile native',w:1},
+      {n:'Connexion ERP / stocks',d:'Sync stock automatique avec SI existant',w:2},
+      {n:'Support & hébergement',d:'SLA, sauvegardes, sécurité',w:1}
+    ]},
+  rh: { label:'RH & paie', icon:'👥', ex:'Agirh, Kelio, SIRH…',
+    criteria:[
+      {n:'Gestion administrative du personnel',d:'Dossiers salariés, contrats, avenants',w:2},
+      {n:'Calcul de la paie',d:'Salaires, primes, retenues, net à payer',w:2},
+      {n:'CNSS & AMO',d:'Génération déclarations et bordereaux CNSS',w:2},
+      {n:'IR sur salaires (barème marocain)',d:'Calcul IR, régularisation annuelle',w:2},
+      {n:'Bulletins de paie',d:'Génération automatique, archivage',w:2},
+      {n:'Congés & absences',d:'Soldes congés, workflow validation manager',w:1},
+      {n:'Recrutement (ATS)',d:'Offres, candidatures, suivi entretiens',w:1},
+      {n:'Formation & compétences',d:'Plan de formation, suivi, bilan',w:1},
+      {n:'Évaluation & entretiens annuels',d:'Formulaires, objectifs, historique',w:1},
+      {n:'Reporting RH & tableaux de bord',d:'Masse salariale, turn-over, effectifs',w:1},
+      {n:'Conformité code du travail marocain',d:'Mises à jour légales automatiques',w:2}
+    ]},
+  hotel: { label:'Hôtellerie & restauration', icon:'🏨', ex:'PMS, OPERA, eZee…',
+    criteria:[
+      {n:'Gestion des réservations (PMS)',d:'Planning chambres, check-in/out, disponibilités',w:2},
+      {n:'Tarification & yield management',d:'Grilles tarifaires, saisons, promotions',w:2},
+      {n:'Connexion channel manager',d:'Booking.com, Expedia, Airbnb…',w:2},
+      {n:'Facturation & encaissement',d:'Note de frais, split de facture, paiement en ligne',w:2},
+      {n:'Caisse restaurant & F&B (POS)',d:'POS, tablettes serveurs, cuisine KDS',w:2},
+      {n:'Housekeeping',d:'Planning nettoyage, état des chambres',w:1},
+      {n:'CRM clients & fidélité',d:'Historique séjours, préférences, points fidélité',w:1},
+      {n:'Reporting & statistiques',d:'Taux d\'occupation, RevPAR, CA par activité',w:2},
+      {n:'Contrôle stocks F&B',d:'Bons de réception, consommation, inventaire',w:1},
+      {n:'Intégration comptabilité',d:'Export vers logiciel comptable',w:1},
+      {n:'Support & formation locale',d:'Équipe locale, hotline, mises à jour',w:1}
+    ]},
+  industrie: { label:'Industrie & production', icon:'⚙️', ex:'GMAO, MES, CFAO…',
+    criteria:[
+      {n:'Gestion des nomenclatures (BOM)',d:'Arborescences, composants, versions',w:2},
+      {n:'Gammes de fabrication',d:'Opérations, centres de charge, temps unitaires',w:2},
+      {n:'Planification production (MRP/MRP2)',d:'Calcul besoins, ordres de fabrication',w:2},
+      {n:'Gestion stocks & approvisionnements',d:'Stocks matières, en-cours, produits finis',w:2},
+      {n:'Contrôle qualité',d:'Contrôles réception, en-cours, produits finis',w:2},
+      {n:'GMAO',d:'Maintenance préventive/curative, équipements',w:1},
+      {n:'Traçabilité & lots / numéros de série',d:'Suivi lot, rappel produit',w:2},
+      {n:'Coûts de revient',d:'Calcul coût standard, analyse écarts',w:1},
+      {n:'Reporting production (TRS, rebuts)',d:'Indicateurs de performance industrielle',w:1},
+      {n:'Intégration ERP / comptabilité',d:'Flux financiers liés à la production',w:1},
+      {n:'Références & support Maroc',d:'Clients marocains de référence, équipe locale',w:1}
+    ]},
+  agro: { label:'Agro-alimentaire', icon:'🌿', ex:'Traçabilité, qualité, HACCP…',
+    criteria:[
+      {n:'Traçabilité des matières premières',d:'Origine, lot, date réception, fournisseur',w:2},
+      {n:'Gestion des recettes & formulations',d:'Compositions, variantes, rendements théoriques',w:2},
+      {n:'Contrôle qualité & HACCP',d:'Points CCP, non-conformités, actions correctives',w:2},
+      {n:'Gestion DLC / DLUO',d:'Alertes péremption, FIFO/FEFO automatique',w:2},
+      {n:'Production & ordres de fabrication',d:'Planification, suivi en-cours, rendements réels',w:2},
+      {n:'Traçabilité descendante (rappel produit)',d:'Identification lot → clients livrés',w:2},
+      {n:'Gestion stocks (matières & PF)',d:'Multi-dépôts, températures, conditionnements',w:1},
+      {n:'Pesée & contrôles en ligne',d:'Interface balance, enregistrement temps réel',w:1},
+      {n:'Certifications (ISO 22000, BRC, IFS…)',d:'Gestion documentaire liée aux certifications',w:1},
+      {n:'Conformité ONSSA & reporting réglementaire',d:'Dossiers ONSSA, exports réglementaires',w:2},
+      {n:'Support & références Maroc',d:'Conformité ONSSA, clients agro marocains',w:1}
+    ]},
+  textile: { label:'Textile & cuir', icon:'🧵', ex:'PLM, collection, gammes…',
+    criteria:[
+      {n:'Gestion collections & saisons',d:'Articles, coloris, tailles, variantes',w:2},
+      {n:'Bureau d\'études & développement produit',d:'Fiches techniques, nomenclatures, prototypes',w:2},
+      {n:'Calcul des coûts (CMT, FOB)',d:'Matières, main d\'œuvre, sous-traitance',w:2},
+      {n:'Planification de production',d:'Chaînes de confection, postes, capacités',w:2},
+      {n:'Gestion commandes clients & EDI',d:'Import ordres, confirmations, livraisons',w:2},
+      {n:'Approvisionnement matières',d:'Besoins matières, délais fournisseurs',w:1},
+      {n:'Contrôle qualité',d:'Contrôles coupe, confection, finition',w:2},
+      {n:'Traçabilité lots',d:'Coupe par lots, suivi commande client',w:1},
+      {n:'Reporting & indicateurs',d:'Efficience chaîne, rendement, retards',w:1},
+      {n:'Export & régimes douaniers (AT, PAI)',d:'Documents export, douane marocaine',w:1},
+      {n:'Références secteur textile marocain',d:'Clients référence dans le secteur',w:1}
+    ]},
+  btp: { label:'BTP & construction', icon:'🏗️', ex:'Chantier, devis, planning…',
+    criteria:[
+      {n:'Devis & estimatifs',d:'Bibliothèques de prix, devis par corps d\'état',w:2},
+      {n:'Appels d\'offres & marchés publics',d:'Constitution dossiers AO, suivi attribution',w:2},
+      {n:'Planification chantier (Gantt)',d:'Jalons, ressources, chemin critique',w:2},
+      {n:'Gestion budgétaire chantier',d:'Budget vs réalisé, situations travaux',w:2},
+      {n:'Situations & facturation',d:'Situations mensuelles, révisions de prix',w:2},
+      {n:'Gestion des sous-traitants',d:'Contrats, situations, retenues de garantie',w:1},
+      {n:'Pointages & équipes chantier',d:'Heures, équipes, heures supplémentaires',w:1},
+      {n:'Stocks matériaux & matériel',d:'Stocks chantier, bons de sortie, location',w:1},
+      {n:'Qualité & HSE',d:'Fiches incidents, non-conformités, audits',w:1},
+      {n:'Reporting rentabilité par chantier',d:'Avancement global, marges par projet',w:2},
+      {n:'Conformité CCAG & TVA BTP Maroc',d:'Spécificités réglementaires marocaines',w:1}
+    ]},
+  bi: { label:'BI & reporting', icon:'📊', ex:'Dashboards, analytics, KPIs…',
+    criteria:[
+      {n:'Connecteurs de données',d:'ERP, Excel, SQL, API, fichiers plats',w:2},
+      {n:'ETL / transformation des données',d:'Nettoyage, agrégation, jointures visuelles',w:2},
+      {n:'Tableaux de bord interactifs',d:'Filtres, drill-down, partage URL',w:2},
+      {n:'KPIs & indicateurs configurables',d:'Formules, seuils, alertes',w:2},
+      {n:'Rapports programmés & distribués',d:'PDF auto, envoi email planifié',w:1},
+      {n:'Analyse prédictive & tendances',d:'Prévisions, courbes de tendance',w:1},
+      {n:'Gestion des droits & périmètres (RLS)',d:'Accès par entité ou département',w:1},
+      {n:'Mobile & responsive',d:'Dashboards accessibles sur mobile',w:1},
+      {n:'Performance & volumétrie',d:'Millions de lignes, temps de chargement',w:2},
+      {n:'Facilité prise en main métier',d:'Pas de code requis pour l\'utilisateur',w:1},
+      {n:'Support & documentation Maroc',d:'Équipe Maroc, documentation fr/ar',w:1}
+    ]}
+};
+
+const INT_CRITERIA = [
+  {n:'Niveau de formation',d:'Bac+2 (1pt), Bac+3/4 (1.5pt), Bac+5 et + (2pts)',w:2,auto:true,autoKey:'diplome'},
+  {n:'Expérience générale (années)',d:'< 5 ans (0), 5-10 ans (1), > 10 ans (2)',w:2,auto:true,autoKey:'exp'},
+  {n:'Expérience spécifique sur la solution',d:'< 2 ans (0), 2-5 ans (1), > 5 ans (2)',w:2,auto:true,autoKey:'expSol'},
+  {n:'Références clients vérifiables au Maroc',d:'Aucune (0), 1-2 refs (1), 3+ refs vérifiables (2)',w:2,auto:false},
+  {n:'Expérience sectorielle pertinente',d:'Hors secteur (0), partielle (1), forte (2)',w:2,auto:false},
+  {n:'Taille & structure de l\'équipe',d:'1 personne (0), 2-4 personnes (1), 5+ (2)',w:1,auto:true,autoKey:'equipe'},
+  {n:'Certification officielle sur la solution',d:'Aucune (0), partielle (1), certifié officiel (2)',w:1,auto:false},
+  {n:'Qualité de la présentation & maîtrise solution',d:'Évaluation pendant la démo',w:2,auto:false},
+  {n:'Capacité de support & maintenance',d:'Délais intervention, équipe dédiée, SLA',w:1,auto:false}
+];
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelector(`.nav-item[onclick="showPage('${id}')"]`).classList.add('active');
+  const titles = {dashboard:['Tableau de bord','Vue d\'ensemble des dossiers'],dossiers:['Dossiers Jira','Liste des prestataires en attente d\'évaluation'],evaluation:['Évaluation en cours','Grille d\'évaluation solution & intégrateur'],settings:['Configuration','Jira Data Center & OpenRouter']};
+  document.getElementById('page-title').textContent = titles[id][0];
+  document.getElementById('page-sub').textContent = titles[id][1];
+}
+
+// ============================================================
+// EVAL STEPS
+// ============================================================
+function startNewEval() {
+  STATE.currentCat = null;
+  STATE.solScores = {}; STATE.solObs = {};
+  STATE.intScores = {}; STATE.intObs = {};
+  STATE.currentAttachments = [];
+  STATE.selectedCV = null;
+  STATE.cvAnalysis = '';
+  STATE._sortedAttachments = [];
+  STATE.modules = [];
+  STATE.selectedAttestations = [];
+  STATE.attAnalysis = '';
+  STATE._attSortedList = [];
+  renderModuleTags();
+  const attContent = document.getElementById('ai-att-content');
+  if(attContent) { attContent.textContent = 'Cliquez sur "Charger attestations" pour sélectionner et analyser les attestations de référence du consultant.'; attContent.className = 'ai-content'; }
+  buildCatGrid();
+  for(let i=0;i<5;i++) { const el=document.getElementById('eval-step-'+i); if(el) el.style.display=i===0?'block':'none'; }
+  const cvContent = document.getElementById('ai-cv-content');
+  if(cvContent) { cvContent.textContent = 'Cliquez sur "Charger CV depuis Jira" pour sélectionner et analyser le CV du consultant.'; cvContent.className = 'ai-content'; }
+  const btnAF = document.getElementById('btn-autofill');
+  if(btnAF) btnAF.style.display = 'none';
+  const refPanel = document.getElementById('cv-ref-panel');
+  if(refPanel) refPanel.style.display = 'none';
+}
+
+function goEvalStep(n) {
+  for(let i=0;i<5;i++) { const el=document.getElementById('eval-step-'+i); if(el) el.style.display='none'; }
+  document.getElementById('eval-step-'+n).style.display = 'block';
+  if(n===1 && STATE.cvAnalysis) {
+    const el = document.getElementById('ai-cv-content');
+    if(el) { el.textContent = STATE.cvAnalysis; el.className = 'ai-content'; }
+  }
+  if(n===2) buildSolCriteria();
+  if(n===3) {
+    buildIntCriteria();
+    const refPanel = document.getElementById('cv-ref-panel');
+    const refContent = document.getElementById('cv-ref-content');
+    if(STATE.cvAnalysis && refPanel && refContent) {
+      refPanel.style.display = 'block';
+      refContent.textContent = STATE.cvAnalysis;
+    } else if(refPanel) { refPanel.style.display = 'none'; }
+  }
+  if(n===4) buildDecision();
+  window.scrollTo(0,0);
+}
+
+function buildCatGrid() {
+  const g = document.getElementById('cat-grid');
+  g.innerHTML = '';
+  Object.entries(CATEGORIES).forEach(([k,v]) => {
+    const d = document.createElement('div');
+    d.className = 'cat-card' + (STATE.currentCat===k?' sel':'');
+    d.onclick = () => { STATE.currentCat = k; document.querySelectorAll('.cat-card').forEach(c=>c.classList.remove('sel')); d.classList.add('sel'); document.getElementById('btn-next-cat').disabled = false; };
+    d.innerHTML = `<div class="cat-icon">${v.icon}</div><div class="cat-name">${v.label}</div><div class="cat-ex">${v.ex}</div>`;
+    g.appendChild(d);
+  });
+}
+
+function buildSolCriteria() {
+  if(!STATE.currentCat) return;
+  const cat = CATEGORIES[STATE.currentCat];
+  document.getElementById('sol-cat-title').textContent = 'Grille fonctionnelle — ' + cat.label;
+  const container = document.getElementById('sol-criteria');
+  container.innerHTML = '';
+  cat.criteria.forEach((c,i) => {
+    const prio = c.w===2 ? '<span class="prio-tag">prioritaire</span>' : '';
+    const div = document.createElement('div');
+    div.className = 'criteria-item';
+    div.innerHTML = `
+      <div class="criteria-text">
+        <div class="criteria-name">${c.n} ${prio}</div>
+        <div class="criteria-desc">${c.d}</div>
+        <textarea class="criteria-obs" id="sobs-${i}" placeholder="Observation..." oninput="STATE.solObs[${i}]=this.value"></textarea>
+      </div>
+      <div class="score-btns">
+        <button class="sbtn s0 ${STATE.solScores[i]===0?'sel':''}" onclick="setSolScore(${i},0)" title="Absent">0</button>
+        <button class="sbtn s1 ${STATE.solScores[i]===1?'sel':''}" onclick="setSolScore(${i},1)" title="Partiel">1</button>
+        <button class="sbtn s2 ${STATE.solScores[i]===2?'sel':''}" onclick="setSolScore(${i},2)" title="Satisfaisant">2</button>
+      </div>`;
+    container.appendChild(div);
+    if(STATE.solObs[i]) div.querySelector('textarea').value = STATE.solObs[i];
+  });
+  updateSolScore();
+}
+
+function setSolScore(i, v) {
+  STATE.solScores[i] = v;
+  const items = document.querySelectorAll('#sol-criteria .criteria-item');
+  if(items[i]) {
+    items[i].querySelectorAll('.sbtn').forEach((b,bi) => { b.classList.remove('sel'); if(bi===v) b.classList.add('sel'); });
+  }
+  updateSolScore();
+}
+
+function updateSolScore() {
+  if(!STATE.currentCat) return;
+  const crit = CATEGORIES[STATE.currentCat].criteria;
+  let max=0, score=0, answered=0;
+  crit.forEach((c,i) => { max+=2*c.w; if(STATE.solScores[i]!==undefined){score+=STATE.solScores[i]*c.w; answered++;} });
+  document.getElementById('sol-answered').textContent = answered;
+  if(!answered) { document.getElementById('sol-score-num').textContent='—'; return; }
+  const pct = Math.round(score/max*100);
+  const el = document.getElementById('sol-score-num');
+  el.textContent = pct+'%';
+  const bar = document.getElementById('sol-progress');
+  if(pct>=60){el.className='score-big ok';bar.style.background='#4ADE80';document.getElementById('sol-verdict').textContent='Favorable ✓';document.getElementById('sol-verdict').className='score-verdict ok';}
+  else if(pct>=45){el.className='score-big mid';bar.style.background='#FBB424';document.getElementById('sol-verdict').textContent='Conditionnel';document.getElementById('sol-verdict').className='score-verdict mid';}
+  else{el.className='score-big ko';bar.style.background='#F87171';document.getElementById('sol-verdict').textContent='Défavorable ✗';document.getElementById('sol-verdict').className='score-verdict ko';}
+  bar.style.width = pct+'%';
+}
+
+function buildIntCriteria() {
+  const container = document.getElementById('int-criteria');
+  container.innerHTML = '';
+  autoEvalIntegrateur();
+  INT_CRITERIA.forEach((c,i) => {
+    const div = document.createElement('div');
+    div.className = 'criteria-item';
+    div.innerHTML = `
+      <div class="criteria-text">
+        <div class="criteria-name">${c.n}</div>
+        <div class="criteria-desc">${c.d}</div>
+        <textarea class="criteria-obs" id="iobs-${i}" placeholder="Observation..." oninput="STATE.intObs[${i}]=this.value"></textarea>
+      </div>
+      <div class="score-btns">
+        <button class="sbtn s0 ${STATE.intScores[i]===0?'sel':''}" onclick="setIntScore(${i},0)">0</button>
+        <button class="sbtn s1 ${STATE.intScores[i]===1?'sel':''}" onclick="setIntScore(${i},1)">1</button>
+        <button class="sbtn s2 ${STATE.intScores[i]===2?'sel':''}" onclick="setIntScore(${i},2)">2</button>
+      </div>`;
+    container.appendChild(div);
+    if(STATE.intObs[i]) div.querySelector('textarea').value = STATE.intObs[i];
+  });
+  updateIntScore();
+}
+
+function autoEvalIntegrateur() {
+  const diplome = document.getElementById('cv-diplome')?.value.toLowerCase()||'';
+  const exp = parseInt(document.getElementById('cv-exp')?.value)||0;
+  const expSol = parseInt(document.getElementById('cv-exp-sol')?.value)||0;
+  const equipe = parseInt(document.getElementById('cv-equipe')?.value)||0;
+  if(diplome) { STATE.intScores[0] = diplome.includes('ingénieur')||diplome.includes('bac+5')||diplome.includes('master')||diplome.includes('bac +5') ? 2 : diplome.includes('bac+4')||diplome.includes('bac +4')||diplome.includes('licence') ? 1 : diplome.includes('bac+3')||diplome.includes('bac +3') ? 1 : 0; }
+  if(exp>0) { STATE.intScores[1] = exp>=10 ? 2 : exp>=5 ? 1 : 0; }
+  if(expSol>0) { STATE.intScores[2] = expSol>=5 ? 2 : expSol>=2 ? 1 : 0; }
+  if(equipe>0) { STATE.intScores[5] = equipe>=5 ? 2 : equipe>=2 ? 1 : 0; }
+}
+
+function evalIntegrateur() { autoEvalIntegrateur(); if(document.getElementById('int-criteria').children.length>0) buildIntCriteria(); updateIntScore(); }
+
+function setIntScore(i, v) {
+  STATE.intScores[i] = v;
+  const items = document.querySelectorAll('#int-criteria .criteria-item');
+  if(items[i]) items[i].querySelectorAll('.sbtn').forEach((b,bi) => { b.classList.remove('sel'); if(bi===v) b.classList.add('sel'); });
+  updateIntScore();
+}
+
+function updateIntScore() {
+  let max=0, score=0, answered=0;
+  INT_CRITERIA.forEach((c,i) => { max+=2*c.w; if(STATE.intScores[i]!==undefined){score+=STATE.intScores[i]*c.w; answered++;} });
+  document.getElementById('int-answered').textContent = answered;
+  if(!answered) { document.getElementById('int-score-num').textContent='—'; return; }
+  const pct = Math.round(score/max*100);
+  const el = document.getElementById('int-score-num');
+  el.textContent = pct+'%';
+  const bar = document.getElementById('int-progress');
+  if(pct>=55){el.className='score-big ok';bar.style.background='#4ADE80';document.getElementById('int-verdict').textContent='Favorable ✓';document.getElementById('int-verdict').className='score-verdict ok';}
+  else if(pct>=40){el.className='score-big mid';bar.style.background='#FBB424';document.getElementById('int-verdict').textContent='Conditionnel';document.getElementById('int-verdict').className='score-verdict mid';}
+  else{el.className='score-big ko';bar.style.background='#F87171';document.getElementById('int-verdict').textContent='Défavorable ✗';document.getElementById('int-verdict').className='score-verdict ko';}
+  bar.style.width = pct+'%';
+}
+
+function buildDecision() {
+  if(!STATE.currentCat) return;
+  const crit = CATEGORIES[STATE.currentCat].criteria;
+  let solMax=0, solScore=0;
+  crit.forEach((c,i) => { solMax+=2*c.w; if(STATE.solScores[i]!==undefined) solScore+=STATE.solScores[i]*c.w; });
+  let intMax=0, intScore=0;
+  INT_CRITERIA.forEach((c,i) => { intMax+=2*c.w; if(STATE.intScores[i]!==undefined) intScore+=STATE.intScores[i]*c.w; });
+  const solPct = solMax>0 ? Math.round(solScore/solMax*100) : 0;
+  const intPct = intMax>0 ? Math.round(intScore/intMax*100) : 0;
+  const globalPct = Math.round(solPct*0.6 + intPct*0.4);
+  document.getElementById('final-sol-score').textContent = solPct+'%';
+  document.getElementById('final-int-score').textContent = intPct+'%';
+  document.getElementById('final-global-score').textContent = globalPct+'%';
+  let decisionClass, decisionText, decisionMotif;
+  if(globalPct>=60 && solPct>=60 && intPct>=55) { decisionClass='ref'; decisionText='Référencement accordé'; decisionMotif='La solution et le profil intégrateur satisfont aux critères minimaux. Le référencement est accordé dans le périmètre défini.'; document.getElementById('decision-officielle').value='référencé'; }
+  else if(globalPct>=48) { decisionClass='cond'; decisionText='Référencement conditionnel'; decisionMotif='Des lacunes ont été identifiées sur certains critères prioritaires. Le prestataire dispose de 3 mois pour apporter les corrections nécessaires avant un nouveau passage en commission.'; document.getElementById('decision-officielle').value='conditionnel'; }
+  else { decisionClass='rej'; decisionText='Référencement refusé'; decisionMotif='La solution ou le profil intégrateur ne satisfait pas au seuil minimal requis. Un dossier motivé sera transmis au prestataire.'; document.getElementById('decision-officielle').value='rejeté'; }
+  document.getElementById('final-decision-label').textContent = decisionText;
+  document.getElementById('decision-banner-container').innerHTML = `
+    <div class="decision-banner ${decisionClass}">
+      <div class="decision-verdict">${decisionText}</div>
+      <div class="decision-motive">${decisionMotif}</div>
+    </div>`;
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('decision-date').value = today;
+}
+
+// ============================================================
+// AI FUNCTIONS
+// ============================================================
+function getAIHeaders() {
+  return { 'Content-Type':'application/json', 'Authorization':'Bearer '+CONFIG.ai.key, 'HTTP-Referer':'https://marocpme.gov.ma', 'X-Title':'Commission Référencement Maroc PME' };
+}
+
+async function callAI(prompt, onChunk, opts = {}) {
+  if(!CONFIG.ai.key) { showNotif('Clé OpenRouter non configurée','err'); return null; }
+  const messages = opts.messages || [{role:'user',content:prompt}];
+  const body = { model: CONFIG.ai.model, max_tokens: opts.maxTokens || 1500, stream: !!onChunk, messages };
+  try {
+    const aiEndpoint = PROXY_URL + '/ai-proxy/chat/completions';
+    const resp = await fetch(aiEndpoint, { method:'POST', headers:getAIHeaders(), body:JSON.stringify(body) });
+    if(!resp.ok) {
+      let msg = 'HTTP ' + resp.status;
+      try { const e = await resp.json(); msg = e?.error?.message || e?.message || msg; } catch(_) {}
+      throw new Error(msg);
+    }
+    if(onChunk) {
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let full = '';
+      let streamErr = null;
+      while(true) {
+        const {done,value} = await reader.read();
+        if(done) break;
+        const chunk = dec.decode(value);
+        const lines = chunk.split('\n').filter(l=>l.startsWith('data:'));
+        for(const line of lines) {
+          const data = line.slice(5).trim();
+          if(data==='[DONE]') break;
+          try {
+            const j = JSON.parse(data);
+            if(j.error) { streamErr = j.error.message || JSON.stringify(j.error); break; }
+            const delta = j.choices?.[0]?.delta?.content || '';
+            full += delta;
+            if(delta) onChunk(full);
+          } catch(_) {}
+        }
+        if(streamErr) break;
+      }
+      if(streamErr) throw new Error(streamErr);
+      return full;
+    } else {
+      const j = await resp.json();
+      if(j.error) throw new Error(j.error.message || JSON.stringify(j.error));
+      return j.choices?.[0]?.message?.content || '';
+    }
+  } catch(e) { showNotif('Erreur IA: '+e.message,'err'); return null; }
+}
+
+async function generateBriefing() {
+  const solution = document.getElementById('f-solution').value;
+  const prestataire = document.getElementById('f-prestataire').value;
+  const cat = STATE.currentCat ? CATEGORIES[STATE.currentCat].label : 'Non définie';
+  if(!solution && !prestataire) { showNotif('Renseignez le prestataire et la solution','err'); return; }
+  const btn = document.getElementById('btn-briefing');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Génération...';
+  const el = document.getElementById('ai-briefing-content');
+  el.className = 'ai-content loading';
+  el.textContent = 'Génération du briefing...';
+  const prompt = `Tu es expert en évaluation de solutions informatiques pour PME marocaines.
+Génère un briefing concis pour la commission de référencement qui va évaluer:
+- Solution: ${solution||'Non précisée'}
+- Prestataire: ${prestataire||'Non précisé'}
+- Catégorie: ${cat}
+
+En ${CONFIG.ai.lang==='ar'?'arabe':'français'}, fournis:
+1. Points clés à vérifier pendant la démo (5-7 points prioritaires)
+2. Questions techniques spécifiques à poser
+3. Points d'attention particuliers pour le contexte marocain (conformité fiscale, support local, etc.)
+4. Benchmark rapide si la solution est connue (positionnement marché)
+
+Format: structuré, direct, opérationnel. Max 400 mots.`;
+  await callAI(prompt, (text) => { el.className='ai-content'; el.textContent=text; });
+  btn.disabled = false;
+  btn.innerHTML = '◈ Régénérer';
+}
+
+async function checkCoherence() {
+  if(!STATE.currentCat) return;
+  const cat = CATEGORIES[STATE.currentCat];
+  let details = '';
+  cat.criteria.forEach((c,i) => {
+    if(STATE.solScores[i]!==undefined) {
+      const obs = STATE.solObs[i]||'';
+      details += `\n- ${c.n}: ${STATE.solScores[i]}/2${obs?' — Observation: '+obs:''}`;
+    }
+  });
+  if(!details) { showNotif('Évaluez au moins quelques critères','err'); return; }
+  const panel = document.getElementById('ai-coherence-panel');
+  const el = document.getElementById('ai-coherence-content');
+  panel.style.display = 'block';
+  el.textContent = 'Analyse en cours...';
+  const prompt = `Tu es expert en évaluation de solutions ERP/SI pour PME.
+Analyse la cohérence de cette notation pour la solution "${document.getElementById('f-solution').value||'inconnue'}" (catégorie: ${cat.label}):
+${details}
+
+En ${CONFIG.ai.lang==='ar'?'arabe':'français'}:
+1. Identifie les incohérences entre notes et observations
+2. Signale les notes surprenantes (trop hautes ou basses) par rapport aux observations
+3. Propose des ajustements si nécessaire
+4. Donne un avis global sur la qualité de l'évaluation
+
+Sois direct et concis. Max 250 mots.`;
+  await callAI(prompt, (text) => { el.textContent=text; });
+}
+
+async function generatePV() {
+  if(!STATE.currentCat) return;
+  const btn = document.getElementById('btn-pv');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Rédaction...';
+  const el = document.getElementById('ai-pv-content');
+  el.className = 'ai-content loading';
+  const cat = CATEGORIES[STATE.currentCat];
+  const crit = cat.criteria;
+  let solMax=0, solScore=0;
+  crit.forEach((c,i) => { solMax+=2*c.w; if(STATE.solScores[i]!==undefined) solScore+=STATE.solScores[i]*c.w; });
+  let intMax=0, intScore=0;
+  INT_CRITERIA.forEach((c,i) => { intMax+=2*c.w; if(STATE.intScores[i]!==undefined) intScore+=STATE.intScores[i]*c.w; });
+  const solPct = Math.round(solScore/solMax*100);
+  const intPct = intMax>0?Math.round(intScore/intMax*100):0;
+  const globalPct = Math.round(solPct*0.6+intPct*0.4);
+  const decision = document.getElementById('decision-officielle').value;
+  let notesDetail = '';
+  crit.forEach((c,i) => { if(STATE.solScores[i]!==undefined) notesDetail+=`\n  - ${c.n}: ${STATE.solScores[i]}/2${STATE.solObs[i]?' ('+STATE.solObs[i]+')':''}`; });
+  const prompt = `Tu es un rapporteur officiel de commission. Rédige un procès-verbal formel et structuré en ${CONFIG.ai.lang==='ar'?'arabe':'français'} administratif pour:
+
+INFORMATIONS DOSSIER:
+- Prestataire: ${document.getElementById('f-prestataire').value||'—'}
+- Solution: ${document.getElementById('f-solution').value||'—'}
+- Catégorie: ${cat.label}
+- Date démo: ${document.getElementById('f-date').value||new Date().toLocaleDateString('fr-FR')}
+- Rapporteur: ${document.getElementById('f-rapporteur').value||'—'}
+- Origine: ${document.getElementById('f-origine').value||'—'}
+- Mode acquisition: ${document.getElementById('f-mode').value||'—'}
+- Secteur cible: ${document.getElementById('f-secteur').value||'—'}
+
+SCORES:
+- Score solution: ${solPct}% (${solScore}/${solMax})
+- Score intégrateur: ${intPct}% (${intScore}/${intMax})
+- Score global pondéré: ${globalPct}%
+- Décision: ${decision.toUpperCase()}
+
+DÉTAIL ÉVALUATION SOLUTION:${notesDetail}
+
+PROFIL INTÉGRATEUR:
+- Diplôme: ${document.getElementById('cv-diplome')?.value||'—'}
+- Expérience: ${document.getElementById('cv-exp')?.value||'—'} ans
+- Expérience solution: ${document.getElementById('cv-exp-sol')?.value||'—'} ans
+- Références: ${document.getElementById('cv-refs')?.value||'—'}
+- Certifications: ${document.getElementById('cv-certif')?.value||'—'}
+
+OBSERVATIONS COMMISSION: ${document.getElementById('decision-obs')?.value||'Néant'}
+CONDITIONS (si applicable): ${document.getElementById('decision-conditions')?.value||'Sans objet'}
+${STATE.cvAnalysis ? `\nANALYSE CV CONSULTANT (par IA) :\n${STATE.cvAnalysis.slice(0,800)}` : ''}
+
+Rédige un PV officiel complet avec: en-tête, objet, membres présents (mettre [À COMPLÉTER]), déroulé de la séance, résultats de l'évaluation, motivation de la décision, dispositif final, signatures. Style administratif formel marocain. Max 600 mots.`;
+  const result = await callAI(prompt, (text) => { el.className='ai-content'; el.textContent=text; });
+  if(result) { STATE.pvText = result; document.getElementById('btn-copy-pv').style.display='flex'; }
+  btn.disabled = false;
+  btn.innerHTML = '◈ Régénérer';
+}
+
+function copyPV() {
+  navigator.clipboard.writeText(STATE.pvText).then(() => showNotif('PV copié dans le presse-papier','ok'));
+}
+
+// ============================================================
+// JIRA
+// ============================================================
+function getJiraUrl(path) { return PROXY_URL + '/jira-proxy' + path; }
+function getJiraHeaders() {
+  if(CONFIG.jira.auth==='pat') return {'Content-Type':'application/json','Authorization':'Bearer '+CONFIG.jira.pat};
+  const b64 = btoa(CONFIG.jira.user+':'+CONFIG.jira.pass);
+  return {'Content-Type':'application/json','Authorization':'Basic '+b64};
+}
+
+async function loadJiraDossiers() {
+  if(!CONFIG.jira.url || !CONFIG.jira.project) { showNotif('Configurez Jira d\'abord','err'); loadSampleData(); return; }
+  showNotif('Synchronisation Jira...');
+  try {
+    const jql = encodeURIComponent(`project=${CONFIG.jira.project} AND issuetype=Task ORDER BY created DESC`);
+    const url = `${PROXY_URL}/jira-proxy/rest/api/2/search?jql=${jql}&maxResults=50&fields=summary,status,${CONFIG.jira.cf_solution||'customfield_10001'},${CONFIG.jira.cf_secteur||'customfield_10002'},assignee,created`;
+    const resp = await fetch(url, { headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url } });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const data = await resp.json();
+    STATE.dossiers = data.issues.map(i => ({
+      key: i.key,
+      solution: i.fields[CONFIG.jira.cf_solution]?.value || i.fields.summary || '—',
+      secteur: i.fields[CONFIG.jira.cf_secteur]?.value || '—',
+      prestataire: i.fields.assignee?.displayName || '—',
+      status: i.fields.status?.name || '—',
+      type: '—'
+    }));
+    renderDossiers();
+    showNotif('Jira synchronisé — '+STATE.dossiers.length+' dossiers','ok');
+  } catch(e) { showNotif('Erreur Jira: '+e.message+' — données exemple chargées','err'); loadSampleData(); }
+}
+
+async function submitToJira() {
+  if(!CONFIG.jira.url) { showNotif('Jira non configuré — PV généré localement','err'); exportPDF(); return; }
+  const key = document.getElementById('f-jira-key').value;
+  if(!key) { showNotif('Numéro de ticket Jira manquant','err'); return; }
+  const decision = document.getElementById('decision-officielle').value;
+  const statusMap = { 'référencé':'Action référencée', 'conditionnel':'Action inscrite', 'rejeté':'Demande rejetée' };
+  const fields = {};
+  if(CONFIG.jira.cf_score_sol) fields[CONFIG.jira.cf_score_sol] = document.getElementById('final-sol-score').textContent;
+  if(CONFIG.jira.cf_score_int) fields[CONFIG.jira.cf_score_int] = document.getElementById('final-int-score').textContent;
+  try {
+    await fetch(`${PROXY_URL}/jira-proxy/rest/api/2/issue/${key}`, { method:'PUT', headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url }, body:JSON.stringify({fields}) });
+    if(STATE.pvText) {
+      await fetch(`${PROXY_URL}/jira-proxy/rest/api/2/issue/${key}/comment`, { method:'POST', headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url }, body:JSON.stringify({body:'*PV Commission de Référencement*\n\n'+STATE.pvText}) });
+    }
+    showNotif('Ticket '+key+' mis à jour dans Jira','ok');
+  } catch(e) { showNotif('Erreur soumission Jira: '+e.message,'err'); }
+}
+
+async function testJiraConnection() {
+  if(!CONFIG.jira.url) { showNotif('URL Jira manquante','err'); return; }
+  try {
+    const resp = await fetch(`${PROXY_URL}/jira-proxy/rest/api/2/serverInfo`, { headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url } });
+    if(resp.ok) { const d=await resp.json(); showNotif('Jira connecté — '+d.serverTitle+' v'+d.version,'ok'); setConnStatus('jira',true); }
+    else { showNotif('Erreur Jira HTTP '+resp.status,'err'); setConnStatus('jira',false); }
+  } catch(e) { showNotif('Connexion impossible: '+e.message,'err'); setConnStatus('jira',false); }
+}
+
+async function testAIConnection() {
+  if(!CONFIG.ai.key) { showNotif('Clé OpenRouter manquante','err'); return; }
+  try {
+    const resp = await fetch(PROXY_URL + '/ai-proxy/models', { headers: getAIHeaders() });
+    if(resp.ok) { showNotif('OpenRouter connecté — modèles disponibles','ok'); setConnStatus('ai',true); }
+    else { showNotif('Erreur OpenRouter HTTP '+resp.status,'err'); setConnStatus('ai',false); }
+  } catch(e) { showNotif('Erreur IA: '+e.message,'err'); setConnStatus('ai',false); }
+}
+
+// ============================================================
+// SAMPLE DATA & TABLE
+// ============================================================
+function loadSampleData() {
+  STATE.dossiers = [
+    {key:'REF-001',solution:'Odoo 17',secteur:'Tous secteurs',prestataire:'TechSolutions MA',status:'Action inscrite',type:'Intégrateur'},
+    {key:'REF-002',solution:'SAGE 100',secteur:'Industrie',prestataire:'Axiome Conseil',status:'Action inscrite',type:'Éditeur-Intégrateur'},
+    {key:'REF-003',solution:'SAP Business One',secteur:'Agro-alimentaire',prestataire:'SAP Maroc',status:'Action inscrite',type:'Éditeur'},
+    {key:'REF-004',solution:'WooCommerce',secteur:'Commerce',prestataire:'DigitalPME',status:'Action inscrite',type:'Intégrateur'},
+    {key:'REF-005',solution:'CEGID ORLIWEB',secteur:'Tourisme',prestataire:'Hoteltech MA',status:'Action inscrite',type:'Éditeur-Intégrateur'},
+    {key:'REF-006',solution:'ERP DYNAMICS 365',secteur:'Textile',prestataire:'Microsoft Partner MA',status:'Action inscrite',type:'Intégrateur'},
+    {key:'REF-007',solution:'Odoo 16',secteur:'BTP',prestataire:'BuildSoft',status:'Action référencée',type:'Intégrateur'},
+    {key:'REF-008',solution:'Sage ERP X3',secteur:'Industrie',prestataire:'Sage Maroc',status:'Action référencée',type:'Éditeur'},
+  ];
+  renderDossiers();
+  document.getElementById('dossiers-empty').style.display = 'none';
+}
+
+function renderDossiers() {
+  const tbody = document.getElementById('dossiers-tbody');
+  const filter = (document.getElementById('filter-status')?.value||'').toLowerCase();
+  const search = (document.getElementById('filter-search')?.value||'').toLowerCase();
+  let rows = STATE.dossiers.filter(d => {
+    if(filter && !d.status.toLowerCase().includes(filter)) return false;
+    if(search && !d.solution.toLowerCase().includes(search) && !d.prestataire.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  tbody.innerHTML = rows.length ? rows.map(d => {
+    const badgeCls = d.status==='Action référencée'?'badge-green':d.status==='Demande rejetée'?'badge-red':'badge-amber';
+    return `<tr>
+      <td class="text-mono">${d.key}</td>
+      <td class="font-500">${d.solution}</td>
+      <td>${d.secteur}</td>
+      <td>${d.prestataire}</td>
+      <td><span class="badge badge-blue">${d.type}</span></td>
+      <td><span class="badge ${badgeCls}">${d.status}</span></td>
+      <td><div class="td-action">
+        <button class="btn btn-secondary btn-sm" onclick="openDossierEval('${d.key}','${d.solution}','${d.prestataire}','${d.secteur}')">Évaluer</button>
+      </div></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" style="text-align:center; color:var(--text3); padding:24px;">Aucun résultat</td></tr>';
+  document.getElementById('dossiers-empty').style.display = rows.length?'none':'block';
+}
+
+function filterDossiers() { renderDossiers(); }
+
+async function openDossierEval(key, solution, prestataire, secteur) {
+  showPage('evaluation');
+  startNewEval();
+  setTimeout(() => {
+    document.getElementById('f-jira-key').value = key;
+    document.getElementById('f-solution').value = solution;
+    document.getElementById('f-prestataire').value = prestataire;
+    document.getElementById('f-secteur').value = secteur;
+  }, 50);
+  if(CONFIG.jira.url && key) {
+    fetchJiraAttachments(key).then(atts => {
+      STATE.currentAttachments = atts;
+      if(atts.length > 0) {
+        const cvBtn = document.getElementById('btn-load-cv');
+        if(cvBtn) cvBtn.textContent = `↓ Charger CV depuis Jira (${atts.length})`;
+      }
+    }).catch(() => {});
+  }
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function saveJiraConfig() {
+  const proxyInput = document.getElementById('s-proxy-url').value.trim().replace(/\/$/,'');
+  if(proxyInput) window.PROXY_URL = proxyInput;
+  CONFIG.jira.url = document.getElementById('s-jira-url').value.trim().replace(/\/$/,'');
+  CONFIG.jira.project = document.getElementById('s-jira-project').value.trim();
+  CONFIG.jira.auth = document.getElementById('s-jira-auth').value;
+  CONFIG.jira.pat = document.getElementById('s-jira-pat').value;
+  CONFIG.jira.user = document.getElementById('s-jira-user').value;
+  CONFIG.jira.pass = document.getElementById('s-jira-pass').value;
+  CONFIG.jira.cf_solution = document.getElementById('s-cf-solution').value;
+  CONFIG.jira.cf_secteur = document.getElementById('s-cf-secteur').value;
+  CONFIG.jira.cf_cv = document.getElementById('s-cf-cv').value;
+  CONFIG.jira.cf_modules = document.getElementById('s-cf-modules').value;
+  CONFIG.jira.cf_score_sol = document.getElementById('s-cf-score-sol').value;
+  CONFIG.jira.cf_score_int = document.getElementById('s-cf-score-int').value;
+  try { localStorage.setItem('ref_jira_config', JSON.stringify(CONFIG.jira)); if(window.PROXY_URL) localStorage.setItem('ref_proxy_url', window.PROXY_URL); } catch(e){}
+  setConnStatus('jira', !!CONFIG.jira.url && !!(CONFIG.jira.pat||CONFIG.jira.user));
+  showNotif('Configuration Jira enregistrée','ok');
+}
+
+function saveAIConfig() {
+  CONFIG.ai.key = document.getElementById('s-or-key').value;
+  CONFIG.ai.model = document.getElementById('s-or-model-input').value || 'anthropic/claude-sonnet-4-5';
+  CONFIG.ai.temp = parseFloat(document.getElementById('s-or-temp').value)||0.3;
+  CONFIG.ai.lang = document.getElementById('s-or-lang').value;
+  try { localStorage.setItem('ref_ai_config', JSON.stringify(CONFIG.ai)); } catch(e){}
+  setConnStatus('ai', !!CONFIG.ai.key);
+  document.getElementById('model-indicator').textContent = CONFIG.ai.model;
+  showNotif('Configuration IA enregistrée','ok');
+}
+
+// Contenu par défaut — GO SIYAHA V04 / V02 (mis à jour selon lecture des fichiers officiels)
+const DEFAULT_AMI = `AMI GO SIYAHA — Critères d'éligibilité des intervenants (V04, Décembre 2024)
+Programme Maroc PME — PTC GO SIYAHA
+
+PROFILS ÉLIGIBLES :
+
+INTÉGRATEUR SI :
+- Formation : Bac+2 minimum, technique ou gestion
+- Expérience : au moins 3 ans dans le domaine de la transformation digitale
+- Actions associées : Acquisition et intégration de solutions TI métier/gestion ; Création de plateforme transactionnelle et site web ; Accompagnement à la cyber-sécurité
+- Le profil Intégrateur SI = consultant avec diplôme technique/gestion et expérience de déploiement de solutions informatiques
+
+CONSULTANT :
+- Formation : Bac+4 minimum, technique ou gestion (Bac+2 pour Expert en développement durable)
+- Expérience : au moins 7 ans d'expérience professionnelle dont 3 ans dans le conseil dans un domaine d'accompagnement cible, OU au moins 10 ans en poste en relation avec un domaine d'accompagnement
+- Maroc PME se réserve le droit d'accepter après évaluation un profil jugé qualifié
+
+EXPERT SECTORIEL (Tourisme) :
+- Formation : Bac+3 minimum technique ou gestion (Bac+2 si 12 ans d'expérience sectorielle)
+- Expérience : au moins 10 ans dans les métiers du tourisme
+
+DOCUMENTS REQUIS :
+- CV selon canevas officiel Maroc PME (Annexe 3) — rempli, signé, cacheté par le dirigeant du cabinet
+- Attestations de références pour chaque intervenant
+- Diplômes de chaque intervenant
+
+COUPLE RÉFÉRENCÉ : Prestataire / Intervenant
+Pour les intégrateurs SI : combinaison Prestataire / Intervenant / Solution SI
+
+CONDITIONS DE RÉFÉRENCEMENT :
+- Conditionné par au moins une évaluation post-mission satisfaisante
+- Un intervenant peut s'inscrire au titre de 3 profils distincts au plus
+- Maintien sous condition d'activité, de qualité et de mise à jour du dossier administratif`;
+
+const DEFAULT_CANVAS_CV = `CANEVAS CV OFFICIEL — GO SIYAHA (Maroc PME)
+Référence : Canevas CV GO SIYAHA_V02
+Le CV soumis par le consultant doit être CE DOCUMENT REMPLI, sans modification de structure ni de rubriques.
+
+SECTIONS OBLIGATOIRES (dans cet ordre) :
+
+0. EN-TÊTE — Profil : case cochée obligatoire
+   □ Consultant    □ Expert sectoriel    □ Éditeur / Intégrateur SI
+
+1. IDENTITÉ (tous champs obligatoires) :
+   - Nom et prénom
+   - Date de naissance
+   - N° CIN
+   - Nationalité
+   - Mail
+   - GSM professionnel de l'intervenant
+   - Profession actuelle
+   - Nombre total d'années d'expérience professionnelle
+   - Permanent au sein du cabinet de conseil : □ Oui  □ Non
+   - PHOTO OBLIGATOIRE (zone dédiée)
+
+2. Partie 1 — FORMATION / DIPLÔMES (tableau)
+   Colonnes : Date | Établissement | Titre(s) ou diplôme(s) obtenu(s) | Spécialité
+   Règle : tous les champs doivent être renseignés
+
+3. Partie 2 — EXPÉRIENCE PROFESSIONNELLE (deux sous-tableaux)
+   a) Expérience en tant que CONSULTANT (cabinet de conseil) :
+      Colonnes : Profil | Raison sociale cabinet | Raison sociale client | Secteur d'activité* | Date début/fin | Durée | Intitulé et description de mission
+   b) Expérience en tant que SALARIÉ (entreprise/établissement) :
+      Colonnes : Profil | Raison sociale employeur | Secteur d'activité* | Date début/fin | Durée | Titre du poste et activités réalisées
+   (*) Secteurs : Hébergements touristiques classés ; Restaurants touristiques classés ; Agents de voyages ; Transporteurs touristiques agréés ; Activités connexes ; Autres secteurs
+
+4. Partie 3 — LANGUES MAÎTRISÉES (tableau)
+   Niveaux 1 (Faible) à 4 (Fort) — Écrit et Parlé
+   Lignes : Français | Anglais | Autres
+
+5. CERTIFICATION SUR L'HONNEUR (déclaration signée) :
+   - Renseignement de tous les champs du modèle Maroc PME
+   - Exactitude de toutes les informations
+   - Engagement de notification en cas de changement de cabinet
+
+6. SIGNATURES :
+   - Signature de l'intervenant
+   - Signature et cachet du dirigeant du cabinet de conseil
+
+RÈGLE GÉNÉRALE : Tous les champs doivent être renseignés avec soin et informations crédibles.
+Toute fausse information peut justifier l'arrêt de la procédure d'évaluation.`;
+
+function saveDocsConfig() {
+  const ami = document.getElementById('s-doc-ami').value;
+  const cvCanvas = document.getElementById('s-doc-canvas-cv').value;
+  CONFIG.docs.ami = ami;
+  CONFIG.docs.cvCanvas = cvCanvas;
+  try { localStorage.setItem('ref_docs_config', JSON.stringify(CONFIG.docs)); } catch(e){}
+  updateDocsSavedInfo();
+  showNotif('Documents de référence enregistrés', 'ok');
+}
+
+function resetDocsToDefaults() {
+  document.getElementById('s-doc-ami').value = DEFAULT_AMI;
+  document.getElementById('s-doc-canvas-cv').value = DEFAULT_CANVAS_CV;
+  document.getElementById('ami-file-info').textContent = 'GO SIYAHA V04 (défaut)';
+  document.getElementById('canvas-file-info').textContent = 'GO SIYAHA V02 (défaut)';
+  saveDocsConfig();
+}
+
+function updateDocsSavedInfo() {
+  const info = document.getElementById('docs-saved-info');
+  if(!info) return;
+  const parts = [];
+  if(CONFIG.docs.ami?.trim()) parts.push(`AMI : ${CONFIG.docs.ami.trim().length} car.`);
+  if(CONFIG.docs.cvCanvas?.trim()) parts.push(`Canevas : ${CONFIG.docs.cvCanvas.trim().length} car.`);
+  info.textContent = parts.length ? '✓ ' + parts.join(' · ') : '';
+}
+
+function loadSavedConfig() {
+  try {
+    const pu = localStorage.getItem('ref_proxy_url'); if(pu) { window.PROXY_URL = pu; }
+    const j = localStorage.getItem('ref_jira_config'); if(j) { Object.assign(CONFIG.jira, JSON.parse(j)); applyJiraForm(); }
+    const a = localStorage.getItem('ref_ai_config'); if(a) { Object.assign(CONFIG.ai, JSON.parse(a)); applyAIForm(); }
+    const d = localStorage.getItem('ref_docs_config'); if(d) { Object.assign(CONFIG.docs, JSON.parse(d)); applyDocsForm(); }
+  } catch(e){}
+  setConnStatus('jira', !!CONFIG.jira.url && !!(CONFIG.jira.pat||CONFIG.jira.user));
+  setConnStatus('ai', !!CONFIG.ai.key);
+  document.getElementById('model-indicator').textContent = CONFIG.ai.model||'';
+}
+
+function applyJiraForm() {
+  const f = (id,v) => { const el=document.getElementById(id); if(el&&v) el.value=v; };
+  f('s-proxy-url', window.PROXY_URL !== 'http://localhost:3001' ? window.PROXY_URL : '');
+  f('s-jira-url',CONFIG.jira.url); f('s-jira-project',CONFIG.jira.project);
+  f('s-jira-auth',CONFIG.jira.auth); f('s-jira-pat',CONFIG.jira.pat);
+  f('s-jira-user',CONFIG.jira.user); f('s-jira-pass',CONFIG.jira.pass);
+  f('s-cf-solution',CONFIG.jira.cf_solution); f('s-cf-secteur',CONFIG.jira.cf_secteur);
+  f('s-cf-cv',CONFIG.jira.cf_cv); f('s-cf-modules',CONFIG.jira.cf_modules);
+  f('s-cf-score-sol',CONFIG.jira.cf_score_sol); f('s-cf-score-int',CONFIG.jira.cf_score_int);
+}
+
+function applyAIForm() {
+  const f=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+  f('s-or-key',CONFIG.ai.key); f('s-or-model-input',CONFIG.ai.model); f('s-or-temp',CONFIG.ai.temp); f('s-or-lang',CONFIG.ai.lang);
+}
+
+function applyDocsForm() {
+  const elAmi = document.getElementById('s-doc-ami');
+  const elCanvas = document.getElementById('s-doc-canvas-cv');
+  if(elAmi) elAmi.value = CONFIG.docs.ami || '';
+  if(elCanvas) elCanvas.value = CONFIG.docs.cvCanvas || '';
+  updateDocsSavedInfo();
+}
+
+// ============================================================
+// MODEL SELECTOR
+// ============================================================
+function buildModelList() {
+  const list = document.getElementById('model-list');
+  list.innerHTML = MODELS.map(m=>`<div class="model-opt${m===CONFIG.ai.model?' sel':''}" onclick="selectModel('${m}')">${m}</div>`).join('');
+}
+
+function openModelList() { buildModelList(); document.getElementById('model-list').classList.add('open'); }
+function filterModels() {
+  const q = document.getElementById('s-or-model-input').value.toLowerCase();
+  const list = document.getElementById('model-list');
+  list.classList.add('open');
+  list.innerHTML = MODELS.filter(m=>m.includes(q)).map(m=>`<div class="model-opt" onclick="selectModel('${m}')">${m}</div>`).join('');
+}
+function selectModel(m) { document.getElementById('s-or-model-input').value=m; CONFIG.ai.model=m; document.getElementById('model-list').classList.remove('open'); }
+document.addEventListener('click', e => { if(!e.target.closest('.model-select-wrap')) document.getElementById('model-list')?.classList.remove('open'); });
+
+// ============================================================
+// UTILS
+// ============================================================
+function setConnStatus(type, ok) {
+  const dot = document.getElementById(type+'-dot');
+  const txt = document.getElementById(type+'-status-text');
+  dot.className = 'conn-dot'+(ok?' ok':' err');
+  txt.textContent = type==='jira' ? (ok?'Jira configuré':'Jira non configuré') : (ok?'IA configurée':'IA non configurée');
+}
+
+function showNotif(msg, type='') {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.className = 'notif show'+(type?' '+type:'');
+  clearTimeout(window._notifT);
+  window._notifT = setTimeout(() => n.classList.remove('show'), 3500);
+}
+
+function updateAiContext() {}
+
+function exportPDF() {
+  const win = window.open('','_blank');
+  const sol = document.getElementById('f-solution').value||'—';
+  const prest = document.getElementById('f-prestataire').value||'—';
+  const decision = document.getElementById('decision-officielle').value||'—';
+  const solScore = document.getElementById('final-sol-score').textContent;
+  const intScore = document.getElementById('final-int-score').textContent;
+  const globalScore = document.getElementById('final-global-score').textContent;
+  const pv = STATE.pvText || document.getElementById('ai-pv-content').textContent;
+  win.document.write(`<!DOCTYPE html><html><head><title>Fiche décision — ${sol}</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;color:#222;font-size:13px;}h1{font-size:18px;border-bottom:2px solid #A94443;padding-bottom:8px;}h2{font-size:14px;color:#555;margin-top:20px;}table{width:100%;border-collapse:collapse;margin:12px 0;}td,th{padding:7px 10px;border:1px solid #DDD;font-size:12px;}th{background:#F5F5F5;}.verdict{padding:12px;border-radius:4px;font-weight:bold;font-size:15px;margin:16px 0;}.ref{background:#D6F0E4;color:#0A5E32;}.cond{background:#FDE9C0;color:#7A4A00;}.rej{background:#FDDEDE;color:#7A1010;}.pv{white-space:pre-wrap;line-height:1.7;background:#F9F9F9;padding:16px;border-radius:4px;font-size:12px;}</style></head><body>
+<h1>Fiche de Décision — Commission de Référencement</h1>
+<table><tr><th>Prestataire</th><td>${prest}</td><th>Solution</th><td>${sol}</td></tr>
+<tr><th>Catégorie</th><td>${STATE.currentCat?CATEGORIES[STATE.currentCat].label:'—'}</td><th>Date</th><td>${document.getElementById('decision-date').value||'—'}</td></tr>
+<tr><th>Score solution</th><td>${solScore}</td><th>Score intégrateur</th><td>${intScore}</td></tr>
+<tr><th>Score global</th><td colspan="3"><strong>${globalScore}</strong></td></tr></table>
+<div class="verdict ${decision==='référencé'?'ref':decision==='conditionnel'?'cond':'rej'}">${decision.toUpperCase()}</div>
+<h2>Procès-verbal</h2><div class="pv">${pv||'PV non généré'}</div>
+<br><hr><p style="font-size:11px;color:#999;">Généré par Commission de Référencement — Maroc PME — ${new Date().toLocaleDateString('fr-FR')}</p>
+</body></html>`);
+  win.document.close();
+  win.print();
+}
+
+document.getElementById('s-jira-auth').addEventListener('change', function() {
+  const isPat = this.value==='pat';
+  document.getElementById('s-pat-field').style.display = isPat?'':'none';
+  document.getElementById('s-user-field').style.display = isPat?'none':'';
+  document.getElementById('s-pass-field').style.display = isPat?'none':'';
+});
+
+// ============================================================
+// CV JIRA — FETCH, PICKER & ANALYSE IA
+// ============================================================
+
+async function fetchJiraAttachments(key) {
+  if(!CONFIG.jira.url || !key) return [];
+  try {
+    const resp = await fetch(
+      `${PROXY_URL}/jira-proxy/rest/api/2/issue/${key}?fields=attachment`,
+      { headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url } }
+    );
+    if(!resp.ok) return [];
+    const data = await resp.json();
+    return data.fields?.attachment || [];
+  } catch(e) { return []; }
+}
+
+async function openCVPicker() {
+  const key = document.getElementById('f-jira-key').value.trim();
+  if(!key) { showNotif('Saisissez d\'abord la clé du ticket Jira (étape 2)', 'err'); return; }
+  if(!CONFIG.jira.url) { showNotif('Configurez Jira dans les paramètres', 'err'); return; }
+  document.getElementById('cv-picker-ticket').textContent = 'Pièces jointes du ticket — ' + key;
+  document.getElementById('cv-picker-overlay').classList.add('open');
+  document.getElementById('btn-analyze-cv').disabled = true;
+  STATE.selectedCV = null;
+  if(STATE.currentAttachments.length > 0) {
+    renderAttachmentList(STATE.currentAttachments);
+  } else {
+    document.getElementById('cv-att-list').innerHTML = '<div style="text-align:center; color:var(--text3); padding:24px; font-family:var(--mono); font-size:12px;">Chargement des pièces jointes...</div>';
+    const atts = await fetchJiraAttachments(key);
+    STATE.currentAttachments = atts;
+    renderAttachmentList(atts);
+  }
+}
+
+function closeCVPicker() {
+  document.getElementById('cv-picker-overlay').classList.remove('open');
+}
+
+function fileIcon(mimeType, filename) {
+  if(mimeType?.includes('pdf') || filename?.toLowerCase().endsWith('.pdf')) return '📄';
+  if(mimeType?.includes('word') || filename?.match(/\.(doc|docx)$/i)) return '📝';
+  if(mimeType?.includes('image')) return '🖼️';
+  return '📎';
+}
+
+function formatBytes(bytes) {
+  if(!bytes) return '';
+  if(bytes < 1024) return bytes + ' o';
+  if(bytes < 1048576) return Math.round(bytes / 1024) + ' Ko';
+  return (bytes / 1048576).toFixed(1) + ' Mo';
+}
+
+function renderAttachmentList(attachments) {
+  const container = document.getElementById('cv-att-list');
+  if(!attachments.length) {
+    container.innerHTML = '<div style="text-align:center; color:var(--text3); padding:24px;">Aucune pièce jointe sur ce ticket</div>';
+    return;
+  }
+  const score = a => (a.mimeType?.includes('pdf') ? 2 : a.filename?.match(/\.(doc|docx)$/i) ? 1 : 0);
+  const sorted = [...attachments].sort((a, b) => score(b) - score(a));
+  STATE._sortedAttachments = sorted;
+  container.innerHTML = sorted.map((att, i) => `
+    <div class="att-item" id="att-item-${i}" onclick="selectAttachment(${i})">
+      <div class="att-icon">${fileIcon(att.mimeType, att.filename)}</div>
+      <div class="att-info">
+        <div class="att-name">${att.filename.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+        <div class="att-meta">${(att.mimeType||'inconnu').replace(/</g,'&lt;')} · ${formatBytes(att.size)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectAttachment(idx) {
+  document.querySelectorAll('.att-item').forEach((el, i) => el.classList.toggle('sel', i === idx));
+  STATE.selectedCV = STATE._sortedAttachments[idx];
+  document.getElementById('btn-analyze-cv').disabled = false;
+}
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunk = 8192;
+  for(let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function analyzeSelectedCV() {
+  if(!STATE.selectedCV) return;
+  if(!CONFIG.ai.key) { showNotif('Clé OpenRouter non configurée', 'err'); return; }
+  const btn = document.getElementById('btn-analyze-cv');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Téléchargement...';
+  closeCVPicker();
+  const panel = document.getElementById('ai-cv-panel');
+  const contentEl = document.getElementById('ai-cv-content');
+  panel.style.display = 'block';
+  contentEl.className = 'ai-content loading';
+  contentEl.textContent = 'Téléchargement du CV depuis Jira...';
+  try {
+    let path;
+    try {
+      const contentUrl = STATE.selectedCV.content;
+      const jiraBase = CONFIG.jira.url.replace(/\/$/, '');
+      // Subtract jiraBase prefix to avoid double-path (e.g. /jira/jira/...)
+      if(contentUrl.startsWith(jiraBase)) {
+        path = contentUrl.slice(jiraBase.length) || '/';
+      } else {
+        path = new URL(contentUrl).pathname;
+      }
+    } catch(e) { path = STATE.selectedCV.content; }
+    const downloadUrl = `${PROXY_URL}/jira-proxy${path}`;
+    const resp = await fetch(downloadUrl, {
+      headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url }
+    });
+    if(!resp.ok) throw new Error('Téléchargement échoué — HTTP ' + resp.status);
+    const buffer = await resp.arrayBuffer();
+    const mimeType = STATE.selectedCV.mimeType || 'application/pdf';
+    await analyzeCVWithAI(buffer, mimeType, STATE.selectedCV.filename);
+  } catch(e) {
+    contentEl.className = 'ai-content';
+    contentEl.textContent = 'Erreur : ' + e.message;
+    showNotif('Erreur : ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '◈ Analyser ce CV avec l\'IA';
+}
+
+// Charge PDF.js depuis CDN de façon lazy (une seule fois)
+async function loadPDFJS() {
+  if(window.pdfjsLib) return window.pdfjsLib;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    s.onerror = () => reject(new Error('Impossible de charger PDF.js depuis le CDN'));
+    document.head.appendChild(s);
+  });
+}
+
+// Convertit un ArrayBuffer PDF en tableau d'images JPEG base64 (une par page)
+async function pdfToImages(buffer, maxPages = 8) {
+  const pdfjs = await loadPDFJS();
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  const n = Math.min(pdf.numPages, maxPages);
+  const images = [];
+  for(let p = 1; p <= n; p++) {
+    const page = await pdf.getPage(p);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    images.push(canvas.toDataURL('image/jpeg', 0.75).split(',')[1]);
+  }
+  return images;
+}
+
+async function analyzeCVWithAI(buffer, mimeType, filename) {
+  const solution = document.getElementById('f-solution').value || '—';
+  const prestataire = document.getElementById('f-prestataire').value || '—';
+  const secteur = document.getElementById('f-secteur').value || '—';
+  const cat = STATE.currentCat ? CATEGORIES[STATE.currentCat].label : '—';
+  const modules = STATE.modules.length ? STATE.modules.join(', ') : null;
+  const panel = document.getElementById('ai-cv-panel');
+  const contentEl = document.getElementById('ai-cv-content');
+  panel.style.display = 'block';
+  contentEl.className = 'ai-content loading';
+
+  const amiCtx = CONFIG.docs.ami?.trim();
+  const canvasCtx = CONFIG.docs.cvCanvas?.trim();
+
+  const prompt = `Tu es un expert en évaluation de consultants pour le référencement de solutions informatiques au Maroc (programme Maroc PME).
+
+Les images jointes sont les pages du CV du consultant (fichier : ${filename}), rastérisées page par page. Lis attentivement chaque page, y compris si le texte est manuscrit ou scanné.
+
+Analyse ce CV dans le cadre du dossier de référencement suivant :
+- Prestataire / Société : ${prestataire}
+- Solution objet du référencement : ${solution}${modules ? `\n- Modules référencés : ${modules}` : ''}
+- Catégorie : ${cat}
+- Secteur cible : ${secteur}
+${amiCtx ? `\n--- AMI (CRITÈRES OFFICIELS DU PROGRAMME) ---\n${amiCtx}\n---\n` : ''}${canvasCtx ? `\n--- CANEVAS CV ATTENDU ---\n${canvasCtx}\n---\n` : ''}
+Le référencement porte sur le COUPLE CONSULTANT + SOLUTION. Analyse :
+
+1. CONCORDANCES — Ce qui valide le profil :
+   - Formation et diplômes en lien avec le domaine${modules ? `\n   - Couverture des modules référencés : ${modules}` : ''}
+   - Expérience sur la solution "${solution}" ou solutions similaires
+   - Références clients dans le secteur "${secteur}"
+   - Certifications pertinentes (partenaire officiel, certifications éditeur…)${amiCtx ? '\n   - Respect des critères d\'éligibilité définis dans l\'AMI' : ''}
+
+2. INCOHÉRENCES & POINTS D'ALERTE :
+   - Lacunes par rapport aux déclarations du dossier
+   - Écarts entre compétences annoncées et CV réel
+   - Certifications attendues absentes
+   - Durées d'expérience vs réalité, gaps chronologiques
+   IMPORTANT sur les dates : les CVs marocains utilisent le format DD/MM/YYYY ou MM/YYYY (jour/mois/année). Vérifie scrupuleusement que la date de fin est bien postérieure à la date de début avant de signaler une incohérence. Ex : "11/06/2024 → 30/01/2025" = 7 mois valides, PAS d'incohérence. Ne signale une incohérence de date que si tu es certain(e) que fin < début après conversion correcte.
+
+3. ANALYSE DU DIPLÔME :
+   - Intitulé exact et niveau (Bac+2 / Bac+3 / Bac+4 / Bac+5 / Doctorat)
+   - Établissement et pays — reconnaissance au Maroc ?${amiCtx ? `\n   - Adéquation avec le niveau minimal AMI pour le profil déclaré (Intégrateur SI : Bac+2 min · Consultant : Bac+4 min · Expert sectoriel : Bac+3 min)` : ''}
+   - Cohérence diplôme / domaine d'activité déclaré
+
+4. SCORING SUGGÉRÉ (0 = absent, 1 = partiel, 2 = satisfaisant) :
+   - Niveau de formation
+   - Expérience générale (années totales)
+   - Expérience spécifique sur la solution
+   - Certifications officielles
+
+5. CONFORMITÉ AU CANEVAS CV OFFICIEL (Canevas CV GO SIYAHA_V02) :
+   Le CV soumis doit être LE TEMPLATE OFFICIEL REMPLI, sans modification de structure.
+   Vérifie chaque point et indique : ✓ Présent | ⚠ Incomplet | ✗ Absent/Modifié
+
+   a) Référence du document : la mention "GO SIYAHA" ou "Canevas CV" ou "Maroc PME" est-elle visible sur le document (en-tête ou pied de page) ?
+   b) Profil coché : la case de type d'intervenant (Consultant / Expert sectoriel / Éditeur-Intégrateur SI) est-elle cochée ?
+   c) Identité complète : Nom/prénom, CIN, date de naissance, nationalité, mail, GSM, profession, années d'expérience, statut permanent cabinet
+   d) Photo : la photo est-elle présente ?
+   e) Partie 1 — Formation : tableau rempli (Date, Établissement, Diplôme, Spécialité)
+   f) Partie 2a — Expérience consultant : tableau missions cabinet (Profil, Cabinet, Client, Secteur, Dates, Durée, Description)
+   g) Partie 2b — Expérience salarié : tableau postes d'entreprise (Profil, Employeur, Secteur, Dates, Durée, Activités)
+   h) Partie 3 — Langues : tableau niveaux (Français, Anglais et autres, Écrit + Parlé)
+   i) Certification sur l'honneur : déclaration présente et signée
+   j) Cachet du cabinet : signature + cachet du dirigeant présent
+
+   VERDICT CANEVAS : CONFORME | PARTIELLEMENT CONFORME | NON CONFORME
+   Si non conforme : lister les sections manquantes ou incorrectes.
+${canvasCtx ? `\n   Contenu du canevas de référence :\n   ${canvasCtx.split('\n').filter(l=>l.trim()).slice(0,15).join('\n   ')}` : ''}
+6. VERDICT GLOBAL : cohérence du profil, niveau de confiance, recommandation.
+
+En ${CONFIG.ai.lang==='ar'?'arabe':'français'}, factuel et direct, max 800 mots.`;
+
+  const isPDF = mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
+  let contentBlocks;
+
+  if(isPDF) {
+    contentEl.textContent = 'Rastérisation du PDF en images…';
+    try {
+      const images = await pdfToImages(buffer);
+      contentBlocks = images.map(img => ({
+        type: 'image_url',
+        image_url: { url: `data:image/jpeg;base64,${img}` }
+      }));
+      contentEl.textContent = `${images.length} page(s) converties — analyse IA en cours…`;
+    } catch(e) {
+      throw new Error('Rastérisation PDF échouée : ' + e.message);
+    }
+  } else {
+    const base64 = arrayBufferToBase64(buffer);
+    contentBlocks = [{ type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }];
+    contentEl.textContent = 'Analyse IA en cours…';
+  }
+
+  const messages = [{ role: 'user', content: [...contentBlocks, { type: 'text', text: prompt }] }];
+  const result = await callAI(null, (text) => {
+    contentEl.className = 'ai-content';
+    contentEl.textContent = text;
+  }, { messages, maxTokens: 2000 });
+
+  contentEl.className = 'ai-content';
+  if(result) {
+    STATE.cvAnalysis = result;
+    showNotif('Analyse CV terminée — vous pouvez maintenant pré-remplir le dossier', 'ok');
+    const btnAF = document.getElementById('btn-autofill');
+    if(btnAF) btnAF.style.display = 'flex';
+  } else if(result === '') {
+    contentEl.textContent = '⚠ Aucun contenu retourné.\nVérifiez que le modèle sélectionné supporte la vision (Claude, GPT-4o, Gemini…).';
+  } else {
+    contentEl.textContent = 'Erreur lors de l\'analyse — voir la notification.';
+  }
+}
+
+// ============================================================
+// AUTO-FILL DEPUIS L'ANALYSE CV
+// ============================================================
+async function autoFillFromCV() {
+  if(!STATE.cvAnalysis) { showNotif('Lancez d\'abord l\'analyse du CV', 'err'); return; }
+  if(!STATE.currentCat) { showNotif('Sélectionnez d\'abord la catégorie (étape 1)', 'err'); return; }
+
+  const btn = document.getElementById('btn-autofill');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Génération…';
+
+  const solution   = document.getElementById('f-solution').value || '—';
+  const prestataire = document.getElementById('f-prestataire').value || '—';
+  const secteur    = document.getElementById('f-secteur').value || '—';
+  const cat        = CATEGORIES[STATE.currentCat];
+  const modules    = STATE.modules.length ? STATE.modules.join(', ') : '—';
+
+  const intList = INT_CRITERIA.map((c,i) =>
+    `  Critère ${i} : "${c.n}" — ${c.d}`).join('\n');
+  const solList = cat.criteria.map((c,i) =>
+    `  Critère ${i} : "${c.n}" — ${c.d}`).join('\n');
+  const amiCtx  = CONFIG.docs.ami?.trim();
+
+  const prompt = `Tu es un assistant d'évaluation pour la commission de référencement Maroc PME.
+
+DOSSIER :
+- Prestataire : ${prestataire}
+- Solution : ${solution}
+- Modules référencés : ${modules}
+- Catégorie : ${cat.label}
+- Secteur : ${secteur}
+${amiCtx ? `\n--- CRITÈRES OFFICIELS AMI ---\n${amiCtx}\n---\n` : ''}
+
+ANALYSE DU CV (déjà réalisée) :
+${STATE.cvAnalysis}
+
+TÂCHE : génère une proposition de pré-remplissage du formulaire d'évaluation au format JSON valide (aucun texte avant ou après, pas de bloc markdown).
+
+Structure attendue :
+{
+  "profil": {
+    "diplome": "intitulé exact du diplôme le plus élevé",
+    "etablissement": "nom de l'école ou université",
+    "exp": <nombre entier d'années d'expérience totale>,
+    "expSol": <nombre entier d'années sur la solution ${solution}>,
+    "poste": "intitulé du poste principal",
+    "secteurExp": "secteurs d'expérience principaux",
+    "refs": "références clients vérifiables mentionnées dans le CV",
+    "equipe": <nombre entier de personnes dans l'équipe>,
+    "certif": "certifications officielles mentionnées"
+  },
+  "intCriteria": [
+    <EXACTEMENT ${INT_CRITERIA.length} objets {"score": 0|1|2, "obs": "observation courte"}>
+  ],
+  "solCriteria": [
+    <EXACTEMENT ${cat.criteria.length} objets {"score": 0|1|2|null, "obs": "observation courte"}>
+  ]
+}
+
+CRITÈRES INTÉGRATEUR (base-toi sur le CV) :
+${intList}
+Scores : 0 = absent/insuffisant, 1 = partiel, 2 = satisfaisant
+
+CRITÈRES SOLUTION (base-toi sur tes connaissances générales de "${solution}") :
+${solList}
+Si tu n'as pas d'information fiable sur un critère de la solution, mets score: null et obs: "À évaluer lors de la démo".
+
+Dates : format DD/MM/YYYY ou MM/YYYY — la fin est APRÈS le début. Ex: 06/2024 → 01/2025 = 7 mois, valide.
+Observations : 1-2 phrases factuelles, concises. Retourne UNIQUEMENT le JSON.`;
+
+  const raw = await callAI(prompt, null, { maxTokens: 4000 });
+
+  btn.disabled = false;
+  btn.innerHTML = '◈ Pré-remplir le dossier';
+
+  if(!raw) return;
+
+  try {
+    // Extraire le JSON même si le modèle ajoute du texte autour
+    let jsonStr = raw.trim();
+    const mdMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if(mdMatch) jsonStr = mdMatch[1].trim();
+    else {
+      const start = jsonStr.indexOf('{');
+      const end   = jsonStr.lastIndexOf('}');
+      if(start !== -1 && end !== -1) jsonStr = jsonStr.slice(start, end + 1);
+    }
+    const data = JSON.parse(jsonStr);
+
+    // --- Profil ---
+    const p = data.profil || {};
+    const fv = (id, v) => { const el = document.getElementById(id); if(el && v !== undefined && v !== null && v !== '') el.value = v; };
+    fv('cv-diplome',      p.diplome);
+    fv('cv-etablissement',p.etablissement);
+    fv('cv-exp',          p.exp);
+    fv('cv-exp-sol',      p.expSol);
+    fv('cv-poste',        p.poste);
+    fv('cv-secteur-exp',  p.secteurExp);
+    fv('cv-refs',         p.refs);
+    fv('cv-equipe',       p.equipe);
+    fv('cv-certif',       p.certif);
+
+    // --- Critères intégrateur ---
+    if(Array.isArray(data.intCriteria)) {
+      data.intCriteria.forEach((item, i) => {
+        if(i >= INT_CRITERIA.length) return;
+        if(item.score !== null && item.score !== undefined) STATE.intScores[i] = Number(item.score);
+        if(item.obs) STATE.intObs[i] = item.obs;
+      });
+    }
+
+    // --- Critères solution ---
+    if(Array.isArray(data.solCriteria)) {
+      data.solCriteria.forEach((item, i) => {
+        if(i >= (CATEGORIES[STATE.currentCat]?.criteria.length ?? 0)) return;
+        if(item.score !== null && item.score !== undefined) STATE.solScores[i] = Number(item.score);
+        if(item.obs) STATE.solObs[i] = item.obs;
+      });
+    }
+
+    // Recalculer les scores et reconstruire les UI visibles
+    evalIntegrateur();
+    if(document.getElementById('eval-step-2')?.style.display !== 'none') buildSolCriteria();
+    if(document.getElementById('eval-step-3')?.style.display !== 'none') buildIntCriteria();
+    updateSolScore();
+    updateIntScore();
+
+    showNotif('Dossier pré-rempli ✓ — vérifiez et ajustez les propositions', 'ok');
+
+  } catch(e) {
+    showNotif('Erreur parsing JSON : ' + e.message, 'err');
+    console.error('[autoFillFromCV] JSON invalide :', raw);
+  }
+}
+
+// ============================================================
+// MODULES RÉFÉRENCÉS
+// ============================================================
+function handleModuleKeydown(e) {
+  if(e.key === 'Enter') { e.preventDefault(); addModuleFromInput(); }
+}
+
+function addModuleFromInput() {
+  const input = document.getElementById('module-input');
+  const val = input.value.trim();
+  if(!val) return;
+  val.split(',').map(s => s.trim()).filter(Boolean).forEach(m => {
+    if(m && !STATE.modules.includes(m)) STATE.modules.push(m);
+  });
+  input.value = '';
+  renderModuleTags();
+}
+
+function removeModule(i) {
+  STATE.modules.splice(i, 1);
+  renderModuleTags();
+}
+
+function renderModuleTags() {
+  const container = document.getElementById('module-tags');
+  if(!container) return;
+  if(!STATE.modules.length) {
+    container.innerHTML = '<span style="font-size:11px; color:var(--text3); font-family:var(--mono);">Aucun module renseigné</span>';
+    return;
+  }
+  container.innerHTML = STATE.modules.map((m, i) =>
+    `<span class="module-tag">${m.replace(/&/g,'&amp;').replace(/</g,'&lt;')}<span class="tag-del" onclick="removeModule(${i})" title="Supprimer">×</span></span>`
+  ).join('');
+}
+
+async function loadModulesFromJira() {
+  const key = document.getElementById('f-jira-key').value.trim();
+  if(!key) { showNotif('Saisissez d\'abord la clé du ticket Jira', 'err'); return; }
+  if(!CONFIG.jira.url) { showNotif('Configurez Jira dans les paramètres', 'err'); return; }
+  if(!CONFIG.jira.cf_modules) { showNotif('Configurez "Champ custom — Modules référencés" dans les paramètres Jira', 'err'); return; }
+  const btn = document.getElementById('btn-load-modules');
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  try {
+    const url = `${PROXY_URL}/jira-proxy/rest/api/2/issue/${key}?fields=${CONFIG.jira.cf_modules}`;
+    const resp = await fetch(url, { headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url } });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const fieldVal = data.fields?.[CONFIG.jira.cf_modules];
+    let modules = [];
+    if(Array.isArray(fieldVal)) {
+      modules = fieldVal.map(v => (typeof v === 'object' ? (v.value || v.name || v.key || '') : String(v))).filter(Boolean);
+    } else if(typeof fieldVal === 'string' && fieldVal) {
+      modules = fieldVal.split(/[,;|\n]/).map(s => s.trim()).filter(Boolean);
+    } else if(fieldVal?.value) {
+      modules = [fieldVal.value];
+    }
+    if(!modules.length) {
+      showNotif('Champ modules vide ou introuvable sur ce ticket', 'err');
+    } else {
+      modules.forEach(m => { if(!STATE.modules.includes(m)) STATE.modules.push(m); });
+      renderModuleTags();
+      showNotif(`${modules.length} module(s) chargé(s) depuis Jira`, 'ok');
+    }
+  } catch(e) {
+    showNotif('Erreur Jira : ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.textContent = orig;
+}
+
+// ============================================================
+// ATTESTATIONS DE RÉFÉRENCE
+// ============================================================
+function openAttPicker() {
+  if(!CONFIG.jira.url) { showNotif('Configurez Jira dans les paramètres', 'err'); return; }
+  const key = document.getElementById('f-jira-key').value.trim();
+  document.getElementById('att-picker-key').value = key;
+  STATE.selectedAttestations = [];
+  STATE._attSortedList = [];
+  updateAttSelCount();
+  document.getElementById('btn-analyze-att').disabled = true;
+  document.getElementById('att-picker-overlay').classList.add('open');
+  if(key) loadAttForTicket();
+}
+
+function closeAttPicker() {
+  document.getElementById('att-picker-overlay').classList.remove('open');
+}
+
+async function loadAttForTicket() {
+  const key = document.getElementById('att-picker-key').value.trim();
+  if(!key) { showNotif('Saisissez une clé de ticket', 'err'); return; }
+  document.getElementById('att-picker-info').textContent = 'Chargement — ' + key + '…';
+  document.getElementById('att-list-container').innerHTML =
+    '<div style="text-align:center; color:var(--text3); padding:24px; font-family:var(--mono); font-size:12px;">Chargement des pièces jointes...</div>';
+  const atts = await fetchJiraAttachments(key);
+  const score = a => (a.mimeType?.includes('pdf') ? 2 : a.mimeType?.startsWith('image/') ? 1 : 0);
+  STATE._attSortedList = [...atts].sort((a, b) => score(b) - score(a));
+  renderAttPickerList();
+  document.getElementById('att-picker-info').textContent =
+    `${atts.length} pièce(s) jointe(s) — ${key} — sélectionnez les attestations`;
+}
+
+function renderAttPickerList() {
+  const container = document.getElementById('att-list-container');
+  if(!STATE._attSortedList.length) {
+    container.innerHTML = '<div style="text-align:center; color:var(--text3); padding:24px;">Aucune pièce jointe sur ce ticket</div>';
+    return;
+  }
+  container.innerHTML = STATE._attSortedList.map((att, i) => {
+    const sel = STATE.selectedAttestations.some(a => a.id === att.id);
+    return `<label class="att-item-check ${sel ? 'sel' : ''}" id="att-check-${i}">
+      <input type="checkbox" ${sel ? 'checked' : ''} onchange="toggleAttSelection(${i}, this.checked)">
+      <div class="att-icon">${fileIcon(att.mimeType, att.filename)}</div>
+      <div class="att-info">
+        <div class="att-name">${att.filename.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+        <div class="att-meta">${(att.mimeType||'inconnu').replace(/</g,'&lt;')} · ${formatBytes(att.size)}</div>
+      </div>
+    </label>`;
+  }).join('');
+}
+
+function toggleAttSelection(idx, checked) {
+  const att = STATE._attSortedList[idx];
+  if(checked) {
+    if(!STATE.selectedAttestations.some(a => a.id === att.id)) STATE.selectedAttestations.push(att);
+  } else {
+    STATE.selectedAttestations = STATE.selectedAttestations.filter(a => a.id !== att.id);
+  }
+  const label = document.getElementById('att-check-' + idx);
+  if(label) label.classList.toggle('sel', checked);
+  updateAttSelCount();
+}
+
+function updateAttSelCount() {
+  const n = STATE.selectedAttestations.length;
+  const el = document.getElementById('att-sel-count');
+  if(el) el.textContent = n;
+  const btn = document.getElementById('btn-analyze-att');
+  if(btn) btn.disabled = n === 0;
+}
+
+async function analyzeSelectedAttestations() {
+  if(!STATE.selectedAttestations.length) return;
+  if(!CONFIG.ai.key) { showNotif('Clé OpenRouter non configurée', 'err'); return; }
+  const btn = document.getElementById('btn-analyze-att');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Téléchargement...';
+  closeAttPicker();
+
+  const attContent = document.getElementById('ai-att-content');
+  attContent.className = 'ai-content loading';
+  attContent.textContent = 'Téléchargement des attestations...';
+
+  const jiraBase = CONFIG.jira.url.replace(/\/$/, '');
+  const items = [];
+  try {
+    for(const att of STATE.selectedAttestations) {
+      attContent.textContent = `Téléchargement : ${att.filename}…`;
+      let path;
+      try {
+        const contentUrl = att.content;
+        if(contentUrl.startsWith(jiraBase)) { path = contentUrl.slice(jiraBase.length) || '/'; }
+        else { path = new URL(contentUrl).pathname; }
+      } catch(e) { path = att.content; }
+      const downloadUrl = `${PROXY_URL}/jira-proxy${path}`;
+      const resp = await fetch(downloadUrl, { headers: { ...getJiraHeaders(), 'X-Jira-Url': CONFIG.jira.url } });
+      if(!resp.ok) throw new Error(`Téléchargement échoué (${att.filename}) — HTTP ${resp.status}`);
+      const buffer = await resp.arrayBuffer();
+      const mimeType = att.mimeType || 'application/pdf';
+      const isPDF = mimeType === 'application/pdf' || att.filename.toLowerCase().endsWith('.pdf');
+      const isImage = mimeType.startsWith('image/');
+      let contentBlocks = [];
+      if(isPDF) {
+        attContent.textContent = `Rastérisation : ${att.filename}…`;
+        const images = await pdfToImages(buffer, 6);
+        contentBlocks = images.map(img => ({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${img}` } }));
+      } else if(isImage) {
+        const b64 = arrayBufferToBase64(buffer);
+        contentBlocks = [{ type: 'image_url', image_url: { url: `data:${mimeType};base64,${b64}` } }];
+      }
+      items.push({ filename: att.filename, contentBlocks, skipped: !isPDF && !isImage });
+    }
+    attContent.textContent = 'Analyse IA en cours…';
+    await analyzeAttestationsWithAI(items);
+  } catch(e) {
+    attContent.className = 'ai-content';
+    attContent.textContent = 'Erreur : ' + e.message;
+    showNotif('Erreur : ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '↓ Charger attestations depuis Jira';
+}
+
+async function analyzeAttestationsWithAI(items) {
+  const attContent = document.getElementById('ai-att-content');
+  const solution = document.getElementById('f-solution').value || '—';
+  const prestataire = document.getElementById('f-prestataire').value || '—';
+  const modules = STATE.modules.length ? STATE.modules.join(', ') : '(non renseignés)';
+  const cvCtx = STATE.cvAnalysis || '(CV non encore analysé — lancez l\'analyse CV pour enrichir la vérification)';
+
+  const toProcess = items.filter(i => !i.skipped);
+  const skipped = items.filter(i => i.skipped).map(i => i.filename);
+
+  if(!toProcess.length) {
+    attContent.className = 'ai-content';
+    attContent.textContent = 'Aucun fichier analysable (PDF ou image requis).' +
+      (skipped.length ? ' Formats non supportés : ' + skipped.join(', ') : '');
+    return;
+  }
+
+  const allBlocks = [];
+  toProcess.forEach((item, idx) => {
+    allBlocks.push({ type: 'text', text: `\n--- ATTESTATION ${idx + 1} : ${item.filename} ---\n` });
+    allBlocks.push(...item.contentBlocks);
+  });
+
+  const amiCtx = CONFIG.docs.ami?.trim();
+
+  const prompt = `Tu es expert en évaluation de dossiers de référencement (programme Maroc PME).
+
+CONTEXTE DU DOSSIER :
+- Prestataire : ${prestataire}
+- Solution : ${solution}
+- Modules objet du référencement : ${modules}
+${amiCtx ? `\n--- CRITÈRES OFFICIELS AMI ---\n${amiCtx}\n---\n` : ''}
+ANALYSE DU CV DU CONSULTANT (déjà réalisée) :
+${cvCtx}
+
+Les images ci-jointes sont des attestations de référence client (${toProcess.length} attestation(s)).
+Chaque attestation est introduite par un séparateur "--- ATTESTATION N : nom_fichier ---".
+
+Pour CHAQUE attestation, analyse et réponds sur ces 4 points :
+
+1. CONCORDANCE SOLUTION / MODULES
+   L'attestation mentionne-t-elle "${solution}" ou des équivalents fonctionnels ? Parmi les modules [${modules}], lesquels sont cités ? Lesquels sont absents ?
+
+2. PRÉSENCE DU CONSULTANT
+   Le nom du consultant identifié dans le CV apparaît-il dans l'attestation ? En quelle qualité (consultant, chef de projet, formateur…) ?
+
+3. COHÉRENCE DES DATES
+   Les dates d'intervention mentionnées dans l'attestation coïncident-elles avec les périodes déclarées dans le CV pour ce client/employeur ?
+   RAPPEL format dates marocain : DD/MM/YYYY ou MM/YYYY — vérifie que fin > début avant de signaler une incohérence.
+
+4. AUTHENTICITÉ & QUALITÉ
+   L'attestation présente-t-elle les marqueurs d'un document officiel : en-tête de société, signature, cachet, date d'émission ? Signale tout point d'alerte.
+
+VERDICT : ✓ Conforme | ⚠ Partielle | ✗ Non conforme
+
+Format : une section structurée par attestation. Factuel, concis. En ${CONFIG.ai.lang === 'ar' ? 'arabe' : 'français'}.`;
+
+  const messages = [{ role: 'user', content: [...allBlocks, { type: 'text', text: prompt }] }];
+  const result = await callAI(null, (text) => {
+    attContent.className = 'ai-content';
+    attContent.textContent = text;
+  }, { messages, maxTokens: 2500 });
+
+  attContent.className = 'ai-content';
+  if(result) {
+    STATE.attAnalysis = result;
+    if(skipped.length) {
+      attContent.textContent += '\n\n⚠ Fichiers ignorés (format non supporté) : ' + skipped.join(', ');
+    }
+    showNotif('Attestation(s) analysée(s) — vérifiez les résultats', 'ok');
+  } else if(result === '') {
+    attContent.textContent = '⚠ Aucun contenu retourné. Vérifiez que le modèle sélectionné supporte la vision.';
+  } else {
+    attContent.textContent = 'Erreur lors de l\'analyse — voir la notification.';
+  }
+}
+
+// ============================================================
+// CHARGEMENT DE FICHIERS DOCUMENTS (.docx / .txt)
+// ============================================================
+async function loadJSZip() {
+  if(window.JSZip) return window.JSZip;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = () => resolve(window.JSZip);
+    s.onerror = () => reject(new Error('Impossible de charger JSZip'));
+    document.head.appendChild(s);
+  });
+}
+
+async function readDocxText(file) {
+  const buffer = await file.arrayBuffer();
+  try {
+    const JSZip = await loadJSZip();
+    const zip = await JSZip.loadAsync(buffer);
+    const xmlFile = zip.file('word/document.xml');
+    if(!xmlFile) throw new Error('word/document.xml introuvable');
+    const xml = await xmlFile.async('text');
+    let text = xml
+      .replace(/<w:p[ >]/g, '\n<')
+      .replace(/<w:tr[ >]/g, '\n<')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    return text;
+  } catch(e) {
+    // Fallback: try as plain text (for .txt files)
+    try { return await file.text(); }
+    catch(_) { throw new Error('Lecture impossible : ' + e.message); }
+  }
+}
+
+async function handleAmiFile(file) {
+  if(!file) return;
+  const infoEl = document.getElementById('ami-file-info');
+  infoEl.textContent = 'Lecture…';
+  try {
+    const text = await readDocxText(file);
+    document.getElementById('s-doc-ami').value = text;
+    infoEl.textContent = `${file.name} (${Math.round(text.length/1000)}k car.)`;
+    showNotif('AMI chargé — cliquez sur Enregistrer pour sauvegarder', 'ok');
+  } catch(e) {
+    infoEl.textContent = 'Erreur';
+    showNotif('Erreur lecture AMI : ' + e.message, 'err');
+  }
+}
+
+async function handleCanvasFile(file) {
+  if(!file) return;
+  const infoEl = document.getElementById('canvas-file-info');
+  infoEl.textContent = 'Lecture…';
+  try {
+    const text = await readDocxText(file);
+    document.getElementById('s-doc-canvas-cv').value = text;
+    infoEl.textContent = `${file.name} (${Math.round(text.length/1000)}k car.)`;
+    showNotif('Canevas CV chargé — cliquez sur Enregistrer pour sauvegarder', 'ok');
+  } catch(e) {
+    infoEl.textContent = 'Erreur';
+    showNotif('Erreur lecture canevas : ' + e.message, 'err');
+  }
+}
+
+// INIT
+buildCatGrid();
+loadSampleData();
+loadSavedConfig();
+// Pré-charger les défauts GO SIYAHA si aucun document n'est encore configuré
+if(!CONFIG.docs.ami && !CONFIG.docs.cvCanvas) {
+  CONFIG.docs.ami = DEFAULT_AMI;
+  CONFIG.docs.cvCanvas = DEFAULT_CANVAS_CV;
+  applyDocsForm();
+  try { localStorage.setItem('ref_docs_config', JSON.stringify(CONFIG.docs)); } catch(e){}
+}
+</script>
+</body>
+</html>

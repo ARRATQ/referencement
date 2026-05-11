@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+
+  # Base de données PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: ref-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-referencement}
+      POSTGRES_USER: ${DB_USER:-refuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-refpass2025}
+    volumes:
+      - ref-db-data:/var/lib/postgresql/data
+    networks:
+      - ref-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-refuser} -d ${DB_NAME:-referencement}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Proxy CORS — Jira Data Center + OpenRouter
+  proxy:
+    build: ./proxy
+    container_name: ref-proxy
+    restart: unless-stopped
+    environment:
+      - PORT=3001
+      - JIRA_URL=${JIRA_URL:-}
+      - ALLOWED_ORIGIN=*
+    networks:
+      - ref-net
+
+  # API Backend Express + Prisma
+  backend:
+    build: ./backend
+    container_name: ref-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      proxy:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-refuser}:${DB_PASSWORD:-refpass2025}@db:5432/${DB_NAME:-referencement}
+      - JWT_SECRET=${JWT_SECRET:-changeme_jwt_secret_32chars_min}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-changeme_refresh_secret_32chars}
+      - PROXY_URL=http://proxy:3001
+      - FRONTEND_ORIGIN=${APP_ORIGIN:-http://localhost:5173}
+      - PORT=3002
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@2025!}
+      - NODE_ENV=${NODE_ENV:-production}
+    networks:
+      - ref-net
+    ports:
+      - "${BACKEND_PORT:-3002}:3002"
+
+  # Frontend Vue.js (nginx)
+  frontend:
+    build: ./frontend
+    container_name: ref-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3002}
+    networks:
+      - ref-net
+    ports:
+      - "${APP_PORT:-8090}:80"
+
+volumes:
+  ref-db-data:
+
+networks:
+  ref-net:
+    driver: bridge

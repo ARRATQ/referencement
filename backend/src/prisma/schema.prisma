@@ -1,0 +1,145 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  GESTIONNAIRE
+  PARTICIPANT
+}
+
+enum RefType {
+  SOLUTION
+  ACTION
+}
+
+enum Verdict {
+  FAVORABLE
+  CONDITIONNEL
+  DEFAVORABLE
+}
+
+enum Decision {
+  REFERENCE
+  CONDITIONNEL
+  REJETE
+}
+
+enum EvalStatus {
+  DRAFT
+  SUBMITTED
+  ARCHIVED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  passwordHash String
+  name         String
+  role         Role         @default(PARTICIPANT)
+  active       Boolean      @default(true)
+  evaluations  Evaluation[]
+  auditLogs    AuditLog[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Program {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  name        String
+  version     String
+  amiText     String       @db.Text
+  cvTemplate  String       @db.Text
+  categories  Json
+  intCriteria Json
+  actionTypes Json
+  active      Boolean      @default(true)
+  evaluations Evaluation[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Evaluation {
+  id          String     @id @default(uuid())
+  programId   String
+  program     Program    @relation(fields: [programId], references: [id])
+  evaluatorId String
+  evaluator   User       @relation(fields: [evaluatorId], references: [id])
+
+  referenceType  RefType
+  actionDomain   String?
+
+  jiraKeyPrestataire String?
+  jiraKeyIntervenant String?
+  jiraKeyCompetence  String?
+
+  prestataire     String
+  solution        String?
+  actionLabel     String?
+  actionDescription String? @db.Text
+  dateDemo        DateTime?
+  rapporteur      String?
+  origine         String?
+  nature          String?
+  modeAcquisition String?
+  secteur         String?
+  typeIntervenant String?
+  modules         Json     @default("[]")
+  category        String?
+
+  solScores       Json     @default("{}")
+  solObservations Json     @default("{}")
+  solScorePct     Int?
+  solVerdict      Verdict?
+
+  intScores       Json     @default("{}")
+  intObservations Json     @default("{}")
+  intScorePct     Int?
+  intVerdict      Verdict?
+
+  finalScorePct      Int?
+  finalDecision      Decision?
+  decisionDate       DateTime?
+  decisionMotive     String?   @db.Text
+  conditions         String?   @db.Text
+  commissionComments String?   @db.Text
+  pvText             String?   @db.Text
+
+  cvAnalysis           String? @db.Text
+  attestationsAnalysis String? @db.Text
+  briefingText         String? @db.Text
+  coherenceCheck       String? @db.Text
+
+  status      EvalStatus @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  submittedAt DateTime?
+
+  auditLogs AuditLog[]
+}
+
+model AuditLog {
+  id           String      @id @default(uuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  evaluationId String?
+  evaluation   Evaluation? @relation(fields: [evaluationId], references: [id])
+  action       String
+  details      Json?
+  ipAddress    String?
+  createdAt    DateTime    @default(now())
+}
+
+model AppConfig {
+  key       String   @id
+  value     String   @db.Text
+  encrypted Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
