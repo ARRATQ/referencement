@@ -162,7 +162,7 @@
             <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.35); margin-bottom:10px;">Pièces jointes du ticket intervenant sélectionné (CV + diplômes)</div>
             <div class="ai-content">{{ aiTexts.cv || 'Sélectionnez un intervenant dans la hiérarchie Jira, puis choisissez le CV.' }}</div>
             <div class="ai-actions">
-              <button class="ai-btn" :disabled="!selectedIntervenant?.attachments?.length" @click="showCVPicker = true">↓ Sélectionner le CV</button>
+              <button class="ai-btn" @click="showCVPicker = true">↓ Sélectionner les fichiers CV</button>
               <button v-if="aiTexts.cv" class="ai-btn" @click="autoFill">◈ Pré-remplir le dossier</button>
             </div>
           </div>
@@ -339,21 +339,69 @@
 
     <!-- CV PICKER MODAL -->
     <div v-if="showCVPicker" class="modal-overlay" @click.self="showCVPicker = false">
-      <div class="modal" style="width:560px;">
-        <div class="modal-title">Sélectionner le CV du consultant</div>
-        <div class="modal-sub">Pièces jointes de {{ form.jiraKeyIntervenant }}</div>
-        <div class="att-list">
-          <div v-for="att in selectedIntervenant?.attachments" :key="att.id" class="att-item" :class="{ sel: selectedCVAtt?.id === att.id }" @click="selectedCVAtt = att">
-            <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
-            <div class="att-info">
-              <div class="att-name">{{ att.filename }}</div>
-              <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
+      <div class="modal" style="width:600px;">
+        <div class="modal-title">Sélectionner les fichiers CV / Diplômes</div>
+
+        <!-- Onglets source -->
+        <div style="display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:12px;">
+          <div @click="cvSource = 'jira'" style="padding:7px 16px; font-size:12px; font-family:var(--mono); cursor:pointer; border-bottom:2px solid transparent;"
+            :style="cvSource === 'jira' ? 'border-color:var(--accent); color:var(--accent)' : 'color:var(--text3)'">
+            Depuis Jira ({{ selectedIntervenant?.attachments?.length || 0 }})
+          </div>
+          <div @click="cvSource = 'upload'" style="padding:7px 16px; font-size:12px; font-family:var(--mono); cursor:pointer; border-bottom:2px solid transparent;"
+            :style="cvSource === 'upload' ? 'border-color:var(--accent); color:var(--accent)' : 'color:var(--text3)'">
+            Depuis l'ordinateur
+          </div>
+        </div>
+
+        <!-- Source Jira -->
+        <div v-if="cvSource === 'jira'">
+          <div class="modal-sub" style="margin-bottom:8px;">Pièces jointes de {{ form.jiraKeyIntervenant }} — sélection multiple</div>
+          <div v-if="!selectedIntervenant?.attachments?.length" style="padding:16px; text-align:center; color:var(--text3); font-size:12px;">
+            Aucune pièce jointe. Sélectionnez un intervenant dans la hiérarchie Jira.
+          </div>
+          <div class="att-list">
+            <div v-for="att in selectedIntervenant?.attachments" :key="att.id"
+              class="att-item" :class="{ sel: selectedCVAttIds.includes(att.id) }"
+              @click="toggleCVAtt(att)">
+              <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
+              <div class="att-info">
+                <div class="att-name">{{ att.filename }}</div>
+                <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
+              </div>
+              <span v-if="selectedCVAttIds.includes(att.id)" style="margin-left:auto; color:var(--green); font-size:14px;">✓</span>
+            </div>
+          </div>
+          <div class="text-mono mt8">{{ selectedCVAttIds.length }} fichier(s) sélectionné(s)</div>
+        </div>
+
+        <!-- Source upload local -->
+        <div v-if="cvSource === 'upload'">
+          <div style="border:2px dashed var(--border); border-radius:var(--radius); padding:24px; text-align:center; cursor:pointer; position:relative;"
+            @click="$refs.cvFileInput.click()" @dragover.prevent @drop.prevent="onCVDrop">
+            <div style="font-size:28px; margin-bottom:8px;">📂</div>
+            <div style="font-size:13px; color:var(--text2);">Cliquez ou glissez vos fichiers ici</div>
+            <div style="font-size:11px; color:var(--text3); margin-top:4px; font-family:var(--mono);">PDF, images (PNG, JPG), Word — plusieurs fichiers acceptés</div>
+            <input ref="cvFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,image/*,application/pdf"
+              style="display:none" @change="onCVFileChange" />
+          </div>
+          <div v-if="uploadedCVFiles.length" style="margin-top:10px;">
+            <div v-for="(f, i) in uploadedCVFiles" :key="i" class="att-item" style="cursor:default;">
+              <div class="att-icon">{{ attIcon(f.type) }}</div>
+              <div class="att-info">
+                <div class="att-name">{{ f.name }}</div>
+                <div class="att-meta">{{ (f.size / 1024).toFixed(0) }} Ko · {{ f.type }}</div>
+              </div>
+              <button style="margin-left:auto; background:none; border:none; color:var(--red); cursor:pointer; font-size:16px;" @click.stop="removeUploadedCV(i)">×</button>
             </div>
           </div>
         </div>
+
         <div class="modal-footer">
           <button class="btn btn-ghost" @click="showCVPicker = false">Annuler</button>
-          <button class="btn btn-primary" :disabled="!selectedCVAtt || aiLoading.cv" @click="analyzeCV">
+          <button class="btn btn-primary"
+            :disabled="(cvSource === 'jira' ? !selectedCVAttIds.length : !uploadedCVFiles.length) || aiLoading.cv"
+            @click="analyzeCV">
             <span v-if="aiLoading.cv" class="spinner"></span>
             <span v-else>◈ Analyser avec l'IA</span>
           </button>
@@ -419,7 +467,9 @@ const selectedIntervenant = ref(null)
 const selectedCompetence = ref(null)
 const showCVPicker = ref(false)
 const showAttPicker = ref(false)
-const selectedCVAtt = ref(null)
+const cvSource = ref('jira')
+const selectedCVAttIds = ref([])
+const uploadedCVFiles = ref([])
 const selectedAttIds = ref([])
 const submitting = ref(false)
 
@@ -572,7 +622,7 @@ async function loadJiraHierarchy() {
 function selectIntervenant(int) {
   form.value.jiraKeyIntervenant = int.key
   selectedIntervenant.value = int
-  selectedCVAtt.value = null
+  selectedCVAttIds.value = []
 }
 
 function selectCompetence(comp) {
@@ -597,14 +647,53 @@ async function generateBriefing() {
   finally { aiLoading.value.briefing = false }
 }
 
+function toggleCVAtt(att) {
+  const idx = selectedCVAttIds.value.indexOf(att.id)
+  if (idx >= 0) selectedCVAttIds.value.splice(idx, 1)
+  else selectedCVAttIds.value.push(att.id)
+}
+
+function onCVFileChange(e) {
+  for (const f of e.target.files) uploadedCVFiles.value.push(f)
+  e.target.value = ''
+}
+
+function onCVDrop(e) {
+  for (const f of e.dataTransfer.files) uploadedCVFiles.value.push(f)
+}
+
+function removeUploadedCV(i) {
+  uploadedCVFiles.value.splice(i, 1)
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 async function analyzeCV() {
-  if (!selectedCVAtt.value) return
   aiLoading.value.cv = true
   showCVPicker.value = false
   try {
-    const { data: buf } = await api.get(`/dossiers/${form.value.jiraKeyIntervenant}/attachment/${selectedCVAtt.value.id}`, { responseType: 'arraybuffer' })
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)))
-    const { data } = await api.post('/ai/analyze-cv', { imageBase64List: [base64], mimeType: selectedCVAtt.value.mimeType, prestataire: form.value.prestataire, solution: form.value.solution, programCode: selectedProgramCode.value })
+    let filesData = []
+    if (cvSource.value === 'jira') {
+      const atts = (selectedIntervenant.value?.attachments || []).filter(a => selectedCVAttIds.value.includes(a.id))
+      filesData = await Promise.all(atts.map(async att => {
+        const { data: buf } = await api.get(`/dossiers/${form.value.jiraKeyIntervenant}/attachment/${att.id}`, { responseType: 'arraybuffer' })
+        return { base64: btoa(String.fromCharCode(...new Uint8Array(buf))), mimeType: att.mimeType, filename: att.filename }
+      }))
+    } else {
+      filesData = await Promise.all(uploadedCVFiles.value.map(async f => ({
+        base64: await fileToBase64(f),
+        mimeType: f.type || 'application/octet-stream',
+        filename: f.name
+      })))
+    }
+    const { data } = await api.post('/ai/analyze-cv', { filesData, prestataire: form.value.prestataire, solution: form.value.solution, programCode: selectedProgramCode.value })
     aiTexts.value.cv = data.text
     await saveEval()
     showNotif('CV analysé', 'ok')

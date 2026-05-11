@@ -2,7 +2,6 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <div class="org">Maroc PME</div>
         <div class="app-name">Commission de Référencement</div>
         <div class="version">v2.0 — Multi-programmes</div>
       </div>

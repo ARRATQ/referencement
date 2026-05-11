@@ -2,7 +2,6 @@
   <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg);">
     <div style="width:400px; padding:40px;">
       <div style="text-align:center; margin-bottom:32px;">
-        <div style="font-size:11px; font-family:var(--mono); color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px;">Maroc PME</div>
         <div style="font-size:20px; font-weight:600; color:var(--text);">Commission de Référencement</div>
         <div style="font-size:12px; color:var(--text3); margin-top:4px; font-family:var(--mono);">v2.0</div>
       </div>

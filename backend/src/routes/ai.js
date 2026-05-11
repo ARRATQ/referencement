@@ -37,16 +37,17 @@ router.post('/check-coherence', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// filesData: [{ base64, mimeType, filename }]
 router.post('/analyze-cv', async (req, res, next) => {
   try {
-    const { imageBase64List, mimeType, prestataire, solution, programCode } = req.body;
-    if (!imageBase64List?.length) return res.status(400).json({ error: 'Images requises' });
+    const { filesData, prestataire, solution, programCode } = req.body;
+    if (!filesData?.length) return res.status(400).json({ error: 'Fichiers requis' });
     let programName = '';
     if (programCode) {
       const prog = await prisma.program.findUnique({ where: { code: programCode }, select: { name: true } });
       if (prog) programName = prog.name;
     }
-    const text = await ai.analyzeCV({ imageBase64List, mimeType: mimeType || 'image/jpeg', prestataire, solution, programName });
+    const text = await ai.analyzeCV({ filesData, prestataire, solution, programName });
     res.json({ text });
   } catch (err) { next(err); }
 });
@@ -81,6 +82,20 @@ router.post('/auto-fill', async (req, res, next) => {
     }
     const data = await ai.autoFillFromCV({ cvAnalysis, criteria, intCriteria });
     res.json(data);
+  } catch (err) { next(err); }
+});
+
+// Prompts — lecture (GESTIONNAIRE+) / écriture (ADMIN seulement via admin route)
+router.get('/prompts', async (req, res, next) => {
+  try {
+    const rows = await prisma.appConfig.findMany({ where: { key: { startsWith: 'prompt_' } } });
+    const stored = Object.fromEntries(rows.map(r => [r.key, r.value]));
+    // Fusionner avec les défauts pour retourner tous les prompts
+    const result = {};
+    for (const [key, def] of Object.entries(ai.DEFAULT_PROMPTS)) {
+      result[key] = stored[key] !== undefined ? stored[key] : def;
+    }
+    res.json(result);
   } catch (err) { next(err); }
 });
 

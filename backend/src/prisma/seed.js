@@ -200,32 +200,32 @@ const ACTION_TYPES = {
   }
 };
 
-const BASE_AMI_TEXT = `APPEL À MANIFESTATION D'INTÉRÊT — MAROC PME
+const BASE_AMI_TEXT = `APPEL À MANIFESTATION D'INTÉRÊT
 
 Cadre du référencement :
 Le référencement vise à constituer une liste de prestataires qualifiés (intégrateurs SI, consultants, formateurs)
-aptes à accompagner les PME marocaines dans leur transformation digitale et organisationnelle.
+aptes à accompagner les PME dans leur transformation digitale et organisationnelle.
 
 Critères généraux d'éligibilité :
-- Être une personne morale ou physique de droit marocain ou international
+- Être une personne morale ou physique
 - Justifier d'au moins 3 ans d'existence ou d'expérience prouvée
-- Disposer de références vérifiables au Maroc ou à l'international
+- Disposer de références vérifiables
 
 Profils recherchés :
 1. Éditeur / Intégrateur SI national : société développant et/ou intégrant une solution informatique
 2. Éditeur / Intégrateur SI international : société étrangère avec représentation locale
-3. Consultant national : expert indépendant ou cabinet conseil marocain
-4. Consultant international : expert étranger avec missions prouvées au Maroc
+3. Consultant national : expert indépendant ou cabinet conseil
+4. Consultant international : expert étranger avec missions prouvées
 
 Documents requis par intervenant :
-- CV détaillé selon le canevas officiel Maroc PME
+- CV détaillé selon le canevas officiel
 - Copies diplômes certifiées conformes
 - Attestations de référence clients (minimum 2 sur 5 dernières années)
 - Certificats de formation ou partenariat éditeur (si applicable)
 
 Grille d'évaluation :
 La commission évalue chaque dossier sur deux volets :
-1. Volet Solution (60% du score global) — fonctionnalités, localisation Maroc, support
+1. Volet Solution (60% du score global) — fonctionnalités, support
 2. Volet Intégrateur/Consultant (40% du score global) — profil, expérience, références
 
 Seuils de référencement :
@@ -236,13 +236,24 @@ Seuils de référencement :
 async function main() {
   console.log('🌱 Seeding database...');
 
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const gestEmail = process.env.GESTIONNAIRE_EMAIL;
+  const gestPassword = process.env.GESTIONNAIRE_PASSWORD;
+  const partEmail = process.env.PARTICIPANT_EMAIL;
+  const partPassword = process.env.PARTICIPANT_PASSWORD;
+
+  if (!adminEmail || !adminPassword || !gestEmail || !gestPassword || !partEmail || !partPassword) {
+    throw new Error('Variables manquantes : ADMIN_EMAIL, ADMIN_PASSWORD, GESTIONNAIRE_EMAIL, GESTIONNAIRE_PASSWORD, PARTICIPANT_EMAIL, PARTICIPANT_PASSWORD sont requises dans .env');
+  }
+
   // Admin user
-  const adminHash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@2025!', 12);
+  const adminHash = await bcrypt.hash(adminPassword, 12);
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@marocpme.gov.ma' },
+    where: { email: adminEmail },
     update: {},
     create: {
-      email: 'admin@marocpme.gov.ma',
+      email: adminEmail,
       passwordHash: adminHash,
       name: 'Administrateur Système',
       role: 'ADMIN'
@@ -251,12 +262,12 @@ async function main() {
   console.log(`✓ Admin: ${admin.email}`);
 
   // Gestionnaire exemple
-  const gestHash = await bcrypt.hash('Gest@2025!', 12);
+  const gestHash = await bcrypt.hash(gestPassword, 12);
   await prisma.user.upsert({
-    where: { email: 'gestionnaire@marocpme.gov.ma' },
+    where: { email: gestEmail },
     update: {},
     create: {
-      email: 'gestionnaire@marocpme.gov.ma',
+      email: gestEmail,
       passwordHash: gestHash,
       name: 'Gestionnaire Référencement',
       role: 'GESTIONNAIRE'
@@ -264,12 +275,12 @@ async function main() {
   });
 
   // Participant exemple
-  const partHash = await bcrypt.hash('Part@2025!', 12);
+  const partHash = await bcrypt.hash(partPassword, 12);
   await prisma.user.upsert({
-    where: { email: 'participant@marocpme.gov.ma' },
+    where: { email: partEmail },
     update: {},
     create: {
-      email: 'participant@marocpme.gov.ma',
+      email: partEmail,
       passwordHash: partHash,
       name: 'Membre Commission',
       role: 'PARTICIPANT'
@@ -329,9 +340,9 @@ async function main() {
   console.log('✓ Config par défaut créée');
   console.log('\n✅ Seed terminé !');
   console.log('Comptes créés :');
-  console.log('  admin@marocpme.gov.ma        / Admin@2025!  [ADMIN]');
-  console.log('  gestionnaire@marocpme.gov.ma / Gest@2025!  [GESTIONNAIRE]');
-  console.log('  participant@marocpme.gov.ma  / Part@2025!  [PARTICIPANT]');
+  console.log(`  ${adminEmail}  [ADMIN]`);
+  console.log(`  ${gestEmail}  [GESTIONNAIRE]`);
+  console.log(`  ${partEmail}  [PARTICIPANT]`);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());

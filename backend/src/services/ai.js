@@ -32,6 +32,19 @@ async function getDocs() {
   }
 }
 
+async function getPrompts() {
+  const { PrismaClient } = require('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    const rows = await prisma.appConfig.findMany({
+      where: { key: { startsWith: 'prompt_' } }
+    });
+    return Object.fromEntries(rows.map(r => [r.key, r.value]));
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function callAI(messages, opts = {}) {
   const cfg = await getAIConfig();
   if (!cfg.key) throw new Error('Clé API OpenRouter non configurée');
@@ -42,8 +55,8 @@ async function callAI(messages, opts = {}) {
     headers: {
       'Authorization': `Bearer ${cfg.key}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://marocpme.gov.ma',
-      'X-Title': 'Commission Référencement Maroc PME'
+      'HTTP-Referer': process.env.APP_ORIGIN || 'http://localhost:8090',
+      'X-Title': 'Commission de Référencement'
     },
     body: JSON.stringify({
       model: opts.model || cfg.model,
@@ -67,77 +80,83 @@ function langInstruction(lang) {
   return lang === 'ar' ? 'Réponds en arabe (العربية).' : 'Réponds en français.';
 }
 
-async function generateBriefing({ prestataire, solution, category, modules, amiText }) {
-  const docs = await getDocs();
-  const ami = amiText || docs.doc_ami || '';
-  const cfg = await getAIConfig();
-  const prompt = `Tu es expert en référencement de solutions informatiques pour PME marocaines.
-${langInstruction(cfg.lang)}
-${ami ? `\n--- AMI / Cadre officiel ---\n${ami.slice(0, 3000)}\n---\n` : ''}
+// Substitue les variables {{var}} dans un prompt template
+function fillTemplate(tpl, vars) {
+  return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] !== undefined ? vars[k] : `{{${k}}}`);
+}
+
+const DEFAULT_PROMPTS = {
+  prompt_briefing: `Tu es expert en référencement de solutions informatiques.
+{{lang}}
+{{ami}}
 Génère un briefing pré-commission pour :
-- Prestataire : ${prestataire}
-- Solution : ${solution || '—'}
-- Catégorie : ${category || '—'}
-- Modules : ${modules?.join(', ') || '—'}
+- Prestataire : {{prestataire}}
+- Solution : {{solution}}
+- Catégorie : {{category}}
+- Modules : {{modules}}
 
-Format : 5 à 7 points concis (questions prioritaires à poser, points techniques à vérifier, contexte marché Maroc).`;
+Format : 5 à 7 points concis (questions prioritaires à poser, points techniques à vérifier, contexte marché).`,
 
-  return callAI([{ role: 'user', content: prompt }]);
-}
-
-async function generatePV({ prestataire, solution, category, solScorePct, intScorePct, finalScorePct, finalDecision, solVerdict, intVerdict, decisionMotive, conditions, commissionComments, modules, programName }) {
-  const cfg = await getAIConfig();
-  const prompt = `Tu es secrétaire officiel de la commission de référencement Maroc PME.
-${langInstruction(cfg.lang)}
+  prompt_pv: `Tu es secrétaire officiel de la commission de référencement.
+{{lang}}
 Rédige le procès-verbal officiel de commission avec :
-Programme : ${programName || 'Maroc PME'}
-Prestataire : ${prestataire}
-Solution/Action : ${solution || '—'}
-Catégorie : ${category || '—'}
-Modules : ${modules?.join(', ') || '—'}
-Score solution : ${solScorePct ?? '—'}% (${solVerdict || '—'})
-Score intégrateur : ${intScorePct ?? '—'}% (${intVerdict || '—'})
-Score global : ${finalScorePct ?? '—'}%
-Décision : ${finalDecision || '—'}
-${decisionMotive ? `Motivation : ${decisionMotive}` : ''}
-${conditions ? `Conditions : ${conditions}` : ''}
-${commissionComments ? `Observations : ${commissionComments}` : ''}
+Programme : {{programName}}
+Prestataire : {{prestataire}}
+Solution/Action : {{solution}}
+Catégorie : {{category}}
+Modules : {{modules}}
+Score solution : {{solScorePct}}% ({{solVerdict}})
+Score intégrateur : {{intScorePct}}% ({{intVerdict}})
+Score global : {{finalScorePct}}%
+Décision : {{finalDecision}}
+{{decisionMotive}}
+{{conditions}}
+{{commissionComments}}
 
-Structure : en-tête officiel → objet → participants → résultats notation → motivation décision → conditions éventuelles → signature. Ton formel et administratif.`;
+Structure : en-tête officiel → objet → participants → résultats notation → motivation décision → conditions éventuelles → signature. Ton formel et administratif.`,
 
-  return callAI([{ role: 'user', content: prompt }], { maxTokens: 3000 });
-}
+  prompt_cv: `Tu es expert RH et évaluateur de commission de référencement.
+{{lang}}
+{{ami}}
+{{canvas}}
+Analyse ce CV pour le dossier : Prestataire "{{prestataire}}", Solution "{{solution}}", Programme "{{programName}}".
+Fournis :
+1. Niveau de formation (diplôme, établissement, année)
+2. Expérience totale estimée (années)
+3. Expérience sur cette solution (années)
+4. Références clients vérifiables
+5. Certifications pertinentes
+6. Concordances avec les critères AMI
+7. Incohérences ou points d'attention
+8. Conformité avec le canevas CV officiel (structure, rubriques, signatures)
+Sois précis et factuel.`,
 
-async function checkCoherence({ category, criteria, solScores, solObs }) {
-  const cfg = await getAIConfig();
-  const noteDetails = criteria.map((c, i) => {
-    const consistanceLine = c.consistance ? `\n     Attendu: "${c.consistance}"` : '';
-    return `- ${c.n} [poids ${c.w}] : note ${solScores[i] ?? 'N/A'}/2${solObs[i] ? ` — obs: "${solObs[i]}"` : ''}${consistanceLine}`;
-  }).join('\n');
-  const prompt = `Tu es expert en évaluation de solutions informatiques.
-${langInstruction(cfg.lang)}
-Analyse la cohérence de cette notation (catégorie: ${category}) :
-${noteDetails}
+  prompt_attestations: `Tu es expert en vérification documentaire pour commission de référencement.
+{{lang}}
+Analyse ces attestations de référence pour : Consultant "{{intervenant}}", Solution "{{solution}}".
+Vérifie pour chaque attestation :
+1. Solution/modules mentionnés — concordance avec le dossier ?
+2. Présence et rôle du consultant nommé
+3. Dates de mission — cohérence avec le CV ?
+4. Authenticité apparente (entête, signature, cachet)
+5. Entreprise cliente identifiable (secteur, taille)
+Conclus sur la solidité des références présentées.`,
+
+  prompt_coherence: `Tu es expert en évaluation de solutions informatiques.
+{{lang}}
+Analyse la cohérence de cette notation (catégorie: {{category}}) :
+{{noteDetails}}
 Pour chaque critère qui a un "Attendu", vérifie si la note et l'observation correspondent à ce niveau d'exigence.
-Identifie : incohérences entre note et observation · critères où l'observation ne justifie pas la note · écarts avec les attendus de consistance · éléments à reconsidérer. Sois concis (5-8 points max).`;
+Identifie : incohérences entre note et observation · critères où l'observation ne justifie pas la note · écarts avec les attendus de consistance · éléments à reconsidérer. Sois concis (5-8 points max).`,
 
-  return callAI([{ role: 'user', content: prompt }]);
-}
-
-async function suggestScores({ category, criteria, dossierContext }) {
-  const cfg = await getAIConfig();
-  const criteriaList = criteria.map((c, i) => {
-    const consistanceLine = c.consistance ? `\n   Attendu pour bien noter: ${c.consistance}` : '';
-    return `${i}. ${c.n} [poids ${c.w}]${c.d ? ` — ${c.d}` : ''}${consistanceLine}`;
-  }).join('\n');
-  const prompt = `Tu es évaluateur expert pour la commission de référencement Maroc PME.
-${langInstruction(cfg.lang)}
-Domaine évalué : ${category}
+  prompt_suggest_scores: `Tu es évaluateur expert pour la commission de référencement.
+{{lang}}
+Domaine évalué : {{category}}
 Contexte du dossier :
-${dossierContext}
+{{dossierContext}}
 
 Grille de notation (note 0, 1 ou 2 par critère) :
-${criteriaList}
+{{criteriaList}}
 
 Pour chaque critère, propose :
 - une note (0, 1 ou 2)
@@ -147,8 +166,80 @@ Réponds UNIQUEMENT en JSON valide avec cette structure exacte (rien d'autre) :
 {
   "scores": { "0": 0, "1": 1, "2": 2, ... },
   "observations": { "0": "...", "1": "...", "2": "...", ... }
-}`;
+}`
+};
 
+async function generateBriefing({ prestataire, solution, category, modules, amiText }) {
+  const docs = await getDocs();
+  const prompts = await getPrompts();
+  const cfg = await getAIConfig();
+  const ami = amiText || docs.doc_ami || '';
+  const tpl = prompts.prompt_briefing || DEFAULT_PROMPTS.prompt_briefing;
+  const prompt = fillTemplate(tpl, {
+    lang: langInstruction(cfg.lang),
+    ami: ami ? `\n--- AMI / Cadre officiel ---\n${ami.slice(0, 3000)}\n---\n` : '',
+    prestataire,
+    solution: solution || '—',
+    category: category || '—',
+    modules: modules?.join(', ') || '—'
+  });
+  return callAI([{ role: 'user', content: prompt }]);
+}
+
+async function generatePV({ prestataire, solution, category, solScorePct, intScorePct, finalScorePct, finalDecision, solVerdict, intVerdict, decisionMotive, conditions, commissionComments, modules, programName }) {
+  const prompts = await getPrompts();
+  const cfg = await getAIConfig();
+  const tpl = prompts.prompt_pv || DEFAULT_PROMPTS.prompt_pv;
+  const prompt = fillTemplate(tpl, {
+    lang: langInstruction(cfg.lang),
+    programName: programName || '—',
+    prestataire,
+    solution: solution || '—',
+    category: category || '—',
+    modules: modules?.join(', ') || '—',
+    solScorePct: solScorePct ?? '—',
+    solVerdict: solVerdict || '—',
+    intScorePct: intScorePct ?? '—',
+    intVerdict: intVerdict || '—',
+    finalScorePct: finalScorePct ?? '—',
+    finalDecision: finalDecision || '—',
+    decisionMotive: decisionMotive ? `Motivation : ${decisionMotive}` : '',
+    conditions: conditions ? `Conditions : ${conditions}` : '',
+    commissionComments: commissionComments ? `Observations : ${commissionComments}` : ''
+  });
+  return callAI([{ role: 'user', content: prompt }], { maxTokens: 3000 });
+}
+
+async function checkCoherence({ category, criteria, solScores, solObs }) {
+  const prompts = await getPrompts();
+  const cfg = await getAIConfig();
+  const noteDetails = criteria.map((c, i) => {
+    const consistanceLine = c.consistance ? `\n     Attendu: "${c.consistance}"` : '';
+    return `- ${c.n} [poids ${c.w}] : note ${solScores[i] ?? 'N/A'}/2${solObs[i] ? ` — obs: "${solObs[i]}"` : ''}${consistanceLine}`;
+  }).join('\n');
+  const tpl = prompts.prompt_coherence || DEFAULT_PROMPTS.prompt_coherence;
+  const prompt = fillTemplate(tpl, {
+    lang: langInstruction(cfg.lang),
+    category: category || '—',
+    noteDetails
+  });
+  return callAI([{ role: 'user', content: prompt }]);
+}
+
+async function suggestScores({ category, criteria, dossierContext }) {
+  const prompts = await getPrompts();
+  const cfg = await getAIConfig();
+  const criteriaList = criteria.map((c, i) => {
+    const consistanceLine = c.consistance ? `\n   Attendu pour bien noter: ${c.consistance}` : '';
+    return `${i}. ${c.n} [poids ${c.w}]${c.d ? ` — ${c.d}` : ''}${consistanceLine}`;
+  }).join('\n');
+  const tpl = prompts.prompt_suggest_scores || DEFAULT_PROMPTS.prompt_suggest_scores;
+  const prompt = fillTemplate(tpl, {
+    lang: langInstruction(cfg.lang),
+    category: category || '—',
+    dossierContext: dossierContext || '',
+    criteriaList
+  });
   const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.2, maxTokens: 1500 });
   try {
     const match = raw.match(/\{[\s\S]*\}/);
@@ -158,61 +249,50 @@ Réponds UNIQUEMENT en JSON valide avec cette structure exacte (rien d'autre) :
   }
 }
 
-async function analyzeCV({ imageBase64List, mimeType, prestataire, solution, programName }) {
+async function analyzeCV({ filesData, prestataire, solution, programName }) {
   const docs = await getDocs();
+  const prompts = await getPrompts();
   const cfg = await getAIConfig();
   const ami = docs.doc_ami || '';
   const canvas = docs.doc_cv_canvas || '';
 
-  const content = [
-    ...imageBase64List.map(b64 => ({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${b64}` } })),
-    {
-      type: 'text',
-      text: `${langInstruction(cfg.lang)}
-Tu es expert RH et évaluateur de commission de référencement Maroc PME.
-${ami ? `--- Critères AMI officiel ---\n${ami.slice(0, 2000)}\n---\n` : ''}
-${canvas ? `--- Canevas CV officiel ---\n${canvas.slice(0, 1500)}\n---\n` : ''}
-Analyse ce CV pour le dossier : Prestataire "${prestataire}", Solution "${solution || '—'}", Programme "${programName || '—'}".
-Fournis :
-1. Niveau de formation (diplôme, établissement, année)
-2. Expérience totale estimée (années)
-3. Expérience sur cette solution (années)
-4. Références clients vérifiables au Maroc
-5. Certifications pertinentes
-6. Concordances avec les critères AMI
-7. Incohérences ou points d'attention
-8. Conformité avec le canevas CV officiel (structure, rubriques, signatures)
-Sois précis et factuel.`
-    }
-  ];
+  const tpl = prompts.prompt_cv || DEFAULT_PROMPTS.prompt_cv;
+  const textPrompt = fillTemplate(tpl, {
+    lang: langInstruction(cfg.lang),
+    ami: ami ? `--- Critères AMI officiel ---\n${ami.slice(0, 2000)}\n---\n` : '',
+    canvas: canvas ? `--- Canevas CV officiel ---\n${canvas.slice(0, 1500)}\n---\n` : '',
+    prestataire,
+    solution: solution || '—',
+    programName: programName || '—'
+  });
 
+  // filesData = [{ base64, mimeType, filename }]
+  const imageContent = filesData.map(f => ({
+    type: 'image_url',
+    image_url: { url: `data:${f.mimeType};base64,${f.base64}` }
+  }));
+
+  const content = [...imageContent, { type: 'text', text: textPrompt }];
   return callAI([{ role: 'user', content }], { maxTokens: 2500 });
 }
 
 async function analyzeAttestations({ imageBase64List, solution, intervenant }) {
+  const prompts = await getPrompts();
   const cfg = await getAIConfig();
+  const tpl = prompts.prompt_attestations || DEFAULT_PROMPTS.prompt_attestations;
+  const textPrompt = fillTemplate(tpl, {
+    lang: langInstruction(cfg.lang),
+    intervenant: intervenant || '—',
+    solution: solution || '—'
+  });
   const content = [
     ...imageBase64List.map(b64 => ({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } })),
-    {
-      type: 'text',
-      text: `${langInstruction(cfg.lang)}
-Tu es expert en vérification documentaire pour commission de référencement.
-Analyse ces attestations de référence pour : Consultant "${intervenant || '—'}", Solution "${solution || '—'}".
-Vérifie pour chaque attestation :
-1. Solution/modules mentionnés — concordance avec le dossier ?
-2. Présence et rôle du consultant nommé
-3. Dates de mission — cohérence avec le CV ?
-4. Authenticité apparente (entête, signature, cachet)
-5. Entreprise cliente identifiable (secteur, taille)
-Conclus sur la solidité des références présentées.`
-    }
+    { type: 'text', text: textPrompt }
   ];
-
   return callAI([{ role: 'user', content }], { maxTokens: 2000 });
 }
 
 async function autoFillFromCV({ cvAnalysis, criteria, intCriteria }) {
-  const cfg = await getAIConfig();
   const prompt = `À partir de cette analyse de CV :
 ${cvAnalysis}
 
@@ -241,4 +321,4 @@ Règles intScores :
   }
 }
 
-module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, autoFillFromCV };
+module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, autoFillFromCV, DEFAULT_PROMPTS };

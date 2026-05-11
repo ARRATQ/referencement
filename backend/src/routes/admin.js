@@ -125,4 +125,35 @@ router.put('/config', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Prompts IA éditables
+router.delete('/prompts/:key', async (req, res, next) => {
+  try {
+    const allowed = ['prompt_briefing', 'prompt_pv', 'prompt_cv', 'prompt_attestations', 'prompt_coherence', 'prompt_suggest_scores'];
+    if (!allowed.includes(req.params.key)) return res.status(400).json({ error: 'Clé invalide' });
+    await prisma.appConfig.deleteMany({ where: { key: req.params.key } });
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+router.put('/prompts', async (req, res, next) => {
+  try {
+    const updates = req.body; // { prompt_briefing: "...", ... }
+    const allowed = ['prompt_briefing', 'prompt_pv', 'prompt_cv', 'prompt_attestations', 'prompt_coherence', 'prompt_suggest_scores'];
+    const ops = Object.entries(updates)
+      .filter(([key]) => allowed.includes(key))
+      .map(([key, value]) =>
+        prisma.appConfig.upsert({
+          where: { key },
+          create: { key, value: String(value) },
+          update: { value: String(value) }
+        })
+      );
+    await Promise.all(ops);
+    await prisma.auditLog.create({
+      data: { userId: req.user.id, action: 'prompts_updated', details: { keys: Object.keys(updates) }, ipAddress: req.ip }
+    });
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

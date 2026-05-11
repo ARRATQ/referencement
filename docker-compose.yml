@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-referencement}
       POSTGRES_USER: ${DB_USER:-refuser}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-refpass2025}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - ref-db-data:/var/lib/postgresql/data
     networks:
@@ -44,13 +44,18 @@ services:
       proxy:
         condition: service_started
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-refuser}:${DB_PASSWORD:-refpass2025}@db:5432/${DB_NAME:-referencement}
-      - JWT_SECRET=${JWT_SECRET:-changeme_jwt_secret_32chars_min}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-changeme_refresh_secret_32chars}
+      - DATABASE_URL=postgresql://${DB_USER:-refuser}:${DB_PASSWORD}@db:5432/${DB_NAME:-referencement}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - PROXY_URL=http://proxy:3001
       - FRONTEND_ORIGIN=${APP_ORIGIN:-http://localhost:5173}
       - PORT=3002
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@2025!}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - GESTIONNAIRE_EMAIL=${GESTIONNAIRE_EMAIL}
+      - GESTIONNAIRE_PASSWORD=${GESTIONNAIRE_PASSWORD}
+      - PARTICIPANT_EMAIL=${PARTICIPANT_EMAIL}
+      - PARTICIPANT_PASSWORD=${PARTICIPANT_PASSWORD}
       - NODE_ENV=${NODE_ENV:-production}
     networks:
       - ref-net

@@ -9,6 +9,7 @@
         <div class="tab" :class="{ active: tab === 'programs' }" @click="tab = 'programs'">Programmes</div>
         <div class="tab" :class="{ active: tab === 'catalogue' }" @click="tab = 'catalogue'; initCatalogue()">Catalogue compétences</div>
         <div class="tab" :class="{ active: tab === 'config' }" @click="tab = 'config'; loadConfig()">Configuration</div>
+        <div class="tab" :class="{ active: tab === 'prompts' }" @click="tab = 'prompts'; loadPrompts()">Prompts IA</div>
         <div class="tab" :class="{ active: tab === 'audit' }" @click="tab = 'audit'; loadAudit()">Journal d'audit</div>
       </div>
 
@@ -162,7 +163,7 @@
         <div class="card">
           <div class="card-title">Connexion Jira Data Center</div>
           <div class="form-grid">
-            <div class="field full"><label>URL Jira</label><input v-model="cfg.jira_url" placeholder="https://jisr.marocpme.gov.ma/jira" /></div>
+            <div class="field full"><label>URL Jira</label><input v-model="cfg.jira_url" placeholder="https://your-jira-instance/jira" /></div>
             <div class="field"><label>Clé projet</label><input v-model="cfg.jira_project" placeholder="REF" /></div>
             <div class="field"><label>Type auth</label>
               <select v-model="cfg.jira_auth"><option value="pat">Token PAT</option><option value="basic">Basic</option></select>
@@ -190,6 +191,39 @@
           <div class="row gap8 mt16">
             <button class="btn btn-primary" @click="saveConfig('ai')">Enregistrer IA</button>
           </div>
+        </div>
+      </div>
+
+      <!-- PROMPTS IA -->
+      <div v-if="tab === 'prompts'">
+        <div class="row-between mb8">
+          <div>
+            <div class="card-title" style="margin:0 0 4px;">Prompts IA</div>
+            <div style="font-size:12px; color:var(--text3);">
+              Personnalisez les instructions envoyées à l'IA. Utilisez <code style="background:var(--surface2); padding:1px 5px; border-radius:3px;">{{'{{'}}variable{{'}}'}}</code> pour les variables dynamiques.
+            </div>
+          </div>
+          <button class="btn btn-primary" :disabled="!promptsDirty" @click="savePrompts">Enregistrer</button>
+        </div>
+
+        <div v-for="p in promptDefs" :key="p.key" class="card" style="margin-bottom:12px;">
+          <div class="row-between" style="margin-bottom:6px;">
+            <div>
+              <div style="font-weight:600; font-size:14px;">{{ p.label }}</div>
+              <div style="font-size:11px; font-family:var(--mono); color:var(--text3); margin-top:2px;">{{ p.key }}</div>
+            </div>
+            <div class="row gap8">
+              <span style="font-size:11px; color:var(--text3);">Variables : </span>
+              <span v-for="v in p.vars" :key="v" style="font-size:11px; font-family:var(--mono); background:var(--surface2); padding:1px 6px; border-radius:3px; color:var(--accent);">{{'{{'}}{{v}}{{'}}'}}</span>
+              <button class="btn btn-ghost btn-sm" @click="resetPrompt(p.key)">Réinitialiser</button>
+            </div>
+          </div>
+          <textarea v-model="prompts[p.key]" rows="10" style="width:100%; font-family:var(--mono); font-size:12px; line-height:1.5; resize:vertical;" @input="promptsDirty = true"></textarea>
+        </div>
+
+        <div v-if="promptsDirty" class="save-bar">
+          <span style="font-size:13px; color:var(--text2);">Modifications non enregistrées</span>
+          <button class="btn btn-primary btn-sm" @click="savePrompts">Enregistrer les prompts</button>
         </div>
       </div>
 
@@ -439,6 +473,38 @@ async function saveProgram() {
 async function toggleProgramActive(p) {
   await api.put(`/programs/${p.code}`, { active: !p.active })
   p.active = !p.active
+}
+
+// ---- Prompts IA ----
+const prompts = ref({})
+const promptsDirty = ref(false)
+
+const promptDefs = [
+  { key: 'prompt_briefing', label: 'Briefing pré-commission', vars: ['lang', 'ami', 'prestataire', 'solution', 'category', 'modules'] },
+  { key: 'prompt_pv', label: 'Procès-verbal (PV)', vars: ['lang', 'programName', 'prestataire', 'solution', 'category', 'modules', 'solScorePct', 'solVerdict', 'intScorePct', 'intVerdict', 'finalScorePct', 'finalDecision', 'decisionMotive', 'conditions', 'commissionComments'] },
+  { key: 'prompt_cv', label: 'Analyse CV / Diplômes', vars: ['lang', 'ami', 'canvas', 'prestataire', 'solution', 'programName'] },
+  { key: 'prompt_attestations', label: 'Analyse attestations de référence', vars: ['lang', 'intervenant', 'solution'] },
+  { key: 'prompt_coherence', label: 'Contrôle cohérence de la notation', vars: ['lang', 'category', 'noteDetails'] },
+  { key: 'prompt_suggest_scores', label: 'Suggestion de scores automatique', vars: ['lang', 'category', 'dossierContext', 'criteriaList'] }
+]
+
+async function loadPrompts() {
+  const { data } = await api.get('/ai/prompts')
+  prompts.value = { ...data }
+  promptsDirty.value = false
+}
+
+async function savePrompts() {
+  await api.put('/admin/prompts', prompts.value)
+  promptsDirty.value = false
+  showNotif('Prompts enregistrés', 'ok')
+}
+
+async function resetPrompt(key) {
+  if (!confirm('Réinitialiser ce prompt au texte par défaut ?')) return
+  await api.delete(`/admin/prompts/${key}`)
+  await loadPrompts()
+  showNotif('Prompt réinitialisé', 'ok')
 }
 </script>
 
