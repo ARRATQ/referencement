@@ -1,6 +1,6 @@
-# Commission de Référencement — Maroc PME v2
+# Commission de Référencement —  v2
 
-Outil de gestion des référencements de prestataires (solutions IT et actions non-IT) pour les programmes Maroc PME. Interface multi-rôles avec persistance PostgreSQL, intégration Jira Data Center et assistance IA via OpenRouter.
+Outil de gestion des référencements de prestataires (solutions IT et actions non-IT). Interface multi-rôles avec persistance PostgreSQL, intégration Jira Data Center et assistance IA via OpenRouter.
 
 ---
 
@@ -128,7 +128,7 @@ Copiez `.env.example` en `.env` et renseignez les valeurs :
 # === BASE DE DONNÉES ===
 DB_NAME=referencement
 DB_USER=refuser
-DB_PASSWORD=refpass2025
+DB_PASSWORD=******
 DATABASE_URL=postgresql://refuser:refpass2025@localhost:5432/referencement
 
 # === SÉCURITÉ JWT ===
@@ -137,7 +137,7 @@ JWT_SECRET=changeme_jwt_secret_32chars_minimum_here
 JWT_REFRESH_SECRET=changeme_refresh_secret_32chars_min
 
 # === JIRA DATA CENTER ===
-JIRA_URL=https://jisr.marocpme.gov.ma/jira
+JIRA_URL=https://jira
 
 # === APPLICATION ===
 APP_PORT=8090          # port frontend
