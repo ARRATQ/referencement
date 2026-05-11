@@ -200,7 +200,7 @@
           <div>
             <div class="card-title" style="margin:0 0 4px;">Prompts IA</div>
             <div style="font-size:12px; color:var(--text3);">
-              Personnalisez les instructions envoyées à l'IA. Utilisez <code style="background:var(--surface2); padding:1px 5px; border-radius:3px;">{{'{{'}}variable{{'}}'}}</code> pour les variables dynamiques.
+              Personnalisez les instructions envoyées à l'IA. Utilisez <code v-pre style="background:var(--surface2); padding:1px 5px; border-radius:3px;">{{variable}}</code> pour les variables dynamiques.
             </div>
           </div>
           <button class="btn btn-primary" :disabled="!promptsDirty" @click="savePrompts">Enregistrer</button>
@@ -214,7 +214,7 @@
             </div>
             <div class="row gap8">
               <span style="font-size:11px; color:var(--text3);">Variables : </span>
-              <span v-for="v in p.vars" :key="v" style="font-size:11px; font-family:var(--mono); background:var(--surface2); padding:1px 6px; border-radius:3px; color:var(--accent);">{{'{{'}}{{v}}{{'}}'}}</span>
+              <span v-for="v in p.vars" :key="v" style="font-size:11px; font-family:var(--mono); background:var(--surface2); padding:1px 6px; border-radius:3px; color:var(--accent);">{{ '{{' + v + '}}' }}</span>
               <button class="btn btn-ghost btn-sm" @click="resetPrompt(p.key)">Réinitialiser</button>
             </div>
           </div>
