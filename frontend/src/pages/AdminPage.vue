@@ -214,7 +214,7 @@
             </div>
             <div class="row gap8">
               <span style="font-size:11px; color:var(--text3);">Variables : </span>
-              <span v-for="v in p.vars" :key="v" style="font-size:11px; font-family:var(--mono); background:var(--surface2); padding:1px 6px; border-radius:3px; color:var(--accent);">{{ '{{' + v + '}}' }}</span>
+              <span v-for="v in p.vars" :key="v" :data-var="v" style="font-size:11px; font-family:var(--mono); background:var(--surface2); padding:1px 6px; border-radius:3px; color:var(--accent);" v-text="wrapVar(v)"></span>
               <button class="btn btn-ghost btn-sm" @click="resetPrompt(p.key)">Réinitialiser</button>
             </div>
           </div>
@@ -478,6 +478,8 @@ async function toggleProgramActive(p) {
 // ---- Prompts IA ----
 const prompts = ref({})
 const promptsDirty = ref(false)
+
+function wrapVar(v) { return '{{' + v + '}}' }
 
 const promptDefs = [
   { key: 'prompt_briefing', label: 'Briefing pré-commission', vars: ['lang', 'ami', 'prestataire', 'solution', 'category', 'modules'] },
