@@ -125,15 +125,109 @@
                     <span class="hierarchy-dot dot-int"></span>
                     <span>{{ int.key }}</span> — {{ int.summary }}
                     <span v-if="int.attachments?.length" class="text-mono" style="margin-left:auto;">📎 {{ int.attachments.length }}</span>
-                    <span v-if="form.jiraKeyIntervenant === int.key" class="badge badge-green" style="margin-left:8px;">✓ Sélectionné</span>
+                    <span v-if="extractLoading.intervenant && form.jiraKeyIntervenant === int.key" class="spinner spinner-dark" style="margin-left:8px;"></span>
+                    <span v-else-if="form.jiraKeyIntervenant === int.key" class="badge badge-green" style="margin-left:8px;">✓ Sélectionné</span>
                   </div>
                   <div v-for="comp in int.competences" :key="comp.key" class="hierarchy-level competence" :class="{ sel: form.jiraKeyCompetence === comp.key }" style="cursor:pointer;" @click="selectCompetence(comp)">
                     <span class="hierarchy-dot dot-comp"></span>
                     <span>{{ comp.key }}</span> — {{ comp.summary }}
                     <span v-if="comp.attachments?.length" class="text-mono" style="margin-left:auto;">📎 {{ comp.attachments.length }}</span>
-                    <span v-if="form.jiraKeyCompetence === comp.key" class="badge badge-green" style="margin-left:8px;">✓</span>
+                    <span v-if="extractLoading.competence && form.jiraKeyCompetence === comp.key" class="spinner spinner-dark" style="margin-left:8px;"></span>
+                    <span v-else-if="form.jiraKeyCompetence === comp.key" class="badge badge-green" style="margin-left:8px;">✓</span>
                   </div>
                 </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panneau données extraites Intervenant -->
+          <div v-if="extractedIntervenant" class="extract-panel">
+            <div class="extract-header">
+              <span class="extract-badge">Intervenant</span>
+              <span class="extract-title">{{ form.jiraKeyIntervenant }} — Données extraites du ticket</span>
+              <span class="extract-hint">Modifiables si besoin</span>
+            </div>
+            <div class="form-grid">
+              <div class="field"><label>Nom</label><input v-model="extractedIntervenant.nom" @input="syncIntervenantToForm" /></div>
+              <div class="field"><label>Prénom</label><input v-model="extractedIntervenant.prenom" @input="syncIntervenantToForm" /></div>
+              <div class="field"><label>N° CIN / Passeport</label><input v-model="extractedIntervenant.cin" /></div>
+              <div class="field"><label>GSM</label><input v-model="extractedIntervenant.gsm" /></div>
+              <div class="field"><label>E-Mail</label><input v-model="extractedIntervenant.email" /></div>
+              <div class="field"><label>Type de formation</label><input v-model="extractedIntervenant.typeFormation" @input="syncIntervenantToForm" /></div>
+              <div class="field"><label>Niveau de formation</label><input v-model="extractedIntervenant.niveauFormation" @input="syncIntervenantToForm" /></div>
+              <div class="field"><label>Permanent</label><input v-model="extractedIntervenant.permanent" /></div>
+            </div>
+            <div v-if="Object.keys(extractedIntervenant._raw || {}).length" style="margin-top:8px;">
+              <div @click="showRawIntervenant = !showRawIntervenant" style="cursor:pointer; font-size:11px; font-family:var(--mono); color:var(--text3);">
+                {{ showRawIntervenant ? '▲' : '▼' }} Tous les champs Jira bruts ({{ Object.keys(extractedIntervenant._raw).length }})
+              </div>
+              <div v-if="showRawIntervenant" class="raw-fields">
+                <div v-for="(v, k) in extractedIntervenant._raw" :key="k" class="raw-field-row">
+                  <span class="raw-key">{{ k }}</span><span class="raw-val">{{ JSON.stringify(v) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panneau données extraites Compétence -->
+          <div v-if="extractedCompetence" class="extract-panel">
+            <div class="extract-header">
+              <span class="extract-badge" style="background:rgba(139,92,246,0.2); color:#a78bfa; border-color:rgba(139,92,246,0.3);">Compétence</span>
+              <span class="extract-title">{{ form.jiraKeyCompetence }} — Données extraites du ticket</span>
+              <span class="extract-hint">Sélectionnez la solution et les modules à évaluer</span>
+            </div>
+
+            <div class="form-grid">
+              <div class="field"><label>Type d'action référencé</label><input v-model="extractedCompetence.typeAction" /></div>
+              <div class="field"><label>Action à référencer</label><input v-model="extractedCompetence.action" @input="syncCompetenceToForm" /></div>
+              <div class="field"><label>Profil</label><input v-model="extractedCompetence.profil" /></div>
+              <div class="field"><label>Secteur(s)</label><input v-model="extractedCompetence.secteurs" @input="syncCompetenceToForm" /></div>
+              <div class="field"><label>Domaine d'accompagnement</label><input v-model="extractedCompetence.domaine" /></div>
+              <div class="field"><label>Autre solution informatique</label><input v-model="extractedCompetence.autreSolution" @input="syncCompetenceToForm" /></div>
+            </div>
+
+            <!-- Sélection Solution Informatique -->
+            <div v-if="extractedCompetence.solutionsInformatiques?.length" style="margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+              <label style="display:block; margin-bottom:8px;">Solution(s) informatique(s) — sélectionner celle à évaluer</label>
+              <div class="solution-chips">
+                <div v-for="sol in extractedCompetence.solutionsInformatiques" :key="sol"
+                  class="sol-chip" :class="{ active: form.solution === sol }"
+                  @click="selectSolution(sol)">
+                  {{ sol }}
+                  <span v-if="form.solution === sol" style="margin-left:4px;">✓</span>
+                </div>
+              </div>
+              <div v-if="extractedCompetence.autreSolution" style="margin-top:8px;">
+                <div class="sol-chip" :class="{ active: form.solution === extractedCompetence.autreSolution }"
+                  @click="selectSolution(extractedCompetence.autreSolution)">
+                  Autre : {{ extractedCompetence.autreSolution }}
+                  <span v-if="form.solution === extractedCompetence.autreSolution" style="margin-left:4px;">✓</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sélection Modules Informatiques -->
+            <div v-if="extractedCompetence.modulesInformatiques?.length" style="margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+              <label style="display:block; margin-bottom:8px;">Modules informatiques — cocher ceux à évaluer</label>
+              <div class="solution-chips">
+                <div v-for="mod in extractedCompetence.modulesInformatiques" :key="mod"
+                  class="sol-chip" :class="{ active: form.modules?.includes(mod) }"
+                  @click="toggleModule(mod)">
+                  {{ mod }}
+                  <span v-if="form.modules?.includes(mod)" style="margin-left:4px;">✓</span>
+                </div>
+              </div>
+              <div class="text-mono mt8">{{ form.modules?.length || 0 }} module(s) sélectionné(s)</div>
+            </div>
+
+            <div v-if="Object.keys(extractedCompetence._raw || {}).length" style="margin-top:8px;">
+              <div @click="showRawCompetence = !showRawCompetence" style="cursor:pointer; font-size:11px; font-family:var(--mono); color:var(--text3);">
+                {{ showRawCompetence ? '▲' : '▼' }} Tous les champs Jira bruts ({{ Object.keys(extractedCompetence._raw).length }})
+              </div>
+              <div v-if="showRawCompetence" class="raw-fields">
+                <div v-for="(v, k) in extractedCompetence._raw" :key="k" class="raw-field-row">
+                  <span class="raw-key">{{ k }}</span><span class="raw-val">{{ JSON.stringify(v) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -472,6 +566,11 @@ const selectedCVAttIds = ref([])
 const uploadedCVFiles = ref([])
 const selectedAttIds = ref([])
 const submitting = ref(false)
+const extractedIntervenant = ref(null)
+const extractedCompetence = ref(null)
+const extractLoading = ref({ intervenant: false, competence: false })
+const showRawIntervenant = ref(false)
+const showRawCompetence = ref(false)
 
 const verdictLabel = { FAVORABLE: 'Favorable ✓', CONDITIONNEL: 'Conditionnel', DEFAVORABLE: 'Défavorable ✗' }
 const steps = ['Type & Catégorie', 'Dossier', 'Grille évaluation', 'Intégrateur', 'Décision']
@@ -619,16 +718,102 @@ async function loadJiraHierarchy() {
   } catch {}
 }
 
-function selectIntervenant(int) {
+async function selectIntervenant(int) {
   form.value.jiraKeyIntervenant = int.key
   selectedIntervenant.value = int
   selectedCVAttIds.value = []
+  extractedIntervenant.value = null
+  extractLoading.value.intervenant = true
+  try {
+    const { data } = await api.get(`/dossiers/${int.key}/extract-intervenant`)
+    const p = data.parsed
+    extractedIntervenant.value = {
+      nom: p.nom || '',
+      prenom: p.prenom || '',
+      cin: p.cin || '',
+      gsm: p.gsm || '',
+      email: p.email || '',
+      typeFormation: p.typeFormation || '',
+      niveauFormation: p.niveauFormation || '',
+      permanent: p.permanent || '',
+      _raw: data.allCustomFields
+    }
+    syncIntervenantToForm()
+  } catch (e) {
+    showNotif('Extraction intervenant partielle: ' + (e.response?.data?.error || e.message), 'warn')
+    extractedIntervenant.value = { nom: '', prenom: '', cin: '', gsm: '', email: '', typeFormation: '', niveauFormation: '', permanent: '', _raw: {} }
+  } finally {
+    extractLoading.value.intervenant = false
+  }
 }
 
-function selectCompetence(comp) {
+async function selectCompetence(comp) {
   form.value.jiraKeyCompetence = comp.key
   selectedCompetence.value = comp
   selectedAttIds.value = []
+  extractedCompetence.value = null
+  extractLoading.value.competence = true
+  try {
+    const { data } = await api.get(`/dossiers/${comp.key}/extract-competence`)
+    const p = data.parsed
+    extractedCompetence.value = {
+      typeAction: p.typeAction || '',
+      action: p.action || '',
+      profil: p.profil || '',
+      secteurs: toStringList(p.secteurs),
+      domaine: p.domaine || '',
+      solutionsInformatiques: toArray(p.solutionsInformatiques),
+      autreSolution: p.autreSolution || '',
+      modulesInformatiques: toArray(p.modulesInformatiques),
+      _raw: data.allCustomFields
+    }
+    syncCompetenceToForm()
+  } catch (e) {
+    showNotif('Extraction compétence partielle: ' + (e.response?.data?.error || e.message), 'warn')
+    extractedCompetence.value = { typeAction: '', action: '', profil: '', secteurs: '', domaine: '', solutionsInformatiques: [], autreSolution: '', modulesInformatiques: [], _raw: {} }
+  } finally {
+    extractLoading.value.competence = false
+  }
+}
+
+function toArray(v) {
+  if (!v) return []
+  if (Array.isArray(v)) return v.map(String).filter(Boolean)
+  if (typeof v === 'string') return v.split(/[,;|]/).map(s => s.trim()).filter(Boolean)
+  return [String(v)]
+}
+
+function toStringList(v) {
+  if (!v) return ''
+  if (Array.isArray(v)) return v.join(', ')
+  return String(v)
+}
+
+function syncIntervenantToForm() {
+  if (!extractedIntervenant.value) return
+  const iv = extractedIntervenant.value
+  if (iv.niveauFormation && !cvFields.value.diplome) cvFields.value.diplome = iv.niveauFormation
+  if (iv.typeFormation && !cvFields.value.poste) cvFields.value.poste = iv.typeFormation
+}
+
+function syncCompetenceToForm() {
+  if (!extractedCompetence.value) return
+  const cv = extractedCompetence.value
+  if (cv.action && !form.value.actionLabel) form.value.actionLabel = cv.action
+  if (cv.secteurs && !form.value.secteur) form.value.secteur = cv.secteurs
+  if (cv.autreSolution && !form.value.solution) form.value.solution = cv.autreSolution
+}
+
+function selectSolution(sol) {
+  form.value.solution = sol
+}
+
+function toggleModule(mod) {
+  const mods = [...(form.value.modules || [])]
+  const idx = mods.indexOf(mod)
+  if (idx >= 0) mods.splice(idx, 1)
+  else mods.push(mod)
+  form.value.modules = mods
 }
 
 function toggleAtt(att) {

@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const pdfParse = require('pdf-parse');
 
 async function getAIConfig() {
   const { PrismaClient } = require('@prisma/client');
@@ -267,12 +268,29 @@ async function analyzeCV({ filesData, prestataire, solution, programName }) {
   });
 
   // filesData = [{ base64, mimeType, filename }]
-  const imageContent = filesData.map(f => ({
-    type: 'image_url',
-    image_url: { url: `data:${f.mimeType};base64,${f.base64}` }
-  }));
+  const contentParts = [];
+  const pdfTexts = [];
 
-  const content = [...imageContent, { type: 'text', text: textPrompt }];
+  for (const f of filesData) {
+    if (f.mimeType === 'application/pdf') {
+      try {
+        const buf = Buffer.from(f.base64, 'base64');
+        const parsed = await pdfParse(buf);
+        if (parsed.text?.trim()) pdfTexts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, 8000)}`);
+      } catch {
+        // PDF illisible, on l'ignore silencieusement
+      }
+    } else {
+      contentParts.push({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } });
+    }
+  }
+
+  if (pdfTexts.length > 0) {
+    contentParts.push({ type: 'text', text: `Contenu des documents PDF :\n\n${pdfTexts.join('\n\n')}` });
+  }
+  contentParts.push({ type: 'text', text: textPrompt });
+
+  const content = contentParts;
   return callAI([{ role: 'user', content }], { maxTokens: 2500 });
 }
 

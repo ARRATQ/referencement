@@ -55,6 +55,131 @@ async function getIssue(key, fields = []) {
   return jiraFetch(`/rest/api/2/issue/${key}${f}`);
 }
 
+function extractFieldValue(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+  if (Array.isArray(v)) return v.map(extractFieldValue).filter(x => x !== null);
+  if (typeof v === 'object') {
+    if (v.value !== undefined) return v.value;
+    if (v.displayName !== undefined) return v.displayName;
+    if (v.name !== undefined) return v.name;
+    return null;
+  }
+  return null;
+}
+
+async function getFieldsMeta() {
+  try {
+    const data = await jiraFetch('/rest/api/2/field');
+    const map = {};
+    for (const f of data) {
+      if (f.id.startsWith('customfield_')) {
+        map[f.id] = f.name;
+      }
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+function normalizeKey(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function findByName(fields, rawValues, ...namePatterns) {
+  for (const pattern of namePatterns) {
+    const norm = normalizeKey(pattern);
+    for (const [id, name] of Object.entries(fields)) {
+      const normName = normalizeKey(name);
+      if (normName.includes(norm) || norm.includes(normName)) {
+        const v = rawValues[id];
+        const extracted = extractFieldValue(v);
+        if (extracted !== null && extracted !== undefined && extracted !== '') return extracted;
+      }
+    }
+  }
+  return null;
+}
+
+async function extractIntervenantData(key) {
+  const [issue, fieldsMeta] = await Promise.all([
+    jiraFetch(`/rest/api/2/issue/${key}?fields=*all`),
+    getFieldsMeta()
+  ]);
+  const f = issue.fields;
+  const custom = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (k.startsWith('customfield_') && v !== null && v !== undefined) {
+      const name = fieldsMeta[k] || k;
+      custom[name] = extractFieldValue(v);
+    }
+  }
+  const rawById = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (k.startsWith('customfield_')) rawById[k] = v;
+  }
+
+  return {
+    key,
+    summary: f.summary,
+    status: f.status?.name,
+    allCustomFields: custom,
+    parsed: {
+      nom: findByName(fieldsMeta, rawById, "nom de l'intervenant", 'nom intervenant', 'lastname', 'nom') || null,
+      prenom: findByName(fieldsMeta, rawById, "prénom de l'intervenant", 'prenom intervenant', 'firstname', 'prénom') || null,
+      cin: findByName(fieldsMeta, rawById, 'cin', 'passeport', 'cin/passeport', 'identifiant') || null,
+      gsm: findByName(fieldsMeta, rawById, 'gsm', 'téléphone', 'telephone', 'mobile') || null,
+      email: findByName(fieldsMeta, rawById, 'e-mail', 'email', 'mail') || null,
+      typeFormation: findByName(fieldsMeta, rawById, 'type de formation', 'typeformation', 'formation') || null,
+      niveauFormation: findByName(fieldsMeta, rawById, 'niveau de formation', 'niveau', 'education', 'diplôme') || null,
+      permanent: findByName(fieldsMeta, rawById, 'permanent') || null,
+      totalActionCount: findByName(fieldsMeta, rawById, 'total action', 'action count') || null,
+    }
+  };
+}
+
+async function extractCompetenceData(key) {
+  const [issue, fieldsMeta] = await Promise.all([
+    jiraFetch(`/rest/api/2/issue/${key}?fields=*all`),
+    getFieldsMeta()
+  ]);
+  const f = issue.fields;
+  const custom = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (k.startsWith('customfield_') && v !== null && v !== undefined) {
+      const name = fieldsMeta[k] || k;
+      custom[name] = extractFieldValue(v);
+    }
+  }
+  const rawById = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (k.startsWith('customfield_')) rawById[k] = v;
+  }
+
+  return {
+    key,
+    summary: f.summary,
+    status: f.status?.name,
+    allCustomFields: custom,
+    parsed: {
+      raisonSociale: findByName(fieldsMeta, rawById, 'raison sociale') || null,
+      nomIntervenant: findByName(fieldsMeta, rawById, 'nom de l\'intervenant', 'nom intervenant') || null,
+      prenomIntervenant: findByName(fieldsMeta, rawById, 'prénom de l\'intervenant', 'prenom intervenant') || null,
+      niveauFormation: findByName(fieldsMeta, rawById, 'niveau de formation', 'niveau') || null,
+      typeFormation: findByName(fieldsMeta, rawById, 'type de formation') || null,
+      typeAction: findByName(fieldsMeta, rawById, "type d'action", 'type action') || null,
+      action: findByName(fieldsMeta, rawById, 'action à référencer', 'action a referencer', 'action') || null,
+      profil: findByName(fieldsMeta, rawById, 'profil') || null,
+      secteurs: findByName(fieldsMeta, rawById, "secteur(s) d'activité", 'secteurs', 'secteur') || null,
+      domaine: findByName(fieldsMeta, rawById, "domaine d'accompagnement", 'domaine') || null,
+      solutionsInformatiques: findByName(fieldsMeta, rawById, 'solution informatique', 'solutions informatiques') || null,
+      autreSolution: findByName(fieldsMeta, rawById, 'autre solution informatique', 'autre solution') || null,
+      modulesInformatiques: findByName(fieldsMeta, rawById, 'modules informatiques', 'modules') || null,
+    }
+  };
+}
+
 async function resolveHierarchy(prestataireKey) {
   const prestataire = await getIssue(prestataireKey);
   const links = prestataire.fields.issuelinks || [];
@@ -134,5 +259,6 @@ async function testConnection() {
 
 module.exports = {
   searchIssues, getIssue, resolveHierarchy,
-  fetchAttachmentBuffer, updateIssueFields, addComment, testConnection
+  fetchAttachmentBuffer, updateIssueFields, addComment, testConnection,
+  extractIntervenantData, extractCompetenceData
 };

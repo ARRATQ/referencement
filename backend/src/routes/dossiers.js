@@ -68,6 +68,20 @@ router.get('/:key/attachments', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.get('/:key/extract-intervenant', async (req, res, next) => {
+  try {
+    const data = await jira.extractIntervenantData(req.params.key);
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
+router.get('/:key/extract-competence', async (req, res, next) => {
+  try {
+    const data = await jira.extractCompetenceData(req.params.key);
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
 router.get('/:key/attachment/:attId', async (req, res, next) => {
   try {
     const issue = await jira.getIssue(req.params.key, ['attachment']);
