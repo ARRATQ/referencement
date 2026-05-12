@@ -92,9 +92,9 @@ const server = http.createServer((req, res) => {
     forwardHeaders['content-type'] = req.headers['content-type'] || 'application/json';
     forwardHeaders['x-atlassian-token'] = 'no-check';
 
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => forwardRequest(req, res, targetUrl, forwardHeaders, body || null));
+    const chunks = [];
+    req.on('data', chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on('end', () => forwardRequest(req, res, targetUrl, forwardHeaders, chunks.length ? Buffer.concat(chunks) : null));
     return;
   }
 
@@ -108,9 +108,9 @@ const server = http.createServer((req, res) => {
     if (req.headers['x-title']) forwardHeaders['x-title'] = req.headers['x-title'];
     forwardHeaders['content-type'] = req.headers['content-type'] || 'application/json';
 
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => forwardRequest(req, res, targetUrl, forwardHeaders, body || null));
+    const chunks = [];
+    req.on('data', chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on('end', () => forwardRequest(req, res, targetUrl, forwardHeaders, chunks.length ? Buffer.concat(chunks) : null));
     return;
   }
 

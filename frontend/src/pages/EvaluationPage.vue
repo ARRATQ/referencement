@@ -860,6 +860,13 @@ function fileToBase64(file) {
   })
 }
 
+function arrayBufferToBase64(buf) {
+  const bytes = new Uint8Array(buf)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
+}
+
 async function analyzeCV() {
   aiLoading.value.cv = true
   showCVPicker.value = false
@@ -869,7 +876,7 @@ async function analyzeCV() {
       const atts = (selectedIntervenant.value?.attachments || []).filter(a => selectedCVAttIds.value.includes(a.id))
       filesData = await Promise.all(atts.map(async att => {
         const { data: buf } = await api.get(`/dossiers/${form.value.jiraKeyIntervenant}/attachment/${att.id}`, { responseType: 'arraybuffer' })
-        return { base64: btoa(String.fromCharCode(...new Uint8Array(buf))), mimeType: att.mimeType, filename: att.filename }
+        return { base64: arrayBufferToBase64(buf), mimeType: att.mimeType, filename: att.filename }
       }))
     } else {
       filesData = await Promise.all(uploadedCVFiles.value.map(async f => ({
@@ -893,7 +900,7 @@ async function analyzeAttestations() {
     const atts = selectedCompetence.value.attachments.filter(a => selectedAttIds.value.includes(a.id))
     const images = await Promise.all(atts.map(async att => {
       const { data: buf } = await api.get(`/dossiers/${form.value.jiraKeyCompetence}/attachment/${att.id}`, { responseType: 'arraybuffer' })
-      return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      return arrayBufferToBase64(buf)
     }))
     const { data } = await api.post('/ai/analyze-attestations', { imageBase64List: images, solution: form.value.solution, intervenant: form.value.jiraKeyIntervenant })
     aiTexts.value.attestations = data.text

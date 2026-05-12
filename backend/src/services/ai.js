@@ -70,8 +70,10 @@ async function callAI(messages, opts = {}) {
 
   if (!res.ok) {
     const text = await res.text();
+    console.error('[AI ERROR] status:', res.status, 'body:', text.slice(0, 1000));
     throw new Error(`OpenRouter ${res.status}: ${text.slice(0, 300)}`);
   }
+  console.log('[AI OK] model:', opts.model || cfg.model, 'content parts:', messages[0]?.content?.length || 1);
 
   const data = await res.json();
   return data.choices?.[0]?.message?.content || '';
@@ -268,7 +270,7 @@ async function analyzeCV({ filesData, prestataire, solution, programName }) {
   });
 
   // filesData = [{ base64, mimeType, filename }]
-  const contentParts = [];
+  const imagesParts = [];
   const pdfTexts = [];
 
   for (const f of filesData) {
@@ -281,16 +283,16 @@ async function analyzeCV({ filesData, prestataire, solution, programName }) {
         // PDF illisible, on l'ignore silencieusement
       }
     } else {
-      contentParts.push({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } });
+      imagesParts.push({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } });
     }
   }
 
-  if (pdfTexts.length > 0) {
-    contentParts.push({ type: 'text', text: `Contenu des documents PDF :\n\n${pdfTexts.join('\n\n')}` });
-  }
-  contentParts.push({ type: 'text', text: textPrompt });
+  // Fusionner PDF + prompt en un seul bloc text pour éviter "too many function arguments"
+  const fullText = pdfTexts.length > 0
+    ? `Contenu des documents PDF :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
+    : textPrompt;
 
-  const content = contentParts;
+  const content = [...imagesParts, { type: 'text', text: fullText }];
   return callAI([{ role: 'user', content }], { maxTokens: 2500 });
 }
 
