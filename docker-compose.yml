@@ -64,13 +64,14 @@ services:
 
   # Frontend Vue.js (nginx)
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
     container_name: ref-frontend
     restart: unless-stopped
     depends_on:
       - backend
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:3002}
     networks:
       - ref-net
     ports:
