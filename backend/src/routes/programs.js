@@ -12,7 +12,7 @@ router.get('/', async (req, res, next) => {
   try {
     const programs = await prisma.program.findMany({
       where: req.user.role === 'ADMIN' ? {} : { active: true },
-      select: { id: true, code: true, name: true, version: true, active: true, createdAt: true }
+      select: { id: true, code: true, name: true, version: true, amiText: true, cvTemplate: true, active: true, createdAt: true }
     });
     res.json(programs);
   } catch (err) { next(err); }
@@ -57,6 +57,16 @@ router.put('/:code', requireRole('ADMIN'), async (req, res, next) => {
       }
     });
     res.json(program);
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Programme introuvable' });
+    next(err);
+  }
+});
+
+router.delete('/:code', requireRole('ADMIN'), async (req, res, next) => {
+  try {
+    await prisma.program.delete({ where: { code: req.params.code } });
+    res.json({ ok: true });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ error: 'Programme introuvable' });
     next(err);

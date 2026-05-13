@@ -31,16 +31,52 @@
           <table>
             <thead><tr><th>Clé</th><th>Résumé</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>
-              <tr v-for="d in filtered" :key="d.key">
-                <td><span class="text-mono">{{ d.key }}</span></td>
-                <td>{{ d.summary }}</td>
-                <td>{{ d.issueType }}</td>
-                <td><span class="badge" :class="statusBadge(d.status)">{{ d.status }}</span></td>
-                <td class="td-action">
-                  <button class="btn btn-ghost btn-sm" @click="loadHierarchy(d.key)">⊞ Voir</button>
-                  <RouterLink :to="`/evaluation?jiraKey=${d.key}`" class="btn btn-primary btn-sm">+ Évaluer</RouterLink>
-                </td>
-              </tr>
+              <template v-for="d in filtered" :key="d.key">
+                <tr :class="{ 'row-expanded': expandedKey === d.key }">
+                  <td><span class="text-mono">{{ d.key }}</span></td>
+                  <td>{{ d.summary }}</td>
+                  <td>{{ d.issueType }}</td>
+                  <td><span class="badge" :class="statusBadge(d.status)">{{ d.status }}</span></td>
+                  <td class="td-action">
+                    <button class="btn btn-ghost btn-sm" :class="{ active: expandedKey === d.key }" @click="toggleHierarchy(d.key)">
+                      <span v-if="loadingKey === d.key" class="spinner spinner-dark"></span>
+                      <span v-else>{{ expandedKey === d.key ? '▲ Fermer' : '⊞ Voir' }}</span>
+                    </button>
+                    <RouterLink :to="`/evaluation?jiraKey=${d.key}`" class="btn btn-primary btn-sm">+ Évaluer</RouterLink>
+                  </td>
+                </tr>
+                <!-- Ligne expandée : hiérarchie inline -->
+                <tr v-if="expandedKey === d.key" class="hierarchy-row">
+                  <td colspan="5" style="padding:0;">
+                    <div class="hierarchy-panel">
+                      <div v-if="loadingKey === d.key" style="padding:16px; color:var(--text3);">Chargement…</div>
+                      <div v-else-if="hierarchies[d.key]" class="hierarchy-tree">
+                        <template v-for="int in hierarchies[d.key].intervenants" :key="int.key">
+                          <div class="hierarchy-level intervenant">
+                            <span class="hierarchy-dot dot-int"></span>
+                            <div class="hierarchy-info">
+                              <span class="text-mono h-key">{{ int.key }}</span>
+                              <span class="h-summary">{{ int.summary }}</span>
+                              <span v-if="int.attachments?.length" class="h-attach">📎 {{ int.attachments.length }}</span>
+                            </div>
+                          </div>
+                          <div v-for="comp in int.competences" :key="comp.key" class="hierarchy-level competence">
+                            <span class="hierarchy-dot dot-comp"></span>
+                            <div class="hierarchy-info">
+                              <span class="text-mono h-key">{{ comp.key }}</span>
+                              <span class="h-summary">{{ comp.summary }}</span>
+                              <span v-if="comp.attachments?.length" class="h-attach">📎 {{ comp.attachments.length }}</span>
+                            </div>
+                          </div>
+                        </template>
+                        <div v-if="!hierarchies[d.key].intervenants?.length" style="padding:12px 16px; color:var(--text3); font-size:13px;">
+                          Aucun intervenant lié à ce prestataire.
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
               <tr v-if="!filtered.length && !loading">
                 <td colspan="5" style="text-align:center; color:var(--text3); padding:32px;">
                   {{ dossiers.length ? 'Aucun résultat' : 'Cliquez sur Sync Jira pour charger les dossiers' }}
@@ -50,44 +86,21 @@
           </table>
         </div>
       </div>
-
-      <!-- Panneau hiérarchie -->
-      <div v-if="hierarchy" ref="hierarchyPanel" class="card">
-        <div class="card-title">Hiérarchie — {{ hierarchy.key }}</div>
-        <div class="hierarchy-tree">
-          <div class="hierarchy-level prestataire">
-            <span class="hierarchy-dot dot-prest"></span>
-            <strong>{{ hierarchy.key }}</strong> — {{ hierarchy.summary }}
-            <span class="badge badge-gray" style="margin-left:auto;">{{ hierarchy.status }}</span>
-          </div>
-          <template v-for="int in hierarchy.intervenants" :key="int.key">
-            <div class="hierarchy-level intervenant">
-              <span class="hierarchy-dot dot-int"></span>
-              <span>{{ int.key }}</span> — {{ int.summary }}
-              <span v-if="int.attachments?.length" class="text-mono" style="margin-left:8px;">📎 {{ int.attachments.length }} fichier(s)</span>
-            </div>
-            <div v-for="comp in int.competences" :key="comp.key" class="hierarchy-level competence">
-              <span class="hierarchy-dot dot-comp"></span>
-              <span>{{ comp.key }}</span> — {{ comp.summary }}
-              <span v-if="comp.attachments?.length" class="text-mono" style="margin-left:8px;">📎 {{ comp.attachments.length }} fichier(s)</span>
-            </div>
-          </template>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 const dossiers = ref([])
 const loading = ref(false)
 const search = ref('')
 const filterStatus = ref('')
-const hierarchy = ref(null)
-const hierarchyPanel = ref(null)
+const expandedKey = ref(null)
+const loadingKey = ref(null)
+const hierarchies = ref({})
 
 const filtered = computed(() =>
   dossiers.value.filter(d => {
@@ -100,7 +113,7 @@ const filtered = computed(() =>
 
 async function loadDossiers() {
   loading.value = true
-  hierarchy.value = null
+  expandedKey.value = null
   try {
     const { data } = await api.get('/dossiers')
     dossiers.value = data
@@ -111,15 +124,22 @@ async function loadDossiers() {
   }
 }
 
-async function loadHierarchy(key) {
-  // Fermer si on reclique sur la même clé
-  if (hierarchy.value?.key === key) { hierarchy.value = null; return }
+async function toggleHierarchy(key) {
+  if (expandedKey.value === key) {
+    expandedKey.value = null
+    return
+  }
+  expandedKey.value = key
+  if (hierarchies.value[key]) return
+  loadingKey.value = key
   try {
     const { data } = await api.get(`/dossiers/${key}/intervenants`)
-    hierarchy.value = data
-    await nextTick()
-    hierarchyPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  } catch {}
+    hierarchies.value[key] = data
+  } catch {
+    hierarchies.value[key] = { intervenants: [] }
+  } finally {
+    loadingKey.value = null
+  }
 }
 
 function statusBadge(status) {
@@ -130,3 +150,88 @@ function statusBadge(status) {
   return 'badge-amber'
 }
 </script>
+
+<style scoped>
+.row-expanded td {
+  background: var(--surface2);
+}
+
+.hierarchy-row > td {
+  border-top: none;
+}
+
+.hierarchy-panel {
+  background: var(--surface);
+  border-top: 2px solid var(--accent);
+}
+
+.hierarchy-tree {
+  padding: 8px 0;
+}
+
+.hierarchy-level {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hierarchy-level:last-child {
+  border-bottom: none;
+}
+
+.hierarchy-level.intervenant {
+  background: var(--bg);
+  padding-left: 24px;
+}
+
+.hierarchy-level.competence {
+  background: var(--surface);
+  padding-left: 52px;
+}
+
+.hierarchy-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-int  { background: var(--accent); }
+.dot-comp { background: var(--text3); }
+
+.hierarchy-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.h-key {
+  font-size: 12px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.h-summary {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.h-attach {
+  font-size: 11px;
+  color: var(--text3);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.btn.active {
+  background: var(--surface2);
+  color: var(--accent);
+}
+</style>

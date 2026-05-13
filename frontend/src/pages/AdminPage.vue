@@ -59,6 +59,7 @@
                   <td class="td-action">
                     <button class="btn btn-ghost btn-sm" @click="openProgramForm(p)">Modifier</button>
                     <button class="btn btn-ghost btn-sm" @click="toggleProgramActive(p)">{{ p.active ? 'Désactiver' : 'Activer' }}</button>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--red);" @click="deleteProgram(p)">Supprimer</button>
                   </td>
                 </tr>
               </tbody>
@@ -71,82 +72,170 @@
       <div v-if="tab === 'catalogue'">
         <div class="row-between mb16">
           <div>
-            <div class="card-title" style="margin:0 0 4px;">Catalogue des compétences</div>
-            <div style="font-size:12px; color:var(--text3);">Domaines → Actions avec grille d'évaluation et consistance pour l'IA</div>
+            <div class="card-title" style="margin:0 0 4px;">Catalogue</div>
+            <div style="font-size:12px; color:var(--text3);">Catégories solutions · Domaines actions · Critères d'évaluation</div>
           </div>
           <div class="row gap8">
             <select v-model="catProgramCode" @change="loadCatalogue" style="font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); color:var(--text);">
               <option value="">— Choisir un programme —</option>
               <option v-for="p in programs" :key="p.code" :value="p.code">{{ p.name }} ({{ p.code }})</option>
             </select>
-            <button v-if="catProgramCode" class="btn btn-primary btn-sm" @click="addDomain">+ Domaine</button>
             <button v-if="catProgramCode && catDirty" class="btn btn-primary" @click="saveCatalogue">Enregistrer</button>
           </div>
         </div>
 
         <div v-if="!catProgramCode" class="card" style="text-align:center; color:var(--text3); padding:40px;">
-          Sélectionnez un programme pour éditer son catalogue de compétences.
+          Sélectionnez un programme pour éditer son catalogue.
         </div>
 
         <div v-if="catProgramCode && catLoading" style="padding:24px; text-align:center; color:var(--text3);">Chargement…</div>
 
         <div v-if="catProgramCode && !catLoading">
-          <div v-if="!catDomainKeys.length" class="card" style="text-align:center; color:var(--text3); padding:32px;">
-            Aucun domaine. Cliquez sur "+ Domaine" pour commencer.
+
+          <!-- Onglets solutions / actions -->
+          <div style="display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px;">
+            <div @click="catTab = 'solutions'" style="padding:8px 18px; font-size:13px; cursor:pointer; border-bottom:2px solid transparent; font-weight:500;"
+              :style="catTab === 'solutions' ? 'border-color:var(--accent); color:var(--accent)' : 'color:var(--text3)'">
+              Solutions informatiques ({{ Object.keys(categories).length }})
+            </div>
+            <div @click="catTab = 'actions'" style="padding:8px 18px; font-size:13px; cursor:pointer; border-bottom:2px solid transparent; font-weight:500;"
+              :style="catTab === 'actions' ? 'border-color:var(--accent); color:var(--accent)' : 'color:var(--text3)'">
+              Domaines d'actions ({{ catDomainKeys.length }})
+            </div>
           </div>
 
-          <div v-for="dKey in catDomainKeys" :key="dKey" class="card" style="margin-bottom:12px;">
-            <!-- En-tête domaine -->
-            <div class="row-between" style="margin-bottom:12px;">
-              <div class="row gap8" style="align-items:center; flex:1;">
-                <input v-model="catalogue[dKey].icon" style="width:48px; font-size:20px; text-align:center; padding:4px;" placeholder="🎓" />
-                <input v-model="catalogue[dKey].label" style="flex:1; font-size:15px; font-weight:600;" placeholder="Libellé du domaine" @input="catDirty = true" />
-              </div>
-              <div class="row gap8">
-                <button class="btn btn-ghost btn-sm" @click="toggleDomain(dKey)">{{ openDomains[dKey] ? '▲ Réduire' : '▼ Développer' }}</button>
-                <button class="btn btn-ghost btn-sm" style="color:var(--red);" @click="removeDomain(dKey)">Supprimer</button>
-              </div>
+          <!-- ===== SOLUTIONS ===== -->
+          <div v-if="catTab === 'solutions'">
+            <div class="row-between mb8">
+              <div style="font-size:13px; color:var(--text2);">Catégories affichées à l'étape 1 de l'évaluation pour les solutions informatiques</div>
+              <button class="btn btn-primary btn-sm" @click="addCategory">+ Catégorie</button>
             </div>
 
-            <div v-if="openDomains[dKey]">
-              <!-- Tableau des actions/critères -->
-              <div v-if="catalogue[dKey].criteria?.length" style="margin-bottom:10px;">
-                <div v-for="(crit, idx) in catalogue[dKey].criteria" :key="idx" class="crit-row">
-                  <div class="crit-header">
-                    <div class="row gap8" style="flex:1; align-items:center;">
-                      <span class="crit-num">{{ idx + 1 }}</span>
-                      <input v-model="crit.n" placeholder="Intitulé de l'action / critère" style="flex:1; font-weight:500;" @input="catDirty = true" />
-                    </div>
-                    <div class="row gap8" style="align-items:center;">
-                      <label style="font-size:11px; color:var(--text3); white-space:nowrap;">Poids</label>
-                      <select v-model.number="crit.w" style="width:56px; font-size:13px;" @change="catDirty = true">
-                        <option :value="1">1</option>
-                        <option :value="2">2</option>
-                        <option :value="3">3</option>
-                      </select>
-                      <button class="btn btn-ghost btn-sm" style="color:var(--red); padding:2px 8px;" @click="removeCriteria(dKey, idx)">✕</button>
-                    </div>
-                  </div>
-                  <div class="crit-body">
-                    <div class="field" style="margin-bottom:8px;">
-                      <label>Description courte</label>
-                      <input v-model="crit.d" placeholder="Ce que ce critère évalue…" @input="catDirty = true" />
-                    </div>
-                    <div class="field">
-                      <label style="display:flex; align-items:center; gap:6px;">
-                        Consistance pour l'IA
-                        <span style="font-size:10px; background:var(--accent); color:#fff; padding:1px 6px; border-radius:10px;">IA</span>
-                      </label>
-                      <textarea v-model="crit.consistance" rows="3"
-                        placeholder="Décrivez ce qu'un prestataire doit démontrer pour obtenir une bonne note sur ce critère. Ce texte est injecté dans le prompt d'évaluation automatique. Ex: Le prestataire doit justifier d'au moins 3 références clients vérifiables au Maroc avec attestations signées et cachetées, mentionnant la solution, les modules déployés et les dates d'intervention."
-                        @input="catDirty = true">
-                      </textarea>
-                    </div>
-                  </div>
+            <div v-if="!Object.keys(categories).length" class="card" style="text-align:center; color:var(--text3); padding:32px;">
+              Aucune catégorie. Cliquez sur "+ Catégorie" pour commencer.
+            </div>
+
+            <div v-for="cKey in Object.keys(categories)" :key="cKey" class="card" style="margin-bottom:12px;">
+              <div class="row-between" style="margin-bottom:12px;">
+                <div class="row gap8" style="align-items:center; flex:1;">
+                  <input v-model="categories[cKey].icon" style="width:48px; font-size:20px; text-align:center; padding:4px;" placeholder="💻" />
+                  <input v-model="categories[cKey].label" style="flex:1; font-size:15px; font-weight:600;" placeholder="Libellé de la catégorie" @input="catDirty = true" />
+                </div>
+                <div class="row gap8">
+                  <button class="btn btn-ghost btn-sm" @click="toggleCat(cKey)">{{ openCats[cKey] ? '▲ Réduire' : '▼ Développer' }}</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--red);" @click="removeCategory(cKey)">Supprimer</button>
                 </div>
               </div>
 
-              <button class="btn btn-secondary btn-sm" @click="addCriteria(dKey)">+ Ajouter une action</button>
+              <div v-if="openCats[cKey]">
+                <div class="field" style="margin-bottom:12px;">
+                  <label>Exemples (affichés sous le nom)</label>
+                  <input v-model="categories[cKey].ex" placeholder="ex: Odoo, SAP, Sage…" @input="catDirty = true" />
+                </div>
+
+                <div style="font-size:12px; font-weight:600; color:var(--text2); margin-bottom:8px;">Critères d'évaluation</div>
+                <div v-if="categories[cKey].criteria?.length" style="margin-bottom:10px;">
+                  <div v-for="(crit, idx) in categories[cKey].criteria" :key="idx" class="crit-row">
+                    <div class="crit-header">
+                      <div class="row gap8" style="flex:1; align-items:center;">
+                        <span class="crit-num">{{ idx + 1 }}</span>
+                        <input v-model="crit.n" placeholder="Intitulé du critère" style="flex:1; font-weight:500;" @input="catDirty = true" />
+                      </div>
+                      <div class="row gap8" style="align-items:center;">
+                        <label style="font-size:11px; color:var(--text3); white-space:nowrap;">Poids</label>
+                        <select v-model.number="crit.w" style="width:56px; font-size:13px;" @change="catDirty = true">
+                          <option :value="1">1</option>
+                          <option :value="2">2</option>
+                          <option :value="3">3</option>
+                        </select>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--red); padding:2px 8px;" @click="removeCatCriteria(cKey, idx)">✕</button>
+                      </div>
+                    </div>
+                    <div class="crit-body">
+                      <div class="field" style="margin-bottom:8px;">
+                        <label>Description courte</label>
+                        <input v-model="crit.d" placeholder="Ce que ce critère évalue…" @input="catDirty = true" />
+                      </div>
+                      <div class="field">
+                        <label style="display:flex; align-items:center; gap:6px;">
+                          Consistance pour l'IA
+                          <span style="font-size:10px; background:var(--accent); color:#fff; padding:1px 6px; border-radius:10px;">IA</span>
+                        </label>
+                        <textarea v-model="crit.consistance" rows="3" placeholder="Ce qu'un prestataire doit démontrer pour ce critère…" @input="catDirty = true"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" @click="addCatCriteria(cKey)">+ Ajouter un critère</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== ACTIONS ===== -->
+          <div v-if="catTab === 'actions'">
+            <div class="row-between mb8">
+              <div class="row gap8">
+                <input ref="csvInput" type="file" accept=".csv,text/csv" style="display:none;" @change="importCSV" />
+                <button class="btn btn-ghost btn-sm" @click="downloadCSVTemplate" title="Télécharger le modèle CSV">⬇ Modèle CSV</button>
+                <button class="btn btn-ghost btn-sm" @click="$refs.csvInput.click()">⬆ Importer CSV</button>
+                <button class="btn btn-primary btn-sm" @click="addDomain">+ Domaine</button>
+              </div>
+            </div>
+
+            <div v-if="!catDomainKeys.length" class="card" style="text-align:center; color:var(--text3); padding:32px;">
+              Aucun domaine. Cliquez sur "+ Domaine" pour commencer.
+            </div>
+
+            <div v-for="dKey in catDomainKeys" :key="dKey" class="card" style="margin-bottom:12px;">
+              <div class="row-between" style="margin-bottom:12px;">
+                <div class="row gap8" style="align-items:center; flex:1;">
+                  <input v-model="catalogue[dKey].icon" style="width:48px; font-size:20px; text-align:center; padding:4px;" placeholder="🎓" />
+                  <input v-model="catalogue[dKey].label" style="flex:1; font-size:15px; font-weight:600;" placeholder="Libellé du domaine" @input="catDirty = true" />
+                </div>
+                <div class="row gap8">
+                  <button class="btn btn-ghost btn-sm" @click="toggleDomain(dKey)">{{ openDomains[dKey] ? '▲ Réduire' : '▼ Développer' }}</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--red);" @click="removeDomain(dKey)">Supprimer</button>
+                </div>
+              </div>
+
+              <div v-if="openDomains[dKey]">
+                <div v-if="catalogue[dKey].criteria?.length" style="margin-bottom:10px;">
+                  <div v-for="(crit, idx) in catalogue[dKey].criteria" :key="idx" class="crit-row">
+                    <div class="crit-header">
+                      <div class="row gap8" style="flex:1; align-items:center;">
+                        <span class="crit-num">{{ idx + 1 }}</span>
+                        <input v-model="crit.n" placeholder="Intitulé de l'action / critère" style="flex:1; font-weight:500;" @input="catDirty = true" />
+                      </div>
+                      <div class="row gap8" style="align-items:center;">
+                        <label style="font-size:11px; color:var(--text3); white-space:nowrap;">Poids</label>
+                        <select v-model.number="crit.w" style="width:56px; font-size:13px;" @change="catDirty = true">
+                          <option :value="1">1</option>
+                          <option :value="2">2</option>
+                          <option :value="3">3</option>
+                        </select>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--red); padding:2px 8px;" @click="removeCriteria(dKey, idx)">✕</button>
+                      </div>
+                    </div>
+                    <div class="crit-body">
+                      <div class="field" style="margin-bottom:8px;">
+                        <label>Description courte</label>
+                        <input v-model="crit.d" placeholder="Ce que ce critère évalue…" @input="catDirty = true" />
+                      </div>
+                      <div class="field">
+                        <label style="display:flex; align-items:center; gap:6px;">
+                          Consistance pour l'IA
+                          <span style="font-size:10px; background:var(--accent); color:#fff; padding:1px 6px; border-radius:10px;">IA</span>
+                        </label>
+                        <textarea v-model="crit.consistance" rows="3"
+                          placeholder="Décrivez ce qu'un prestataire doit démontrer pour obtenir une bonne note sur ce critère."
+                          @input="catDirty = true">
+                        </textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" @click="addCriteria(dKey)">+ Ajouter une action</button>
+              </div>
             </div>
           </div>
         </div>
@@ -171,6 +260,11 @@
             <div class="field"><label>Token PAT</label><input v-model="cfg.jira_pat" type="password" placeholder="Token Jira Data Center" /></div>
             <div class="field"><label>Champ score solution (customfield_...)</label><input v-model="cfg.jira_cf_score_sol" placeholder="customfield_10020" /></div>
             <div class="field"><label>Champ score intégrateur (customfield_...)</label><input v-model="cfg.jira_cf_score_int" placeholder="customfield_10021" /></div>
+            <div class="field full">
+              <label>JQL de synchronisation</label>
+              <textarea v-model="cfg.jira_jql" rows="2" placeholder='issuetype = "Prestataire" AND project = REF ORDER BY created DESC' style="font-family:var(--mono); font-size:13px; resize:vertical;"></textarea>
+              <div style="font-size:11px; color:var(--text3); margin-top:4px;">Requête JQL exécutée pour lister les dossiers. Si vide, tous les tickets du projet sont retournés.</div>
+            </div>
           </div>
           <div class="row gap8 mt16">
             <button class="btn btn-primary" @click="saveConfig('jira')">Enregistrer Jira</button>
@@ -303,8 +397,11 @@ const jiraStatus = ref(null)
 const catProgramCode = ref('')
 const catLoading = ref(false)
 const catDirty = ref(false)
-const catalogue = ref({})   // { domainKey: { label, icon, criteria: [{n,d,w,consistance}] } }
+const catTab = ref('solutions')
+const catalogue = ref({})    // actionTypes: { domainKey: { label, icon, criteria: [...] } }
+const categories = ref({})   // categories:  { catKey:    { label, icon, ex, criteria: [...] } }
 const openDomains = ref({})
+const openCats = ref({})
 
 const catDomainKeys = computed(() => Object.keys(catalogue.value))
 
@@ -327,25 +424,35 @@ async function loadCatalogue() {
   catDirty.value = false
   try {
     const { data } = await api.get(`/programs/${catProgramCode.value}`)
-    const raw = data.actionTypes || {}
-    // Garantir que chaque critère a un champ consistance
-    const normalized = {}
-    for (const [key, domain] of Object.entries(raw)) {
-      normalized[key] = {
+
+    // actionTypes → catalogue
+    const rawActions = data.actionTypes || {}
+    const normalizedActions = {}
+    for (const [key, domain] of Object.entries(rawActions)) {
+      normalizedActions[key] = {
         label: domain.label || '',
         icon: domain.icon || '',
-        criteria: (domain.criteria || []).map(c => ({
-          n: c.n || '',
-          d: c.d || '',
-          w: c.w ?? 1,
-          consistance: c.consistance || ''
-        }))
+        criteria: (domain.criteria || []).map(c => ({ n: c.n || '', d: c.d || '', w: c.w ?? 1, consistance: c.consistance || '' }))
       }
     }
-    catalogue.value = normalized
-    // Ouvrir le premier domaine par défaut
-    const keys = Object.keys(normalized)
-    if (keys.length) openDomains.value = { [keys[0]]: true }
+    catalogue.value = normalizedActions
+    const actionKeys = Object.keys(normalizedActions)
+    if (actionKeys.length) openDomains.value = { [actionKeys[0]]: true }
+
+    // categories → categories
+    const rawCats = data.categories || {}
+    const normalizedCats = {}
+    for (const [key, cat] of Object.entries(rawCats)) {
+      normalizedCats[key] = {
+        label: cat.label || '',
+        icon: cat.icon || '',
+        ex: cat.ex || '',
+        criteria: (cat.criteria || []).map(c => ({ n: c.n || '', d: c.d || '', w: c.w ?? 1, consistance: c.consistance || '' }))
+      }
+    }
+    categories.value = normalizedCats
+    const catKeys = Object.keys(normalizedCats)
+    if (catKeys.length) openCats.value = { [catKeys[0]]: true }
   } finally {
     catLoading.value = false
   }
@@ -382,12 +489,119 @@ function removeCriteria(domainKey, idx) {
 
 async function saveCatalogue() {
   try {
-    await api.put(`/programs/${catProgramCode.value}`, { actionTypes: catalogue.value })
+    await api.put(`/programs/${catProgramCode.value}`, { actionTypes: catalogue.value, categories: categories.value })
     catDirty.value = false
     showNotif('Catalogue enregistré', 'ok')
   } catch (e) {
     showNotif(e.response?.data?.error || 'Erreur sauvegarde', 'error')
   }
+}
+
+// --- Catégories solutions ---
+function addCategory() {
+  const key = `cat_${Date.now()}`
+  categories.value[key] = { label: 'Nouvelle catégorie', icon: '💻', ex: '', criteria: [] }
+  openCats.value[key] = true
+  catDirty.value = true
+}
+
+function removeCategory(key) {
+  if (!confirm(`Supprimer la catégorie "${categories.value[key]?.label}" ?`)) return
+  const updated = { ...categories.value }
+  delete updated[key]
+  categories.value = updated
+  catDirty.value = true
+}
+
+function toggleCat(key) {
+  openCats.value[key] = !openCats.value[key]
+}
+
+function addCatCriteria(catKey) {
+  categories.value[catKey].criteria.push({ n: '', d: '', w: 1, consistance: '' })
+  catDirty.value = true
+}
+
+function removeCatCriteria(catKey, idx) {
+  categories.value[catKey].criteria.splice(idx, 1)
+  catDirty.value = true
+}
+
+function downloadCSVTemplate() {
+  const header = 'domaine_key,domaine_label,domaine_icon,critere_intitule,critere_description,critere_poids,critere_consistance'
+  const examples = [
+    'competences_techniques,Compétences techniques,💻,Maîtrise de la solution,Niveau de maîtrise technique de la solution proposée,2,Le consultant doit démontrer une maîtrise approfondie via des certifications ou des projets réalisés',
+    'competences_techniques,Compétences techniques,💻,Expérience sectorielle,Connaissance du secteur d\'activité du client,1,Au moins 2 références dans le secteur concerné',
+    'references,Références clients,📋,Références vérifiables,Attestations de référence signées et cachetées,2,Minimum 3 attestations avec nom client - solution - dates - signature'
+  ]
+  const csv = [header, ...examples].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `catalogue_modele_${catProgramCode.value}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function parseCSVLine(line) {
+  const result = []
+  let cur = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { cur += '"'; i++ }
+      else inQuotes = !inQuotes
+    } else if (ch === ',' && !inQuotes) {
+      result.push(cur.trim())
+      cur = ''
+    } else {
+      cur += ch
+    }
+  }
+  result.push(cur.trim())
+  return result
+}
+
+function importCSV(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  e.target.value = ''
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim())
+    if (lines.length < 2) { showNotif('CSV vide ou invalide', 'error'); return }
+    // Ignorer la ligne d'en-tête
+    const rows = lines.slice(1)
+    const imported = {}
+    let errors = 0
+    for (const line of rows) {
+      const [dKey, dLabel, dIcon, cName, cDesc, cPoids, cConsistance] = parseCSVLine(line)
+      if (!dKey || !cName) { errors++; continue }
+      if (!imported[dKey]) {
+        imported[dKey] = { label: dLabel || dKey, icon: dIcon || '📌', criteria: [] }
+      }
+      imported[dKey].criteria.push({
+        n: cName,
+        d: cDesc || '',
+        w: parseInt(cPoids) || 1,
+        consistance: cConsistance || ''
+      })
+    }
+    const domainCount = Object.keys(imported).length
+    if (!domainCount) { showNotif('Aucune ligne valide dans le CSV', 'error'); return }
+    // Fusionner avec le catalogue existant (les clés identiques sont remplacées)
+    catalogue.value = { ...catalogue.value, ...imported }
+    // Ouvrir les domaines importés
+    for (const k of Object.keys(imported)) openDomains.value[k] = true
+    catDirty.value = true
+    const msg = errors > 0
+      ? `${domainCount} domaine(s) importés (${errors} ligne(s) ignorées)`
+      : `${domainCount} domaine(s) importés`
+    showNotif(msg, 'ok')
+  }
+  reader.readAsText(file, 'utf-8')
 }
 
 async function loadConfig() {
@@ -401,7 +615,7 @@ async function loadAudit() {
 }
 
 async function saveConfig(scope) {
-  const jiraKeys = ['jira_url', 'jira_project', 'jira_auth', 'jira_pat', 'jira_cf_score_sol', 'jira_cf_score_int']
+  const jiraKeys = ['jira_url', 'jira_project', 'jira_auth', 'jira_pat', 'jira_cf_score_sol', 'jira_cf_score_int', 'jira_jql']
   const aiKeys = ['ai_key', 'ai_model', 'ai_temp', 'ai_lang']
   const keys = scope === 'jira' ? jiraKeys : aiKeys
   const updates = Object.fromEntries(keys.filter(k => cfg.value[k] !== '').map(k => [k, cfg.value[k]]))
@@ -473,6 +687,17 @@ async function saveProgram() {
 async function toggleProgramActive(p) {
   await api.put(`/programs/${p.code}`, { active: !p.active })
   p.active = !p.active
+}
+
+async function deleteProgram(p) {
+  if (!confirm(`Supprimer définitivement le programme "${p.name}" (${p.code}) ?\n\nCette action est irréversible.`)) return
+  try {
+    await api.delete(`/programs/${p.code}`)
+    programs.value = programs.value.filter(x => x.id !== p.id)
+    showNotif('Programme supprimé', 'ok')
+  } catch (e) {
+    showNotif(e.response?.data?.error || 'Erreur suppression', 'error')
+  }
 }
 
 // ---- Prompts IA ----

@@ -8,18 +8,23 @@ router.use(authMiddleware, requireMinRole('GESTIONNAIRE'));
 
 router.get('/', async (req, res, next) => {
   try {
-    const { program, status, maxResults = 50 } = req.query;
+    const { maxResults = 200 } = req.query;
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
     let jiraProject = 'REF';
+    let jiraJql = '';
     try {
-      const cfg = await prisma.appConfig.findUnique({ where: { key: 'jira_project' } });
-      if (cfg) jiraProject = cfg.value;
+      const [cfgProject, cfgJql] = await Promise.all([
+        prisma.appConfig.findUnique({ where: { key: 'jira_project' } }),
+        prisma.appConfig.findUnique({ where: { key: 'jira_jql' } })
+      ]);
+      if (cfgProject) jiraProject = cfgProject.value;
+      if (cfgJql) jiraJql = cfgJql.value;
     } finally { await prisma.$disconnect(); }
 
-    let jql = `project = ${jiraProject}`;
-    if (status) jql += ` AND status = "${status}"`;
-    jql += ' ORDER BY created DESC';
+    const jql = jiraJql.trim()
+      ? jiraJql.trim()
+      : `project = ${jiraProject} ORDER BY created DESC`;
 
     const data = await jira.searchIssues(jql, ['summary', 'status', 'issuetype', 'assignee', 'created'], Number(maxResults));
     const dossiers = (data.issues || []).map(i => ({
