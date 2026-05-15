@@ -11,13 +11,13 @@ router.use(authMiddleware, requireMinRole('GESTIONNAIRE'));
 
 router.post('/briefing', async (req, res, next) => {
   try {
-    const { prestataire, solution, category, modules, programCode } = req.body;
+    const { prestataire, solution, category, modules, programCode, amiContext } = req.body;
     let amiText = '';
     if (programCode) {
       const prog = await prisma.program.findUnique({ where: { code: programCode }, select: { amiText: true } });
       if (prog) amiText = prog.amiText;
     }
-    const text = await ai.generateBriefing({ prestataire, solution, category, modules, amiText });
+    const text = await ai.generateBriefing({ prestataire, solution, category, modules, amiText, amiContext });
     res.json({ text });
   } catch (err) { next(err); }
 });
@@ -40,23 +40,39 @@ router.post('/check-coherence', async (req, res, next) => {
 // filesData: [{ base64, mimeType, filename }]
 router.post('/analyze-cv', async (req, res, next) => {
   try {
-    const { filesData, prestataire, solution, programCode } = req.body;
+    const { filesData, prestataire, solution, programCode, intervenantContext } = req.body;
     if (!filesData?.length) return res.status(400).json({ error: 'Fichiers requis' });
-    let programName = '';
+    let programName = '', amiText = '';
     if (programCode) {
-      const prog = await prisma.program.findUnique({ where: { code: programCode }, select: { name: true } });
-      if (prog) programName = prog.name;
+      const prog = await prisma.program.findUnique({ where: { code: programCode }, select: { name: true, amiText: true } });
+      if (prog) { programName = prog.name; amiText = prog.amiText || ''; }
     }
-    const text = await ai.analyzeCV({ filesData, prestataire, solution, programName });
+    const text = await ai.analyzeCV({ filesData, prestataire, solution, programName, amiText, intervenantContext });
     res.json({ text });
   } catch (err) { next(err); }
 });
 
 router.post('/analyze-attestations', async (req, res, next) => {
   try {
-    const { imageBase64List, solution, intervenant } = req.body;
-    if (!imageBase64List?.length) return res.status(400).json({ error: 'Images requises' });
-    const text = await ai.analyzeAttestations({ imageBase64List, solution, intervenant });
+    const { filesData, imageBase64List, solution, intervenant } = req.body;
+    // Accepte soit filesData (nouveau format) soit imageBase64List (legacy)
+    const files = filesData?.length ? filesData : (imageBase64List || []).map(b64 => ({ base64: b64, mimeType: 'image/jpeg', filename: 'attestation' }));
+    if (!files.length) return res.status(400).json({ error: 'Fichiers requis' });
+    const text = await ai.analyzeAttestations({ filesData: files, solution, intervenant });
+    res.json({ text });
+  } catch (err) { next(err); }
+});
+
+router.post('/analyze-certif-editeur', async (req, res, next) => {
+  try {
+    const { filesData, solution, prestataire, programCode } = req.body;
+    if (!filesData?.length) return res.status(400).json({ error: 'Fichiers requis' });
+    let programName = '';
+    if (programCode) {
+      const prog = await prisma.program.findUnique({ where: { code: programCode }, select: { name: true } });
+      if (prog) programName = prog.name;
+    }
+    const text = await ai.analyzeCertifEditeur({ filesData, solution, prestataire, programName });
     res.json({ text });
   } catch (err) { next(err); }
 });

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import api from '@/services/api'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -27,11 +28,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchMe() {
-    if (!token.value) return
+    // Tente d'abord un refresh silencieux si on a un cookie refresh token
+    // même sans access token valide, pour éviter les déconnexions intempestives
     try {
+      if (!token.value) {
+        // Pas de token en localStorage — tenter un refresh depuis le cookie
+        const { data: refreshData } = await axios.post('/api/auth/refresh', {}, { withCredentials: true })
+        setToken(refreshData.accessToken)
+      }
       const { data } = await api.get('/auth/me')
       user.value = data
     } catch {
+      // Le refresh a échoué → vraie déconnexion
       token.value = null
       user.value = null
       localStorage.removeItem('access_token')

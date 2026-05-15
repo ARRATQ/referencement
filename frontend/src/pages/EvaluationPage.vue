@@ -78,6 +78,7 @@
                 <div class="row gap8">
                   <input v-model="form.jiraKeyPrestataire" placeholder="ex: REF-001" @blur="loadJiraHierarchy" />
                   <button class="btn btn-ghost btn-sm" @click="loadJiraHierarchy">↓ Charger</button>
+                  <a v-if="jiraLink(form.jiraKeyPrestataire)" :href="jiraLink(form.jiraKeyPrestataire)" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">↗ Jira</a>
                 </div>
               </div>
               <div class="field"><label>Prestataire / Société</label><input v-model="form.prestataire" /></div>
@@ -125,6 +126,7 @@
                     <span class="hierarchy-dot dot-int"></span>
                     <span>{{ int.key }}</span> — {{ int.summary }}
                     <span v-if="int.attachments?.length" class="text-mono" style="margin-left:auto;">📎 {{ int.attachments.length }}</span>
+                    <a v-if="jiraLink(int.key)" :href="jiraLink(int.key)" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="margin-left:8px; padding:2px 8px; font-size:11px;" @click.stop>↗</a>
                     <span v-if="extractLoading.intervenant && form.jiraKeyIntervenant === int.key" class="spinner spinner-dark" style="margin-left:8px;"></span>
                     <span v-else-if="form.jiraKeyIntervenant === int.key" class="badge badge-green" style="margin-left:8px;">✓ Sélectionné</span>
                   </div>
@@ -132,6 +134,7 @@
                     <span class="hierarchy-dot dot-comp"></span>
                     <span>{{ comp.key }}</span> — {{ comp.summary }}
                     <span v-if="comp.attachments?.length" class="text-mono" style="margin-left:auto;">📎 {{ comp.attachments.length }}</span>
+                    <a v-if="jiraLink(comp.key)" :href="jiraLink(comp.key)" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="margin-left:8px; padding:2px 8px; font-size:11px;" @click.stop>↗</a>
                     <span v-if="extractLoading.competence && form.jiraKeyCompetence === comp.key" class="spinner spinner-dark" style="margin-left:8px;"></span>
                     <span v-else-if="form.jiraKeyCompetence === comp.key" class="badge badge-green" style="margin-left:8px;">✓</span>
                   </div>
@@ -232,11 +235,17 @@
             </div>
           </div>
 
-          <!-- Panel IA Briefing -->
+          <!-- ================================================================ -->
+          <!-- SECTION UPLOAD FICHIERS — séparée par type, évaluation manuelle -->
+          <!-- ================================================================ -->
+          <div class="upload-section-title">Documents à uploader pour l'évaluation IA</div>
+
+          <!-- Panel Briefing IA -->
           <div class="ai-panel">
             <div class="ai-header">
               <span class="ai-badge">IA — OpenRouter</span>
               <span class="ai-title">Briefing pré-commission</span>
+              <span v-if="aiTexts.briefing" class="badge badge-green" style="margin-left:auto;">✓ Généré</span>
             </div>
             <div class="ai-content" :class="{ loading: aiLoading.briefing }">{{ aiTexts.briefing || 'Renseignez le prestataire et la solution, puis lancez le briefing IA.' }}</div>
             <div class="ai-actions">
@@ -247,29 +256,174 @@
             </div>
           </div>
 
-          <!-- Panel CV -->
+          <!-- Panel CV — Upload séparé + bouton manuel -->
           <div class="ai-panel">
             <div class="ai-header">
               <span class="ai-badge">IA — Analyse CV</span>
-              <span class="ai-title">Analyse CV / Diplômes — ticket Intervenant</span>
+              <span class="ai-title">CV / Diplômes de l'intervenant</span>
+              <span v-if="aiTexts.cv" class="badge badge-green" style="margin-left:auto;">✓ Analysé</span>
             </div>
-            <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.35); margin-bottom:10px;">Pièces jointes du ticket intervenant sélectionné (CV + diplômes)</div>
-            <div class="ai-content">{{ aiTexts.cv || 'Sélectionnez un intervenant dans la hiérarchie Jira, puis choisissez le CV.' }}</div>
+            <div class="upload-zone-label">1 — Ajoutez les fichiers (un à un ou en lot)</div>
+            <!-- Source tabs -->
+            <div class="source-tabs">
+              <div class="source-tab" :class="{ active: cvSource === 'jira' }" @click="cvSource = 'jira'">
+                Depuis Jira ({{ selectedIntervenant?.attachments?.length || 0 }})
+              </div>
+              <div class="source-tab" :class="{ active: cvSource === 'upload' }" @click="cvSource = 'upload'">
+                Depuis l'ordinateur
+              </div>
+            </div>
+            <!-- Jira attachments -->
+            <div v-if="cvSource === 'jira'" class="inline-att-list">
+              <div v-if="!selectedIntervenant?.attachments?.length" class="empty-att">Sélectionnez un intervenant dans la hiérarchie Jira.</div>
+              <div v-for="att in selectedIntervenant?.attachments" :key="att.id"
+                class="att-item" :class="{ sel: selectedCVAttIds.includes(att.id) }"
+                @click="toggleCVAtt(att)">
+                <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
+                <div class="att-info">
+                  <div class="att-name">{{ att.filename }}</div>
+                  <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
+                </div>
+                <span v-if="selectedCVAttIds.includes(att.id)" class="check-mark">✓</span>
+              </div>
+              <div v-if="selectedIntervenant?.attachments?.length" class="text-mono mt8">{{ selectedCVAttIds.length }} fichier(s) sélectionné(s)</div>
+            </div>
+            <!-- Upload local -->
+            <div v-if="cvSource === 'upload'" class="inline-upload">
+              <div class="drop-zone" @click="$refs.cvFileInput.click()" @dragover.prevent @drop.prevent="onCVDrop">
+                <div style="font-size:24px; margin-bottom:6px;">📂</div>
+                <div style="font-size:13px; color:var(--text2);">Cliquez ou glissez vos fichiers ici</div>
+                <div style="font-size:11px; color:var(--text3); margin-top:4px; font-family:var(--mono);">PDF, images (PNG, JPG), Word — plusieurs fichiers acceptés</div>
+                <input ref="cvFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,image/*,application/pdf"
+                  style="display:none" @change="onCVFileChange" />
+              </div>
+              <div v-if="uploadedCVFiles.length" style="margin-top:8px;">
+                <div v-for="(f, i) in uploadedCVFiles" :key="i" class="att-item" style="cursor:default;">
+                  <div class="att-icon">{{ attIcon(f.type) }}</div>
+                  <div class="att-info">
+                    <div class="att-name">{{ f.name }}</div>
+                    <div class="att-meta">{{ (f.size / 1024).toFixed(0) }} Ko · {{ f.type }}</div>
+                  </div>
+                  <button style="margin-left:auto; background:none; border:none; color:var(--red); cursor:pointer; font-size:16px;" @click.stop="removeUploadedCV(i)">×</button>
+                </div>
+              </div>
+            </div>
+            <div class="upload-zone-label mt8">2 — Lancez l'analyse manuellement</div>
+            <div class="ai-content" v-if="aiTexts.cv">{{ aiTexts.cv }}</div>
+            <div class="ai-content" v-else style="color:var(--text3);">Aucune analyse CV effectuée.</div>
             <div class="ai-actions">
-              <button class="ai-btn" @click="showCVPicker = true">↓ Sélectionner les fichiers CV</button>
+              <button class="ai-btn"
+                :disabled="(cvSource === 'jira' ? !selectedCVAttIds.length : !uploadedCVFiles.length) || aiLoading.cv"
+                @click="analyzeCV">
+                <span v-if="aiLoading.cv" class="spinner"></span>
+                <span v-else>◈ Lancer l'analyse CV</span>
+              </button>
               <button v-if="aiTexts.cv" class="ai-btn" @click="autoFill">◈ Pré-remplir le dossier</button>
             </div>
           </div>
 
-          <!-- Panel Attestations -->
+          <!-- Panel Attestations de référence intervenant — Upload séparé + bouton manuel -->
           <div class="ai-panel">
             <div class="ai-header">
               <span class="ai-badge">IA — Attestations</span>
-              <span class="ai-title">Attestations de référence — ticket Compétence</span>
+              <span class="ai-title">Attestations de référence — Intervenant</span>
+              <span v-if="aiTexts.attestations" class="badge badge-green" style="margin-left:auto;">✓ Analysé</span>
             </div>
-            <div class="ai-content">{{ aiTexts.attestations || 'Sélectionnez une compétence dans la hiérarchie Jira, puis choisissez les attestations.' }}</div>
+            <div class="upload-zone-label">1 — Ajoutez les attestations (Jira ou ordinateur)</div>
+            <!-- Source tabs -->
+            <div class="source-tabs">
+              <div class="source-tab" :class="{ active: attSource === 'jira' }" @click="attSource = 'jira'">
+                Depuis Jira ({{ selectedCompetence?.attachments?.length || 0 }})
+              </div>
+              <div class="source-tab" :class="{ active: attSource === 'upload' }" @click="attSource = 'upload'">
+                Depuis l'ordinateur
+              </div>
+            </div>
+            <!-- Jira attachments -->
+            <div v-if="attSource === 'jira'" class="inline-att-list">
+              <div v-if="!selectedCompetence?.attachments?.length" class="empty-att">Sélectionnez une compétence dans la hiérarchie Jira.</div>
+              <div v-for="att in selectedCompetence?.attachments" :key="att.id"
+                class="att-item" :class="{ sel: selectedAttIds.includes(att.id) }"
+                @click="toggleAtt(att)">
+                <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
+                <div class="att-info">
+                  <div class="att-name">{{ att.filename }}</div>
+                  <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
+                </div>
+                <span v-if="selectedAttIds.includes(att.id)" class="check-mark">✓</span>
+              </div>
+              <div v-if="selectedCompetence?.attachments?.length" class="text-mono mt8">{{ selectedAttIds.length }} attestation(s) sélectionnée(s)</div>
+            </div>
+            <!-- Upload local -->
+            <div v-if="attSource === 'upload'" class="inline-upload">
+              <div class="drop-zone" @click="$refs.attFileInput.click()" @dragover.prevent @drop.prevent="onAttDrop">
+                <div style="font-size:24px; margin-bottom:6px;">📂</div>
+                <div style="font-size:13px; color:var(--text2);">Cliquez ou glissez vos attestations ici</div>
+                <div style="font-size:11px; color:var(--text3); margin-top:4px; font-family:var(--mono);">PDF, images (PNG, JPG) — plusieurs fichiers acceptés</div>
+                <input ref="attFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,image/*,application/pdf"
+                  style="display:none" @change="onAttFileChange" />
+              </div>
+              <div v-if="uploadedAttFiles.length" style="margin-top:8px;">
+                <div v-for="(f, i) in uploadedAttFiles" :key="i" class="att-item" style="cursor:default;">
+                  <div class="att-icon">{{ attIcon(f.type) }}</div>
+                  <div class="att-info">
+                    <div class="att-name">{{ f.name }}</div>
+                    <div class="att-meta">{{ (f.size / 1024).toFixed(0) }} Ko · {{ f.type }}</div>
+                  </div>
+                  <button style="margin-left:auto; background:none; border:none; color:var(--red); cursor:pointer; font-size:16px;" @click.stop="removeUploadedAtt(i)">×</button>
+                </div>
+              </div>
+            </div>
+            <div class="upload-zone-label mt8">2 — Lancez l'analyse manuellement</div>
+            <div class="ai-content" v-if="aiTexts.attestations">{{ aiTexts.attestations }}</div>
+            <div class="ai-content" v-else style="color:var(--text3);">Aucune analyse d'attestations effectuée.</div>
             <div class="ai-actions">
-              <button class="ai-btn" :disabled="!selectedCompetence?.attachments?.length" @click="showAttPicker = true">↓ Sélectionner les attestations</button>
+              <button class="ai-btn"
+                :disabled="(attSource === 'jira' ? !selectedAttIds.length : !uploadedAttFiles.length) || aiLoading.att"
+                @click="analyzeAttestations">
+                <span v-if="aiLoading.att" class="spinner"></span>
+                <span v-else>◈ Lancer l'analyse attestations</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel Certificat Éditeur (solutions uniquement) -->
+          <div v-if="refType === 'SOLUTION'" class="ai-panel">
+            <div class="ai-header">
+              <span class="ai-badge" style="background:rgba(251,180,36,0.15); color:#fbbf24; border-color:rgba(251,180,36,0.3);">IA — Certificat Éditeur</span>
+              <span class="ai-title">Certificat de référence éditeur</span>
+              <span v-if="aiTexts.certifEditeur" class="badge badge-green" style="margin-left:auto;">✓ Analysé</span>
+            </div>
+            <div class="upload-zone-label">1 — Ajoutez le certificat de l'éditeur</div>
+            <div class="inline-upload">
+              <div class="drop-zone" @click="$refs.certifFileInput.click()" @dragover.prevent @drop.prevent="onCertifDrop">
+                <div style="font-size:24px; margin-bottom:6px;">🏷️</div>
+                <div style="font-size:13px; color:var(--text2);">Cliquez ou glissez le certificat ici</div>
+                <div style="font-size:11px; color:var(--text3); margin-top:4px; font-family:var(--mono);">PDF, images (PNG, JPG)</div>
+                <input ref="certifFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,image/*,application/pdf"
+                  style="display:none" @change="onCertifFileChange" />
+              </div>
+              <div v-if="uploadedCertifFiles.length" style="margin-top:8px;">
+                <div v-for="(f, i) in uploadedCertifFiles" :key="i" class="att-item" style="cursor:default;">
+                  <div class="att-icon">{{ attIcon(f.type) }}</div>
+                  <div class="att-info">
+                    <div class="att-name">{{ f.name }}</div>
+                    <div class="att-meta">{{ (f.size / 1024).toFixed(0) }} Ko · {{ f.type }}</div>
+                  </div>
+                  <button style="margin-left:auto; background:none; border:none; color:var(--red); cursor:pointer; font-size:16px;" @click.stop="removeUploadedCertif(i)">×</button>
+                </div>
+              </div>
+            </div>
+            <div class="upload-zone-label mt8">2 — Lancez l'analyse manuellement</div>
+            <div class="ai-content" v-if="aiTexts.certifEditeur">{{ aiTexts.certifEditeur }}</div>
+            <div class="ai-content" v-else style="color:var(--text3);">Aucune analyse de certificat éditeur effectuée.</div>
+            <div class="ai-actions">
+              <button class="ai-btn"
+                :disabled="!uploadedCertifFiles.length || aiLoading.certifEditeur"
+                @click="analyzeCertifEditeur">
+                <span v-if="aiLoading.certifEditeur" class="spinner"></span>
+                <span v-else>◈ Lancer l'analyse certificat</span>
+              </button>
             </div>
           </div>
 
@@ -292,6 +446,8 @@
             </div>
             <div style="text-align:right;">
               <div class="score-verdict" :class="scoreClass(solScore.pct, 60, 45)">{{ solScore.verdict ? verdictLabel[solScore.verdict] : 'En attente' }}</div>
+              <!-- Bouton télécharger grille -->
+              <button class="btn btn-ghost btn-sm" style="margin-top:8px;" @click="downloadGrille">↓ Télécharger la grille</button>
             </div>
           </div>
           <div class="card">
@@ -364,9 +520,21 @@
               </div>
             </div>
           </div>
-          <div v-if="aiTexts.cv" class="ai-panel">
-            <div class="ai-header"><span class="ai-badge">IA — Référence CV</span><span class="ai-title">Analyse CV (effectuée à l'étape précédente)</span></div>
-            <div class="ai-content" style="font-size:12px;">{{ aiTexts.cv }}</div>
+          <!-- Récap analyses IA disponibles -->
+          <div v-if="aiTexts.cv || aiTexts.attestations || aiTexts.certifEditeur" class="ai-panel">
+            <div class="ai-header"><span class="ai-badge">IA — Synthèse analyses</span><span class="ai-title">Résumé des analyses effectuées</span></div>
+            <div v-if="aiTexts.cv" style="margin-bottom:10px;">
+              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Analyse CV</div>
+              <div class="ai-content" style="font-size:12px;">{{ aiTexts.cv }}</div>
+            </div>
+            <div v-if="aiTexts.attestations" style="margin-bottom:10px;">
+              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Attestations intervenant</div>
+              <div class="ai-content" style="font-size:12px;">{{ aiTexts.attestations }}</div>
+            </div>
+            <div v-if="aiTexts.certifEditeur">
+              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Certificat éditeur</div>
+              <div class="ai-content" style="font-size:12px;">{{ aiTexts.certifEditeur }}</div>
+            </div>
           </div>
           <div class="row-between mt16">
             <button class="btn btn-ghost" @click="goStep(2)">← Retour</button>
@@ -430,103 +598,6 @@
         </div>
       </template>
     </div>
-
-    <!-- CV PICKER MODAL -->
-    <div v-if="showCVPicker" class="modal-overlay" @click.self="showCVPicker = false">
-      <div class="modal" style="width:600px;">
-        <div class="modal-title">Sélectionner les fichiers CV / Diplômes</div>
-
-        <!-- Onglets source -->
-        <div style="display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:12px;">
-          <div @click="cvSource = 'jira'" style="padding:7px 16px; font-size:12px; font-family:var(--mono); cursor:pointer; border-bottom:2px solid transparent;"
-            :style="cvSource === 'jira' ? 'border-color:var(--accent); color:var(--accent)' : 'color:var(--text3)'">
-            Depuis Jira ({{ selectedIntervenant?.attachments?.length || 0 }})
-          </div>
-          <div @click="cvSource = 'upload'" style="padding:7px 16px; font-size:12px; font-family:var(--mono); cursor:pointer; border-bottom:2px solid transparent;"
-            :style="cvSource === 'upload' ? 'border-color:var(--accent); color:var(--accent)' : 'color:var(--text3)'">
-            Depuis l'ordinateur
-          </div>
-        </div>
-
-        <!-- Source Jira -->
-        <div v-if="cvSource === 'jira'">
-          <div class="modal-sub" style="margin-bottom:8px;">Pièces jointes de {{ form.jiraKeyIntervenant }} — sélection multiple</div>
-          <div v-if="!selectedIntervenant?.attachments?.length" style="padding:16px; text-align:center; color:var(--text3); font-size:12px;">
-            Aucune pièce jointe. Sélectionnez un intervenant dans la hiérarchie Jira.
-          </div>
-          <div class="att-list">
-            <div v-for="att in selectedIntervenant?.attachments" :key="att.id"
-              class="att-item" :class="{ sel: selectedCVAttIds.includes(att.id) }"
-              @click="toggleCVAtt(att)">
-              <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
-              <div class="att-info">
-                <div class="att-name">{{ att.filename }}</div>
-                <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
-              </div>
-              <span v-if="selectedCVAttIds.includes(att.id)" style="margin-left:auto; color:var(--green); font-size:14px;">✓</span>
-            </div>
-          </div>
-          <div class="text-mono mt8">{{ selectedCVAttIds.length }} fichier(s) sélectionné(s)</div>
-        </div>
-
-        <!-- Source upload local -->
-        <div v-if="cvSource === 'upload'">
-          <div style="border:2px dashed var(--border); border-radius:var(--radius); padding:24px; text-align:center; cursor:pointer; position:relative;"
-            @click="$refs.cvFileInput.click()" @dragover.prevent @drop.prevent="onCVDrop">
-            <div style="font-size:28px; margin-bottom:8px;">📂</div>
-            <div style="font-size:13px; color:var(--text2);">Cliquez ou glissez vos fichiers ici</div>
-            <div style="font-size:11px; color:var(--text3); margin-top:4px; font-family:var(--mono);">PDF, images (PNG, JPG), Word — plusieurs fichiers acceptés</div>
-            <input ref="cvFileInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,image/*,application/pdf"
-              style="display:none" @change="onCVFileChange" />
-          </div>
-          <div v-if="uploadedCVFiles.length" style="margin-top:10px;">
-            <div v-for="(f, i) in uploadedCVFiles" :key="i" class="att-item" style="cursor:default;">
-              <div class="att-icon">{{ attIcon(f.type) }}</div>
-              <div class="att-info">
-                <div class="att-name">{{ f.name }}</div>
-                <div class="att-meta">{{ (f.size / 1024).toFixed(0) }} Ko · {{ f.type }}</div>
-              </div>
-              <button style="margin-left:auto; background:none; border:none; color:var(--red); cursor:pointer; font-size:16px;" @click.stop="removeUploadedCV(i)">×</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn btn-ghost" @click="showCVPicker = false">Annuler</button>
-          <button class="btn btn-primary"
-            :disabled="(cvSource === 'jira' ? !selectedCVAttIds.length : !uploadedCVFiles.length) || aiLoading.cv"
-            @click="analyzeCV">
-            <span v-if="aiLoading.cv" class="spinner"></span>
-            <span v-else>◈ Analyser avec l'IA</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ATTESTATION PICKER MODAL -->
-    <div v-if="showAttPicker" class="modal-overlay" @click.self="showAttPicker = false">
-      <div class="modal" style="width:600px;">
-        <div class="modal-title">Sélectionner les attestations de référence</div>
-        <div class="modal-sub">Pièces jointes de {{ form.jiraKeyCompetence }}</div>
-        <div class="att-list">
-          <div v-for="att in selectedCompetence?.attachments" :key="att.id" class="att-item" :class="{ sel: selectedAttIds.includes(att.id) }" @click="toggleAtt(att)">
-            <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
-            <div class="att-info">
-              <div class="att-name">{{ att.filename }}</div>
-              <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
-            </div>
-          </div>
-        </div>
-        <div class="text-mono mt8">{{ selectedAttIds.length }} attestation(s) sélectionnée(s)</div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" @click="showAttPicker = false">Annuler</button>
-          <button class="btn btn-primary" :disabled="!selectedAttIds.length || aiLoading.att" @click="analyzeAttestations">
-            <span v-if="aiLoading.att" class="spinner"></span>
-            <span v-else>◈ Analyser</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -553,18 +624,26 @@ const solScores = ref({})
 const solObs = ref({})
 const intScores = ref({})
 const intObs = ref({})
-const aiTexts = ref({ briefing: '', cv: '', attestations: '', coherence: '', pv: '' })
-const aiLoading = ref({ briefing: false, cv: false, att: false, coherence: false, pv: false })
+const aiTexts = ref({ briefing: '', cv: '', attestations: '', certifEditeur: '', coherence: '', pv: '' })
+const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false })
 const moduleInput = ref('')
 const jiraHierarchy = ref(null)
 const selectedIntervenant = ref(null)
 const selectedCompetence = ref(null)
-const showCVPicker = ref(false)
-const showAttPicker = ref(false)
+
+// CV sources
 const cvSource = ref('jira')
 const selectedCVAttIds = ref([])
 const uploadedCVFiles = ref([])
+
+// Attestation sources (Jira ou local)
+const attSource = ref('jira')
 const selectedAttIds = ref([])
+const uploadedAttFiles = ref([])
+
+// Certificat éditeur (local uniquement)
+const uploadedCertifFiles = ref([])
+
 const submitting = ref(false)
 const extractedIntervenant = ref(null)
 const extractedCompetence = ref(null)
@@ -618,9 +697,21 @@ const finalDecision = computed(() => {
   return 'REJETE'
 })
 
+const jiraBaseUrl = ref('')
+
+function jiraLink(key) {
+  if (!jiraBaseUrl.value || !key) return null
+  return jiraBaseUrl.value.replace(/\/$/, '') + '/browse/' + key
+}
+
 onMounted(async () => {
-  const { data } = await api.get('/programs')
-  programs.value = data.filter(p => p.active)
+  const [{ data: progs }, { data: cfg }] = await Promise.all([
+    api.get('/programs'),
+    api.get('/admin/config')
+  ])
+  programs.value = progs.filter(p => p.active)
+  const urlCfg = cfg.find(c => c.key === 'jira_url')
+  if (urlCfg?.value) jiraBaseUrl.value = urlCfg.value
   if (route.query.jiraKey) {
     form.value.jiraKeyPrestataire = route.query.jiraKey
     await loadJiraHierarchy()
@@ -645,6 +736,7 @@ async function loadEval(id) {
   aiTexts.value.pv = data.pvText || ''
   aiTexts.value.cv = data.cvAnalysis || ''
   aiTexts.value.attestations = data.attestationsAnalysis || ''
+  aiTexts.value.certifEditeur = data.certifEditeurAnalysis || ''
   selectedProgramCode.value = data.program?.code
   await onProgramChange()
   refType.value = data.referenceType
@@ -672,6 +764,7 @@ async function saveEval() {
     intObservations: intObs.value,
     cvAnalysis: aiTexts.value.cv,
     attestationsAnalysis: aiTexts.value.attestations,
+    certifEditeurAnalysis: aiTexts.value.certifEditeur,
     briefingText: aiTexts.value.briefing,
     coherenceCheck: aiTexts.value.coherence,
     pvText: aiTexts.value.pv,
@@ -816,22 +909,7 @@ function toggleModule(mod) {
   form.value.modules = mods
 }
 
-function toggleAtt(att) {
-  const idx = selectedAttIds.value.indexOf(att.id)
-  if (idx >= 0) selectedAttIds.value.splice(idx, 1)
-  else selectedAttIds.value.push(att.id)
-}
-
-async function generateBriefing() {
-  aiLoading.value.briefing = true
-  try {
-    const { data } = await api.post('/ai/briefing', { prestataire: form.value.prestataire, solution: form.value.solution || form.value.actionLabel, category: selectedCategory.value, modules: form.value.modules, programCode: selectedProgramCode.value })
-    aiTexts.value.briefing = data.text
-    await saveEval()
-  } catch (e) { showNotif(e.response?.data?.error || 'Erreur IA', 'err') }
-  finally { aiLoading.value.briefing = false }
-}
-
+// CV toggles
 function toggleCVAtt(att) {
   const idx = selectedCVAttIds.value.indexOf(att.id)
   if (idx >= 0) selectedCVAttIds.value.splice(idx, 1)
@@ -847,9 +925,37 @@ function onCVDrop(e) {
   for (const f of e.dataTransfer.files) uploadedCVFiles.value.push(f)
 }
 
-function removeUploadedCV(i) {
-  uploadedCVFiles.value.splice(i, 1)
+function removeUploadedCV(i) { uploadedCVFiles.value.splice(i, 1) }
+
+// Attestation toggles
+function toggleAtt(att) {
+  const idx = selectedAttIds.value.indexOf(att.id)
+  if (idx >= 0) selectedAttIds.value.splice(idx, 1)
+  else selectedAttIds.value.push(att.id)
 }
+
+function onAttFileChange(e) {
+  for (const f of e.target.files) uploadedAttFiles.value.push(f)
+  e.target.value = ''
+}
+
+function onAttDrop(e) {
+  for (const f of e.dataTransfer.files) uploadedAttFiles.value.push(f)
+}
+
+function removeUploadedAtt(i) { uploadedAttFiles.value.splice(i, 1) }
+
+// Certificat éditeur
+function onCertifFileChange(e) {
+  for (const f of e.target.files) uploadedCertifFiles.value.push(f)
+  e.target.value = ''
+}
+
+function onCertifDrop(e) {
+  for (const f of e.dataTransfer.files) uploadedCertifFiles.value.push(f)
+}
+
+function removeUploadedCertif(i) { uploadedCertifFiles.value.splice(i, 1) }
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -867,25 +973,59 @@ function arrayBufferToBase64(buf) {
   return btoa(binary)
 }
 
+async function generateBriefing() {
+  aiLoading.value.briefing = true
+  try {
+    const { data } = await api.post('/ai/briefing', {
+      prestataire: form.value.prestataire,
+      solution: form.value.solution || form.value.actionLabel,
+      category: selectedCategory.value,
+      modules: form.value.modules,
+      programCode: selectedProgramCode.value,
+      // Contexte dossier complet pour l'AMI
+      amiContext: {
+        nature: form.value.nature,
+        origine: form.value.origine,
+        modeAcquisition: form.value.modeAcquisition,
+        secteur: form.value.secteur,
+        intervenantInfo: extractedIntervenant.value ? `${extractedIntervenant.value.prenom} ${extractedIntervenant.value.nom}, ${extractedIntervenant.value.typeFormation}` : ''
+      }
+    })
+    aiTexts.value.briefing = data.text
+    await saveEval()
+  } catch (e) { showNotif(e.response?.data?.error || 'Erreur IA', 'err') }
+  finally { aiLoading.value.briefing = false }
+}
+
 async function analyzeCV() {
   aiLoading.value.cv = true
-  showCVPicker.value = false
   try {
     let filesData = []
     if (cvSource.value === 'jira') {
       const atts = (selectedIntervenant.value?.attachments || []).filter(a => selectedCVAttIds.value.includes(a.id))
-      filesData = await Promise.all(atts.map(async att => {
+      // Traitement séquentiel pour éviter les erreurs avec plusieurs fichiers
+      for (const att of atts) {
         const { data: buf } = await api.get(`/dossiers/${form.value.jiraKeyIntervenant}/attachment/${att.id}`, { responseType: 'arraybuffer' })
-        return { base64: arrayBufferToBase64(buf), mimeType: att.mimeType, filename: att.filename }
-      }))
+        filesData.push({ base64: arrayBufferToBase64(buf), mimeType: att.mimeType, filename: att.filename })
+      }
     } else {
-      filesData = await Promise.all(uploadedCVFiles.value.map(async f => ({
-        base64: await fileToBase64(f),
-        mimeType: f.type || 'application/octet-stream',
-        filename: f.name
-      })))
+      for (const f of uploadedCVFiles.value) {
+        filesData.push({ base64: await fileToBase64(f), mimeType: f.type || 'application/octet-stream', filename: f.name })
+      }
     }
-    const { data } = await api.post('/ai/analyze-cv', { filesData, prestataire: form.value.prestataire, solution: form.value.solution, programCode: selectedProgramCode.value })
+    const { data } = await api.post('/ai/analyze-cv', {
+      filesData,
+      prestataire: form.value.prestataire,
+      solution: form.value.solution,
+      programCode: selectedProgramCode.value,
+      // Contexte AMI complet
+      intervenantContext: extractedIntervenant.value ? {
+        nom: extractedIntervenant.value.nom,
+        prenom: extractedIntervenant.value.prenom,
+        typeFormation: extractedIntervenant.value.typeFormation,
+        niveauFormation: extractedIntervenant.value.niveauFormation
+      } : null
+    })
     aiTexts.value.cv = data.text
     await saveEval()
     showNotif('CV analysé', 'ok')
@@ -895,19 +1035,49 @@ async function analyzeCV() {
 
 async function analyzeAttestations() {
   aiLoading.value.att = true
-  showAttPicker.value = false
   try {
-    const atts = selectedCompetence.value.attachments.filter(a => selectedAttIds.value.includes(a.id))
-    const images = await Promise.all(atts.map(async att => {
-      const { data: buf } = await api.get(`/dossiers/${form.value.jiraKeyCompetence}/attachment/${att.id}`, { responseType: 'arraybuffer' })
-      return arrayBufferToBase64(buf)
-    }))
-    const { data } = await api.post('/ai/analyze-attestations', { imageBase64List: images, solution: form.value.solution, intervenant: form.value.jiraKeyIntervenant })
+    let filesData = []
+    if (attSource.value === 'jira') {
+      const atts = selectedCompetence.value.attachments.filter(a => selectedAttIds.value.includes(a.id))
+      for (const att of atts) {
+        const { data: buf } = await api.get(`/dossiers/${form.value.jiraKeyCompetence}/attachment/${att.id}`, { responseType: 'arraybuffer' })
+        filesData.push({ base64: arrayBufferToBase64(buf), mimeType: att.mimeType, filename: att.filename })
+      }
+    } else {
+      for (const f of uploadedAttFiles.value) {
+        filesData.push({ base64: await fileToBase64(f), mimeType: f.type || 'application/octet-stream', filename: f.name })
+      }
+    }
+    const { data } = await api.post('/ai/analyze-attestations', {
+      filesData,
+      solution: form.value.solution,
+      intervenant: form.value.jiraKeyIntervenant || `${extractedIntervenant.value?.prenom || ''} ${extractedIntervenant.value?.nom || ''}`.trim()
+    })
     aiTexts.value.attestations = data.text
     await saveEval()
     showNotif('Attestations analysées', 'ok')
   } catch (e) { showNotif('Erreur: ' + (e.response?.data?.error || e.message), 'err') }
   finally { aiLoading.value.att = false }
+}
+
+async function analyzeCertifEditeur() {
+  aiLoading.value.certifEditeur = true
+  try {
+    const filesData = []
+    for (const f of uploadedCertifFiles.value) {
+      filesData.push({ base64: await fileToBase64(f), mimeType: f.type || 'application/octet-stream', filename: f.name })
+    }
+    const { data } = await api.post('/ai/analyze-certif-editeur', {
+      filesData,
+      solution: form.value.solution,
+      prestataire: form.value.prestataire,
+      programCode: selectedProgramCode.value
+    })
+    aiTexts.value.certifEditeur = data.text
+    await saveEval()
+    showNotif('Certificat éditeur analysé', 'ok')
+  } catch (e) { showNotif('Erreur: ' + (e.response?.data?.error || e.message), 'err') }
+  finally { aiLoading.value.certifEditeur = false }
 }
 
 async function autoFill() {
@@ -929,7 +1099,20 @@ async function autoFill() {
 async function checkCoherence() {
   aiLoading.value.coherence = true
   try {
-    const { data } = await api.post('/ai/check-coherence', { category: selectedCategory.value, criteria: currentCriteria.value?.criteria || [], solScores: solScores.value, solObs: solObs.value })
+    const { data } = await api.post('/ai/check-coherence', {
+      category: selectedCategory.value,
+      criteria: currentCriteria.value?.criteria || [],
+      solScores: solScores.value,
+      solObs: solObs.value,
+      // Contexte complet pour que l'IA ait accès à toutes les analyses
+      context: {
+        cvAnalysis: aiTexts.value.cv,
+        attestationsAnalysis: aiTexts.value.attestations,
+        certifEditeurAnalysis: aiTexts.value.certifEditeur,
+        solution: form.value.solution,
+        prestataire: form.value.prestataire
+      }
+    })
     aiTexts.value.coherence = data.text
   } catch (e) { showNotif('Erreur: ' + (e.response?.data?.error || e.message), 'err') }
   finally { aiLoading.value.coherence = false }
@@ -938,7 +1121,25 @@ async function checkCoherence() {
 async function generatePV() {
   aiLoading.value.pv = true
   try {
-    const { data } = await api.post('/ai/generate-pv', { prestataire: form.value.prestataire, solution: form.value.solution || form.value.actionLabel, category: selectedCategory.value, solScorePct: solScore.value.pct, intScorePct: intScore.value.pct, finalScorePct: globalScore.value, finalDecision: finalDecision.value, solVerdict: solScore.value.verdict, intVerdict: intScore.value.verdict, decisionMotive: form.value.commissionComments, conditions: form.value.conditions, modules: form.value.modules, programName: currentProgram.value?.name })
+    const { data } = await api.post('/ai/generate-pv', {
+      prestataire: form.value.prestataire,
+      solution: form.value.solution || form.value.actionLabel,
+      category: selectedCategory.value,
+      solScorePct: solScore.value.pct,
+      intScorePct: intScore.value.pct,
+      finalScorePct: globalScore.value,
+      finalDecision: finalDecision.value,
+      solVerdict: solScore.value.verdict,
+      intVerdict: intScore.value.verdict,
+      decisionMotive: form.value.commissionComments,
+      conditions: form.value.conditions,
+      modules: form.value.modules,
+      programName: currentProgram.value?.name,
+      // Analyses IA pour enrichir le PV
+      cvAnalysis: aiTexts.value.cv,
+      attestationsAnalysis: aiTexts.value.attestations,
+      certifEditeurAnalysis: aiTexts.value.certifEditeur
+    })
     aiTexts.value.pv = data.text
     await saveEval()
   } catch (e) { showNotif('Erreur génération PV', 'err') }
@@ -967,7 +1168,115 @@ function exportPDF() {
   a.click(); URL.revokeObjectURL(url)
 }
 
+function downloadGrille() {
+  const crit = currentCriteria.value?.criteria || []
+  const label = currentCriteria.value?.label || selectedCategory.value || 'grille'
+  let lines = [
+    `GRILLE FONCTIONNELLE — ${label}`,
+    `Programme : ${currentProgram.value?.name || '—'}`,
+    `Prestataire : ${form.value.prestataire || '—'}`,
+    `Solution : ${form.value.solution || '—'}`,
+    `Date : ${form.value.dateDemo || new Date().toISOString().slice(0, 10)}`,
+    '',
+    `${'N°'.padEnd(4)}${'Critère'.padEnd(45)}${'Poids'.padEnd(8)}${'Note'.padEnd(6)}Observation`,
+    '-'.repeat(110)
+  ]
+  crit.forEach((c, i) => {
+    const note = solScores.value[i] !== undefined ? String(solScores.value[i]) : '—'
+    const obs = (solObs.value[i] || '').replace(/\n/g, ' ')
+    lines.push(`${String(i + 1).padEnd(4)}${c.n.substring(0, 44).padEnd(45)}${String(c.w || 1).padEnd(8)}${note.padEnd(6)}${obs}`)
+    if (c.d) lines.push(`    ${c.d.substring(0, 100)}`)
+  })
+  lines.push('')
+  lines.push(`Score : ${solScore.value.pct !== null ? solScore.value.pct + '%' : '—'} | Verdict : ${solScore.value.verdict ? verdictLabel[solScore.value.verdict] : '—'}`)
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `Grille_${form.value.prestataire || 'dossier'}_${label}_${new Date().toISOString().slice(0, 10)}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function scoreClass(pct, t1, t2) { if (pct === null) return ''; return pct >= t1 ? 'ok' : pct >= t2 ? 'mid' : 'ko' }
 function progressColor(pct, t1, t2) { if (!pct) return '#666'; return pct >= t1 ? '#4ADE80' : pct >= t2 ? '#FBB424' : '#F87171' }
 function attIcon(mime) { if (!mime) return '📎'; if (mime.includes('pdf')) return '📄'; if (mime.includes('image')) return '🖼️'; if (mime.includes('word')) return '📝'; return '📎' }
 </script>
+
+<style scoped>
+.upload-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--text2);
+  margin: 20px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.upload-zone-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+
+.source-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.source-tab {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: var(--mono);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text3);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.source-tab.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.inline-att-list {
+  margin-bottom: 10px;
+}
+
+.inline-upload {
+  margin-bottom: 10px;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.drop-zone:hover {
+  border-color: var(--accent);
+}
+
+.empty-att {
+  padding: 12px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+.check-mark {
+  margin-left: auto;
+  color: var(--green);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+</style>

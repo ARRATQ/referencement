@@ -33,7 +33,10 @@
             <tbody>
               <template v-for="d in filtered" :key="d.key">
                 <tr :class="{ 'row-expanded': expandedKey === d.key }">
-                  <td><span class="text-mono">{{ d.key }}</span></td>
+                  <td>
+                    <span class="text-mono">{{ d.key }}</span>
+                    <a v-if="jiraLink(d.key)" :href="jiraLink(d.key)" target="_blank" rel="noopener" class="jira-ext-link" title="Ouvrir sur Jira">↗</a>
+                  </td>
                   <td>{{ d.summary }}</td>
                   <td>{{ d.issueType }}</td>
                   <td><span class="badge" :class="statusBadge(d.status)">{{ d.status }}</span></td>
@@ -56,6 +59,7 @@
                             <span class="hierarchy-dot dot-int"></span>
                             <div class="hierarchy-info">
                               <span class="text-mono h-key">{{ int.key }}</span>
+                              <a v-if="jiraLink(int.key)" :href="jiraLink(int.key)" target="_blank" rel="noopener" class="jira-ext-link" title="Ouvrir sur Jira">↗</a>
                               <span class="h-summary">{{ int.summary }}</span>
                               <span v-if="int.attachments?.length" class="h-attach">📎 {{ int.attachments.length }}</span>
                             </div>
@@ -64,6 +68,7 @@
                             <span class="hierarchy-dot dot-comp"></span>
                             <div class="hierarchy-info">
                               <span class="text-mono h-key">{{ comp.key }}</span>
+                              <a v-if="jiraLink(comp.key)" :href="jiraLink(comp.key)" target="_blank" rel="noopener" class="jira-ext-link" title="Ouvrir sur Jira">↗</a>
                               <span class="h-summary">{{ comp.summary }}</span>
                               <span v-if="comp.attachments?.length" class="h-attach">📎 {{ comp.attachments.length }}</span>
                             </div>
@@ -91,7 +96,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
 const dossiers = ref([])
@@ -101,6 +106,20 @@ const filterStatus = ref('')
 const expandedKey = ref(null)
 const loadingKey = ref(null)
 const hierarchies = ref({})
+const jiraBaseUrl = ref('')
+
+function jiraLink(key) {
+  if (!jiraBaseUrl.value || !key) return null
+  return jiraBaseUrl.value.replace(/\/$/, '') + '/browse/' + key
+}
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/admin/config')
+    const urlCfg = data.find(c => c.key === 'jira_url')
+    if (urlCfg?.value) jiraBaseUrl.value = urlCfg.value
+  } catch {}
+})
 
 const filtered = computed(() =>
   dossiers.value.filter(d => {
@@ -228,6 +247,19 @@ function statusBadge(status) {
   color: var(--text3);
   flex-shrink: 0;
   margin-left: auto;
+}
+
+.jira-ext-link {
+  font-size: 11px;
+  color: var(--text3);
+  text-decoration: none;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.jira-ext-link:hover {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .btn.active {
