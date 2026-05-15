@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const pdfParse = require('pdf-parse');
+const XLSX = require('xlsx');
 
 async function getAIConfig() {
   const { PrismaClient } = require('@prisma/client');
@@ -88,6 +89,57 @@ function fillTemplate(tpl, vars) {
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] !== undefined ? vars[k] : `{{${k}}}`);
 }
 
+function isPdf(f) {
+  if (f.mimeType === 'application/pdf') return true;
+  const ext = (f.filename || '').split('.').pop()?.toLowerCase();
+  return ext === 'pdf';
+}
+
+function isImage(f) {
+  if (f.mimeType?.startsWith('image/')) return true;
+  const ext = (f.filename || '').split('.').pop()?.toLowerCase();
+  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext);
+}
+
+// Construit la liste de parts multimodales à partir d'un tableau de fichiers.
+// PDFs avec texte → pdfTexts (extrait), PDFs scannés → part inline PDF, images → part image_url.
+async function buildFileParts(filesData, maxPdfChars = 8000) {
+  const imagesParts = [];
+  const pdfTexts = [];
+  for (const f of filesData) {
+    if (isPdf(f)) {
+      try {
+        const buf = Buffer.from(f.base64, 'base64');
+        const parsed = await pdfParse(buf);
+        if (parsed.text?.trim()) {
+          pdfTexts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, maxPdfChars)}`);
+        } else {
+          // PDF scanné : envoyer en natif application/pdf (supporté par Gemini)
+          console.warn('[buildFileParts] PDF scanné, envoyé en application/pdf:', f.filename);
+          imagesParts.push({ type: 'image_url', image_url: { url: `data:application/pdf;base64,${f.base64}` } });
+        }
+      } catch (e) {
+        console.warn('[buildFileParts] PDF illisible, envoyé en application/pdf:', f.filename, e.message);
+        imagesParts.push({ type: 'image_url', image_url: { url: `data:application/pdf;base64,${f.base64}` } });
+      }
+    } else if (isImage(f)) {
+      const mime = f.mimeType?.startsWith('image/') ? f.mimeType : 'image/jpeg';
+      imagesParts.push({ type: 'image_url', image_url: { url: `data:${mime};base64,${f.base64}` } });
+    } else {
+      // Type inconnu : tenter parse PDF, sinon envoyer en application/pdf
+      try {
+        const buf = Buffer.from(f.base64, 'base64');
+        const parsed = await pdfParse(buf);
+        if (parsed.text?.trim()) pdfTexts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, maxPdfChars)}`);
+        else imagesParts.push({ type: 'image_url', image_url: { url: `data:application/pdf;base64,${f.base64}` } });
+      } catch {
+        imagesParts.push({ type: 'image_url', image_url: { url: `data:application/pdf;base64,${f.base64}` } });
+      }
+    }
+  }
+  return { imagesParts, pdfTexts };
+}
+
 const DEFAULT_PROMPTS = {
   prompt_briefing: `Tu es expert en référencement de solutions informatiques.
 {{lang}}
@@ -122,28 +174,31 @@ Structure : en-tête officiel → objet → participants → résultats notation
 {{lang}}
 {{ami}}
 {{canvas}}
+Le contenu complet du CV est fourni ci-dessus (documents PDF/images joints). Base-toi EXCLUSIVEMENT sur ce contenu pour ton analyse — ne suppose rien qui n'y figure pas.
 Analyse ce CV pour le dossier : Prestataire "{{prestataire}}", Solution "{{solution}}", Programme "{{programName}}".
 Fournis :
-1. Niveau de formation (diplôme, établissement, année)
-2. Expérience totale estimée (années)
-3. Expérience sur cette solution (années)
-4. Références clients vérifiables
+1. Niveau de formation (diplôme exact, établissement, année) — citer le document
+2. Expérience totale calculée (années, depuis quelle date)
+3. Expérience sur cette solution spécifique (années, missions concernées)
+4. Références clients vérifiables au Maroc (nom entreprise, durée, mission)
 5. Certifications pertinentes
-6. Concordances avec les critères AMI
-7. Incohérences ou points d'attention
-8. Conformité avec le canevas CV officiel (structure, rubriques, signatures)
-Sois précis et factuel.`,
+6. Concordances avec les critères AMI / programme
+7. Incohérences ou points d'attention (dates qui se chevauchent, lacunes, etc.)
+8. Conformité avec le canevas CV officiel (structure, rubriques, signature, cachet dirigeant)
+Sois précis et factuel. Cite les données exactes du document.`,
 
   prompt_attestations: `Tu es expert en vérification documentaire pour commission de référencement.
 {{lang}}
-Analyse ces attestations de référence pour : Consultant "{{intervenant}}", Solution "{{solution}}".
-Vérifie pour chaque attestation :
-1. Solution/modules mentionnés — concordance avec le dossier ?
-2. Présence et rôle du consultant nommé
-3. Dates de mission — cohérence avec le CV ?
-4. Authenticité apparente (entête, signature, cachet)
-5. Entreprise cliente identifiable (secteur, taille)
-Conclus sur la solidité des références présentées.`,
+Les attestations de référence sont fournies ci-dessus (documents PDF/images). Base-toi EXCLUSIVEMENT sur leur contenu.
+Analyse ces attestations pour : Consultant "{{intervenant}}", Solution "{{solution}}".
+Pour chaque attestation identifiée :
+1. Entreprise cliente — nom, secteur, taille si mentionné
+2. Solution/modules mentionnés — concordance avec le dossier ?
+3. Nom et rôle du consultant dans la mission
+4. Dates de mission (début/fin) — cohérence avec le CV ?
+5. Authenticité apparente (entête officiel, signature, cachet, coordonnées)
+6. Vérifiabilité (contacts, RC, ICE mentionnés ?)
+Conclus sur la solidité et la crédibilité des références présentées.`,
 
   prompt_coherence: `Tu es expert en évaluation de solutions informatiques.
 {{lang}}
@@ -165,6 +220,33 @@ Vérifie :
 6. Authenticité apparente (signature, cachet, format officiel)
 7. Périmètre géographique (Maroc mentionné ?)
 Conclus sur la conformité du certificat pour le référencement.`,
+
+  prompt_specs_analysis: `Tu es expert en évaluation de solutions informatiques pour une commission de référencement.
+{{lang}}
+Prestataire : {{prestataire}} | Solution : {{solution}} | Catégorie : {{category}}
+
+Voici les spécifications fonctionnelles déclarées par le prestataire :
+{{specsContent}}
+
+Analyse ces spécifications et fournis :
+1. Liste structurée des fonctionnalités déclarées (par module/domaine)
+2. Fonctionnalités clés qui méritent une vérification approfondie en démo
+3. Points d'attention : fonctionnalités vagues, trop génériques, ou difficiles à vérifier
+4. Questions prioritaires à poser avant/pendant la démo
+Sois précis et factuel.`,
+
+  prompt_demo_scenario: `Tu es expert en évaluation de solutions informatiques.
+{{lang}}
+Prestataire : {{prestataire}} | Solution : {{solution}} | Catégorie : {{category}}
+
+Fonctionnalités déclarées (extrait de l'analyse) :
+{{specsAnalysis}}
+
+Génère un scénario de démonstration structuré permettant de VÉRIFIER ces fonctionnalités. Pour chaque fonctionnalité clé :
+1. Action concrète à demander au prestataire (ex: "Montrez la création d'une facture avec...")
+2. Résultat attendu si la fonctionnalité est réelle
+3. Signe d'alerte si la fonctionnalité est simulée ou absente
+Format : tableau ou liste numérotée, très concis, orienté vérification terrain.`,
 
   prompt_suggest_scores: `Tu es évaluateur expert pour la commission de référencement.
 {{lang}}
@@ -298,7 +380,7 @@ async function suggestScores({ category, criteria, dossierContext }) {
   }
 }
 
-async function analyzeCV({ filesData, prestataire, solution, programName, amiText, intervenantContext }) {
+async function analyzeCV({ filesData, prestataire, solution, modules, programName, amiText, intervenantContext }) {
   const docs = await getDocs();
   const prompts = await getPrompts();
   const cfg = await getAIConfig();
@@ -316,35 +398,25 @@ async function analyzeCV({ filesData, prestataire, solution, programName, amiTex
     if (parts.length) intervenantBlock = `\n--- Données intervenant (Jira) ---\n${parts.join('\n')}\n---\n`;
   }
 
+  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const tpl = prompts.prompt_cv || DEFAULT_PROMPTS.prompt_cv;
-  const textPrompt = fillTemplate(tpl, {
+  const temporalCtx = `[Contexte : nous sommes le ${today}. Toute date antérieure à cette date est dans le passé. Pour les tableaux du CV : lis chaque ligne indépendamment — les dates d'une ligne n'appartiennent pas aux lignes voisines.]\n\n`;
+  const textPrompt = temporalCtx + fillTemplate(tpl, {
     lang: langInstruction(cfg.lang),
     ami: ami ? `--- Critères AMI officiel ---\n${ami.slice(0, 2000)}\n---\n${intervenantBlock}` : intervenantBlock,
     canvas: canvas ? `--- Canevas CV officiel ---\n${canvas.slice(0, 1500)}\n---\n` : '',
     prestataire,
     solution: solution || '—',
-    programName: programName || '—'
+    programName: programName || '—',
+    modules: Array.isArray(modules) && modules.length ? modules.join(', ') : (modules || '—')
   });
 
   // filesData = [{ base64, mimeType, filename }]
-  const imagesParts = [];
-  const pdfTexts = [];
-
-  for (const f of filesData) {
-    if (f.mimeType === 'application/pdf') {
-      try {
-        const buf = Buffer.from(f.base64, 'base64');
-        const parsed = await pdfParse(buf);
-        if (parsed.text?.trim()) pdfTexts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, 8000)}`);
-      } catch {
-        // PDF illisible, on l'ignore silencieusement
-      }
-    } else {
-      imagesParts.push({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } });
-    }
+  const { imagesParts, pdfTexts } = await buildFileParts(filesData, 8000);
+  console.log(`[analyzeCV] ${filesData.length} fichier(s) — ${pdfTexts.length} PDF(s) parsés, ${imagesParts.length} part(s) inline`);
+  if (pdfTexts.length === 0 && imagesParts.length === 0) {
+    throw new Error(`Aucun fichier lisible parmi les ${filesData.length} fichier(s) fourni(s).`);
   }
-
-  // Fusionner PDF + prompt en un seul bloc text pour éviter "too many function arguments"
   const fullText = pdfTexts.length > 0
     ? `Contenu des documents PDF :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
     : textPrompt;
@@ -353,28 +425,26 @@ async function analyzeCV({ filesData, prestataire, solution, programName, amiTex
   return callAI([{ role: 'user', content }], { maxTokens: 2500 });
 }
 
-async function analyzeAttestations({ filesData, solution, intervenant }) {
+async function analyzeAttestations({ filesData, solution, intervenant, cvAnalysis }) {
   const prompts = await getPrompts();
   const cfg = await getAIConfig();
+  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const tpl = prompts.prompt_attestations || DEFAULT_PROMPTS.prompt_attestations;
-  const textPrompt = fillTemplate(tpl, {
+  const cvBlock = cvAnalysis
+    ? `\n--- Analyse CV du consultant (contexte de concordance) ---\n${cvAnalysis.slice(0, 2000)}\n---\nNote sur la concordance CV/attestation : l'analyse CV est une interprétation automatique d'un document parfois scanné — les dates extraites peuvent être imprécises (colonnes de tableau mal alignées, années tronquées). Lorsque tu constates un écart de dates entre le CV et une attestation pour le même client et la même solution, signale-le comme un point à vérifier sur les documents originaux plutôt que comme une incohérence certaine. En revanche, si l'écart porte sur des éléments structurels (client différent, solution différente, consultant non mentionné), signale-le comme incohérence réelle.\n---\n`
+    : '';
+  const temporalCtx = `[Contexte : nous sommes le ${today}. Toute date antérieure à cette date est dans le passé — ne qualifie jamais une mission passée de "future" ou "à venir".]\n\n`;
+  const textPrompt = temporalCtx + fillTemplate(tpl, {
     lang: langInstruction(cfg.lang),
     intervenant: intervenant || '—',
     solution: solution || '—'
-  });
+  }) + cvBlock;
 
-  const imagesParts = [];
-  const pdfTexts = [];
-  for (const f of filesData) {
-    if (f.mimeType === 'application/pdf') {
-      try {
-        const buf = Buffer.from(f.base64, 'base64');
-        const parsed = await pdfParse(buf);
-        if (parsed.text?.trim()) pdfTexts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, 5000)}`);
-      } catch {}
-    } else {
-      imagesParts.push({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } });
-    }
+  console.log('[analyzeAttestations] today:', today, '| textPrompt tail:', textPrompt.slice(-200));
+  const { imagesParts, pdfTexts } = await buildFileParts(filesData, 5000);
+  console.log(`[analyzeAttestations] ${filesData.length} fichier(s) — ${pdfTexts.length} PDF(s), ${imagesParts.length} part(s) inline`);
+  if (pdfTexts.length === 0 && imagesParts.length === 0) {
+    throw new Error(`Aucun fichier lisible parmi les ${filesData.length} fichier(s) fourni(s). Vérifiez que les attestations sont des PDF avec texte sélectionnable ou des images (PNG/JPG).`);
   }
   const fullText = pdfTexts.length > 0
     ? `Contenu des attestations PDF :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
@@ -398,19 +468,8 @@ async function analyzeCertifEditeur({ filesData, solution, prestataire, programN
     programName: programName || '—'
   });
 
-  const imagesParts = [];
-  const pdfTexts = [];
-  for (const f of filesData) {
-    if (f.mimeType === 'application/pdf') {
-      try {
-        const buf = Buffer.from(f.base64, 'base64');
-        const parsed = await pdfParse(buf);
-        if (parsed.text?.trim()) pdfTexts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, 5000)}`);
-      } catch {}
-    } else {
-      imagesParts.push({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } });
-    }
-  }
+  const { imagesParts, pdfTexts } = await buildFileParts(filesData, 5000);
+  console.log(`[analyzeCertifEditeur] ${filesData.length} fichier(s) — ${pdfTexts.length} PDF(s), ${imagesParts.length} part(s) inline`);
   const fullText = pdfTexts.length > 0
     ? `Contenu du certificat PDF :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
     : textPrompt;
@@ -447,4 +506,101 @@ Règles intScores :
   }
 }
 
-module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, analyzeCertifEditeur, autoFillFromCV, DEFAULT_PROMPTS };
+// Extrait le texte d'un fichier Excel (xlsx/xls/csv) en base64
+function extractExcelText(base64, filename) {
+  try {
+    const buf = Buffer.from(base64, 'base64');
+    const workbook = XLSX.read(buf, { type: 'buffer' });
+    const lines = [];
+    for (const sheetName of workbook.SheetNames) {
+      lines.push(`=== Feuille : ${sheetName} ===`);
+      const sheet = workbook.Sheets[sheetName];
+      const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+      lines.push(csv.slice(0, 6000));
+    }
+    return lines.join('\n');
+  } catch (e) {
+    console.warn('[extractExcelText] Erreur lecture Excel:', filename, e.message);
+    return '';
+  }
+}
+
+function isExcel(f) {
+  const ext = (f.filename || '').split('.').pop()?.toLowerCase();
+  return ['xlsx', 'xls', 'csv'].includes(ext);
+}
+
+async function analyzeSpecs({ filesData, prestataire, solution, category, modules }) {
+  const prompts = await getPrompts();
+  const cfg = await getAIConfig();
+
+  // Extraire le contenu textuel de chaque fichier
+  const textParts = [];
+  for (const f of filesData) {
+    if (isExcel(f)) {
+      const text = extractExcelText(f.base64, f.filename);
+      if (text) textParts.push(`--- ${f.filename} ---\n${text}`);
+    } else if (isPdf(f)) {
+      try {
+        const buf = Buffer.from(f.base64, 'base64');
+        const parsed = await pdfParse(buf);
+        if (parsed.text?.trim()) textParts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, 8000)}`);
+      } catch {}
+    }
+  }
+
+  if (!textParts.length) throw new Error('Aucun contenu lisible dans les fichiers de spécifications.');
+
+  const specsContent = textParts.join('\n\n').slice(0, 15000);
+  const langInstr = langInstruction(cfg.lang);
+
+  // Étape 1 — analyse des specs déclarées
+  const tplSpecs = prompts.prompt_specs_analysis || DEFAULT_PROMPTS.prompt_specs_analysis;
+  const promptSpecs = fillTemplate(tplSpecs, {
+    lang: langInstr,
+    prestataire: prestataire || '—',
+    solution: solution || '—',
+    category: category || '—',
+    specsContent
+  });
+  const specsAnalysis = await callAI([{ role: 'user', content: promptSpecs }], { maxTokens: 2000 });
+
+  // Étape 2 — scénario de démo
+  const tplDemo = prompts.prompt_demo_scenario || DEFAULT_PROMPTS.prompt_demo_scenario;
+  const promptDemo = fillTemplate(tplDemo, {
+    lang: langInstr,
+    prestataire: prestataire || '—',
+    solution: solution || '—',
+    category: category || '—',
+    specsAnalysis: specsAnalysis.slice(0, 3000)
+  });
+  const demoScenario = await callAI([{ role: 'user', content: promptDemo }], { maxTokens: 2000 });
+
+  // Étape 3 — comparaison avec les fonctionnalités réelles connues (web search via perplexity)
+  let webInsights = '';
+  try {
+    const webPrompt = `Tu es expert en solutions informatiques B2B. Recherche des informations sur la solution "${solution || prestataire}" dans la catégorie "${category || 'logiciel de gestion'}".
+
+Voici les fonctionnalités déclarées par le prestataire (extrait) :
+${specsContent.slice(0, 3000)}
+
+Sur la base de tes connaissances et des sources disponibles :
+1. Quelles fonctionnalités de cette solution sont bien documentées et reconnues ?
+2. Y a-t-il des fonctionnalités déclarées qui semblent exagérées, inhabituelles ou non standard pour ce type de solution ?
+3. Quelle est la réputation générale de cette solution sur le marché (éditeur, maturité, présence au Maroc) ?
+4. Points de vigilance à avoir lors de la démo.
+Sois factuel et cite tes sources si possible.`;
+
+    webInsights = await callAI(
+      [{ role: 'user', content: webPrompt }],
+      { model: 'perplexity/sonar', maxTokens: 2000 }
+    );
+  } catch (e) {
+    console.warn('[analyzeSpecs] Web search failed:', e.message);
+    webInsights = `Recherche web non disponible (${e.message.slice(0, 100)}).`;
+  }
+
+  return { specsAnalysis, demoScenario, webInsights };
+}
+
+module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, analyzeCertifEditeur, autoFillFromCV, analyzeSpecs, DEFAULT_PROMPTS };

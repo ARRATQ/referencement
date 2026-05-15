@@ -40,25 +40,25 @@ router.post('/check-coherence', async (req, res, next) => {
 // filesData: [{ base64, mimeType, filename }]
 router.post('/analyze-cv', async (req, res, next) => {
   try {
-    const { filesData, prestataire, solution, programCode, intervenantContext } = req.body;
+    const { filesData, prestataire, solution, modules, programCode, intervenantContext } = req.body;
     if (!filesData?.length) return res.status(400).json({ error: 'Fichiers requis' });
     let programName = '', amiText = '';
     if (programCode) {
       const prog = await prisma.program.findUnique({ where: { code: programCode }, select: { name: true, amiText: true } });
       if (prog) { programName = prog.name; amiText = prog.amiText || ''; }
     }
-    const text = await ai.analyzeCV({ filesData, prestataire, solution, programName, amiText, intervenantContext });
+    const text = await ai.analyzeCV({ filesData, prestataire, solution, modules, programName, amiText, intervenantContext });
     res.json({ text });
   } catch (err) { next(err); }
 });
 
 router.post('/analyze-attestations', async (req, res, next) => {
   try {
-    const { filesData, imageBase64List, solution, intervenant } = req.body;
+    const { filesData, imageBase64List, solution, intervenant, cvAnalysis } = req.body;
     // Accepte soit filesData (nouveau format) soit imageBase64List (legacy)
     const files = filesData?.length ? filesData : (imageBase64List || []).map(b64 => ({ base64: b64, mimeType: 'image/jpeg', filename: 'attestation' }));
     if (!files.length) return res.status(400).json({ error: 'Fichiers requis' });
-    const text = await ai.analyzeAttestations({ filesData: files, solution, intervenant });
+    const text = await ai.analyzeAttestations({ filesData: files, solution, intervenant, cvAnalysis });
     res.json({ text });
   } catch (err) { next(err); }
 });
@@ -74,6 +74,15 @@ router.post('/analyze-certif-editeur', async (req, res, next) => {
     }
     const text = await ai.analyzeCertifEditeur({ filesData, solution, prestataire, programName });
     res.json({ text });
+  } catch (err) { next(err); }
+});
+
+router.post('/analyze-specs', async (req, res, next) => {
+  try {
+    const { filesData, prestataire, solution, category, modules, programCode } = req.body;
+    if (!filesData?.length) return res.status(400).json({ error: 'Fichiers requis' });
+    const result = await ai.analyzeSpecs({ filesData, prestataire, solution, category, modules });
+    res.json(result);
   } catch (err) { next(err); }
 });
 

@@ -54,15 +54,17 @@ router.post('/', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
     const program = await prisma.program.findUnique({ where: { id: programId } });
     if (!program) return res.status(404).json({ error: 'Programme introuvable' });
 
+    const pickedData = pick(rest, ['actionDomain','jiraKeyPrestataire','jiraKeyIntervenant','jiraKeyCompetence',
+      'solution','actionLabel','actionDescription','dateDemo','rapporteur','origine','nature',
+      'modeAcquisition','secteur','typeIntervenant','modules','category']);
+    cleanDates(pickedData, ['dateDemo']);
     const ev = await prisma.evaluation.create({
       data: {
         programId,
         evaluatorId: req.user.id,
         referenceType,
         prestataire: rest.prestataire || '',
-        ...pick(rest, ['actionDomain','jiraKeyPrestataire','jiraKeyIntervenant','jiraKeyCompetence',
-          'solution','actionLabel','actionDescription','dateDemo','rapporteur','origine','nature',
-          'modeAcquisition','secteur','typeIntervenant','modules','category'])
+        ...pickedData
       }
     });
     await audit(req.user.id, ev.id, 'created', { programId, referenceType }, req.ip);
@@ -81,9 +83,10 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
       'jiraKeyPrestataire','jiraKeyIntervenant','jiraKeyCompetence','referenceType','actionDomain',
       'solScores','solObservations','intScores','intObservations',
       'finalDecision','decisionDate','decisionMotive','conditions','commissionComments','pvText',
-      'cvAnalysis','attestationsAnalysis','briefingText','coherenceCheck'];
+      'cvAnalysis','attestationsAnalysis','briefingText','coherenceCheck',
+      'specsAnalysis','demoScenario','webInsights','certifEditeurAnalysis'];
 
-    const data = pick(req.body, allowed);
+    const data = cleanDates(pick(req.body, allowed), ['dateDemo', 'decisionDate']);
 
     // Recalcul scores si scores fournis
     if (data.solScores !== undefined) {
@@ -170,6 +173,14 @@ router.delete('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => 
 
 function pick(obj, keys) {
   return Object.fromEntries(keys.filter(k => obj[k] !== undefined).map(k => [k, obj[k]]));
+}
+
+// Nettoie les champs date : supprime les strings vides pour éviter l'erreur Prisma DateTime
+function cleanDates(data, dateFields) {
+  for (const f of dateFields) {
+    if (data[f] === '' || data[f] === null) delete data[f];
+  }
+  return data;
 }
 
 module.exports = router;

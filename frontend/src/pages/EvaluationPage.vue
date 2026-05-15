@@ -247,11 +247,44 @@
               <span class="ai-title">Briefing pré-commission</span>
               <span v-if="aiTexts.briefing" class="badge badge-green" style="margin-left:auto;">✓ Généré</span>
             </div>
+
+            <!-- Upload spécifications fonctionnelles -->
+            <div class="upload-zone-label">Spécifications fonctionnelles (Excel / PDF) — optionnel</div>
+            <div class="upload-row">
+              <label class="upload-btn-label">
+                <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv" style="display:none" @change="onSpecsFileChange" />
+                <span class="upload-btn-sm">+ Ajouter fichiers</span>
+              </label>
+              <span v-if="uploadedSpecsFiles.length" class="upload-count">{{ uploadedSpecsFiles.length }} fichier(s) chargé(s)</span>
+            </div>
+            <div v-if="uploadedSpecsFiles.length" class="uploaded-files-list">
+              <div v-for="(f, i) in uploadedSpecsFiles" :key="i" class="uploaded-file-item">
+                <span>{{ f.name }}</span>
+                <button class="remove-file-btn" @click="uploadedSpecsFiles.splice(i, 1)">✕</button>
+              </div>
+            </div>
+            <div v-if="aiTexts.specsAnalysis" class="specs-analysis-block">
+              <div class="specs-analysis-label">Analyse des spécifications fonctionnelles</div>
+              <div class="ai-content" style="white-space:pre-wrap;font-size:0.82rem;">{{ aiTexts.specsAnalysis }}</div>
+            </div>
+            <div v-if="aiTexts.demoScenario" class="specs-analysis-block">
+              <div class="specs-analysis-label">Scénario de vérification pour la démo</div>
+              <div class="ai-content" style="white-space:pre-wrap;font-size:0.82rem;">{{ aiTexts.demoScenario }}</div>
+            </div>
+            <div v-if="aiTexts.webInsights" class="specs-analysis-block">
+              <div class="specs-analysis-label">Comparaison fonctionnalités réelles (sources web)</div>
+              <div class="ai-content" style="white-space:pre-wrap;font-size:0.82rem;">{{ aiTexts.webInsights }}</div>
+            </div>
+
             <div class="ai-content" :class="{ loading: aiLoading.briefing }">{{ aiTexts.briefing || 'Renseignez le prestataire et la solution, puis lancez le briefing IA.' }}</div>
             <div class="ai-actions">
               <button class="ai-btn" :disabled="aiLoading.briefing || !form.prestataire" @click="generateBriefing">
                 <span v-if="aiLoading.briefing" class="spinner"></span>
                 <span v-else>◈ Générer le briefing</span>
+              </button>
+              <button v-if="uploadedSpecsFiles.length" class="ai-btn" :disabled="aiLoading.specs || !form.prestataire" @click="analyzeSpecs" style="margin-left:8px;">
+                <span v-if="aiLoading.specs" class="spinner"></span>
+                <span v-else>◈ Analyser les specs + démo</span>
               </button>
             </div>
           </div>
@@ -624,8 +657,15 @@ const solScores = ref({})
 const solObs = ref({})
 const intScores = ref({})
 const intObs = ref({})
-const aiTexts = ref({ briefing: '', cv: '', attestations: '', certifEditeur: '', coherence: '', pv: '' })
-const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false })
+const aiTexts = ref({ briefing: '', cv: '', attestations: '', certifEditeur: '', coherence: '', pv: '', specsAnalysis: '', demoScenario: '', webInsights: '' })
+const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false, specs: false })
+
+// Spécifications fonctionnelles upload
+const uploadedSpecsFiles = ref([])
+function onSpecsFileChange(e) {
+  uploadedSpecsFiles.value = [...uploadedSpecsFiles.value, ...Array.from(e.target.files)]
+  e.target.value = ''
+}
 const moduleInput = ref('')
 const jiraHierarchy = ref(null)
 const selectedIntervenant = ref(null)
@@ -734,9 +774,14 @@ async function loadEval(id) {
   intScores.value = data.intScores || {}
   intObs.value = data.intObservations || {}
   aiTexts.value.pv = data.pvText || ''
+  aiTexts.value.briefing = data.briefingText || ''
+  aiTexts.value.coherence = data.coherenceCheck || ''
   aiTexts.value.cv = data.cvAnalysis || ''
   aiTexts.value.attestations = data.attestationsAnalysis || ''
   aiTexts.value.certifEditeur = data.certifEditeurAnalysis || ''
+  aiTexts.value.specsAnalysis = data.specsAnalysis || ''
+  aiTexts.value.demoScenario = data.demoScenario || ''
+  aiTexts.value.webInsights = data.webInsights || ''
   selectedProgramCode.value = data.program?.code
   await onProgramChange()
   refType.value = data.referenceType
@@ -758,6 +803,7 @@ async function saveEval() {
     category: refType.value === 'SOLUTION' ? selectedCategory.value : null,
     actionDomain: refType.value === 'ACTION' ? selectedCategory.value : null,
     ...form.value,
+    actionLabel: Array.isArray(form.value.actionLabel) ? form.value.actionLabel.join(', ') : (form.value.actionLabel || ''),
     solScores: solScores.value,
     solObservations: solObs.value,
     intScores: intScores.value,
@@ -768,6 +814,9 @@ async function saveEval() {
     briefingText: aiTexts.value.briefing,
     coherenceCheck: aiTexts.value.coherence,
     pvText: aiTexts.value.pv,
+    specsAnalysis: aiTexts.value.specsAnalysis,
+    demoScenario: aiTexts.value.demoScenario,
+    webInsights: aiTexts.value.webInsights,
     finalDecision: finalDecision.value
   }
   if (evalId.value) {
@@ -957,6 +1006,13 @@ function onCertifDrop(e) {
 
 function removeUploadedCertif(i) { uploadedCertifFiles.value.splice(i, 1) }
 
+function guessMimeType(file) {
+  if (file.type) return file.type
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  const map = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+  return map[ext] || 'application/octet-stream'
+}
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -997,6 +1053,29 @@ async function generateBriefing() {
   finally { aiLoading.value.briefing = false }
 }
 
+async function analyzeSpecs() {
+  aiLoading.value.specs = true
+  try {
+    const filesData = []
+    for (const f of uploadedSpecsFiles.value) {
+      filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
+    }
+    const { data } = await api.post('/ai/analyze-specs', {
+      filesData,
+      prestataire: form.value.prestataire,
+      solution: form.value.solution || form.value.actionLabel,
+      category: selectedCategory.value,
+      modules: form.value.modules,
+      programCode: selectedProgramCode.value
+    })
+    aiTexts.value.specsAnalysis = data.specsAnalysis || ''
+    aiTexts.value.demoScenario = data.demoScenario || ''
+    aiTexts.value.webInsights = data.webInsights || ''
+    await saveEval()
+  } catch (e) { showNotif(e.response?.data?.error || 'Erreur analyse specs', 'err') }
+  finally { aiLoading.value.specs = false }
+}
+
 async function analyzeCV() {
   aiLoading.value.cv = true
   try {
@@ -1010,13 +1089,14 @@ async function analyzeCV() {
       }
     } else {
       for (const f of uploadedCVFiles.value) {
-        filesData.push({ base64: await fileToBase64(f), mimeType: f.type || 'application/octet-stream', filename: f.name })
+        filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
       }
     }
     const { data } = await api.post('/ai/analyze-cv', {
       filesData,
       prestataire: form.value.prestataire,
       solution: form.value.solution,
+      modules: form.value.modules,
       programCode: selectedProgramCode.value,
       // Contexte AMI complet
       intervenantContext: extractedIntervenant.value ? {
@@ -1045,13 +1125,14 @@ async function analyzeAttestations() {
       }
     } else {
       for (const f of uploadedAttFiles.value) {
-        filesData.push({ base64: await fileToBase64(f), mimeType: f.type || 'application/octet-stream', filename: f.name })
+        filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
       }
     }
     const { data } = await api.post('/ai/analyze-attestations', {
       filesData,
       solution: form.value.solution,
-      intervenant: form.value.jiraKeyIntervenant || `${extractedIntervenant.value?.prenom || ''} ${extractedIntervenant.value?.nom || ''}`.trim()
+      intervenant: form.value.jiraKeyIntervenant || `${extractedIntervenant.value?.prenom || ''} ${extractedIntervenant.value?.nom || ''}`.trim(),
+      cvAnalysis: aiTexts.value.cv || null
     })
     aiTexts.value.attestations = data.text
     await saveEval()
@@ -1065,7 +1146,7 @@ async function analyzeCertifEditeur() {
   try {
     const filesData = []
     for (const f of uploadedCertifFiles.value) {
-      filesData.push({ base64: await fileToBase64(f), mimeType: f.type || 'application/octet-stream', filename: f.name })
+      filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
     }
     const { data } = await api.post('/ai/analyze-certif-editeur', {
       filesData,
@@ -1278,5 +1359,78 @@ function attIcon(mime) { if (!mime) return '📎'; if (mime.includes('pdf')) ret
   color: var(--green);
   font-size: 14px;
   flex-shrink: 0;
+}
+
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.upload-btn-sm {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.upload-btn-sm:hover { background: var(--surface3); }
+
+.upload-count {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.uploaded-files-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.uploaded-file-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text2);
+}
+
+.remove-file-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 10px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.remove-file-btn:hover { color: var(--red, #e55); }
+
+.specs-analysis-block {
+  margin: 10px 0;
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+}
+
+.specs-analysis-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
 }
 </style>

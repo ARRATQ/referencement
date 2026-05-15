@@ -116,6 +116,9 @@ model Evaluation {
   attestationsAnalysis String? @db.Text
   briefingText         String? @db.Text
   coherenceCheck       String? @db.Text
+  specsAnalysis        String? @db.Text
+  demoScenario         String? @db.Text
+  webInsights          String? @db.Text
 
   status      EvalStatus @default(DRAFT)
   createdAt   DateTime   @default(now())
