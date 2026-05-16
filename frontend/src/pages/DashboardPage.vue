@@ -45,7 +45,7 @@
           <table>
             <thead><tr><th>Programme</th><th>Évaluations</th></tr></thead>
             <tbody>
-              <tr v-for="p in stats.byProgram" :key="p.id">
+              <tr v-for="p in stats.byProgram" :key="p.id" style="cursor:pointer;" @click="$router.push('/consultation?program=' + p.id)">
                 <td><strong>{{ p.name }}</strong> <span class="text-mono">{{ p.code }}</span></td>
                 <td><span class="badge badge-blue">{{ p.count }}</span></td>
               </tr>

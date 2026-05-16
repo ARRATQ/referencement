@@ -428,7 +428,73 @@
               <span v-if="aiTexts.certifEditeur" class="badge badge-green" style="margin-left:auto;">✓ Analysé</span>
             </div>
             <div class="upload-zone-label">1 — Ajoutez le certificat de l'éditeur</div>
-            <div class="inline-upload">
+            <div class="source-tabs">
+              <div class="source-tab" :class="{ active: certifSource === 'competence' }" @click="switchCertifSource('competence')">
+                Compétence ({{ selectedCompetence?.attachments?.length || 0 }})
+              </div>
+              <div class="source-tab" :class="{ active: certifSource === 'intervenant' }" @click="switchCertifSource('intervenant')">
+                Intervenant ({{ selectedIntervenant?.attachments?.length || 0 }})
+              </div>
+              <div class="source-tab" :class="{ active: certifSource === 'prestataire' }" @click="switchCertifSource('prestataire')">
+                Prestataire ({{ certifPrestataireAtts.length }})
+              </div>
+              <div class="source-tab" :class="{ active: certifSource === 'upload' }" @click="switchCertifSource('upload')">
+                Ordinateur
+              </div>
+            </div>
+
+            <!-- Compétence -->
+            <div v-if="certifSource === 'competence'" class="inline-att-list">
+              <div v-if="!selectedCompetence?.attachments?.length" class="empty-att">Sélectionnez une compétence dans la hiérarchie Jira.</div>
+              <div v-for="att in selectedCompetence?.attachments" :key="att.id"
+                class="att-item" :class="{ sel: selectedCertifAttIds.includes(att.id) }"
+                @click="toggleCertifAtt(att)">
+                <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
+                <div class="att-info">
+                  <div class="att-name">{{ att.filename }}</div>
+                  <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
+                </div>
+                <span v-if="selectedCertifAttIds.includes(att.id)" class="check-mark">✓</span>
+              </div>
+              <div v-if="selectedCompetence?.attachments?.length" class="text-mono mt8">{{ selectedCertifAttIds.length }} fichier(s) sélectionné(s)</div>
+            </div>
+
+            <!-- Intervenant -->
+            <div v-if="certifSource === 'intervenant'" class="inline-att-list">
+              <div v-if="!selectedIntervenant?.attachments?.length" class="empty-att">Sélectionnez un intervenant dans la hiérarchie Jira.</div>
+              <div v-for="att in selectedIntervenant?.attachments" :key="att.id"
+                class="att-item" :class="{ sel: selectedCertifAttIds.includes(att.id) }"
+                @click="toggleCertifAtt(att)">
+                <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
+                <div class="att-info">
+                  <div class="att-name">{{ att.filename }}</div>
+                  <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
+                </div>
+                <span v-if="selectedCertifAttIds.includes(att.id)" class="check-mark">✓</span>
+              </div>
+              <div v-if="selectedIntervenant?.attachments?.length" class="text-mono mt8">{{ selectedCertifAttIds.length }} fichier(s) sélectionné(s)</div>
+            </div>
+
+            <!-- Prestataire -->
+            <div v-if="certifSource === 'prestataire'" class="inline-att-list">
+              <div v-if="!form.jiraKeyPrestataire" class="empty-att">Renseignez un ticket prestataire.</div>
+              <div v-else-if="certifPrestataireLoading" style="text-align:center; padding:12px;"><span class="spinner"></span></div>
+              <div v-else-if="!certifPrestataireAtts.length" class="empty-att">Aucune pièce jointe sur ce ticket.</div>
+              <div v-for="att in certifPrestataireAtts" :key="att.id"
+                class="att-item" :class="{ sel: selectedCertifAttIds.includes(att.id) }"
+                @click="toggleCertifAtt(att)">
+                <div class="att-icon">{{ attIcon(att.mimeType) }}</div>
+                <div class="att-info">
+                  <div class="att-name">{{ att.filename }}</div>
+                  <div class="att-meta">{{ (att.size / 1024).toFixed(0) }} Ko · {{ att.mimeType }}</div>
+                </div>
+                <span v-if="selectedCertifAttIds.includes(att.id)" class="check-mark">✓</span>
+              </div>
+              <div v-if="certifPrestataireAtts.length" class="text-mono mt8">{{ selectedCertifAttIds.length }} fichier(s) sélectionné(s)</div>
+            </div>
+
+            <!-- Ordinateur -->
+            <div v-if="certifSource === 'upload'" class="inline-upload">
               <div class="drop-zone" @click="$refs.certifFileInput.click()" @dragover.prevent @drop.prevent="onCertifDrop">
                 <div style="font-size:24px; margin-bottom:6px;">🏷️</div>
                 <div style="font-size:13px; color:var(--text2);">Cliquez ou glissez le certificat ici</div>
@@ -447,12 +513,13 @@
                 </div>
               </div>
             </div>
+
             <div class="upload-zone-label mt8">2 — Lancez l'analyse manuellement</div>
             <div class="ai-content" v-if="aiTexts.certifEditeur">{{ aiTexts.certifEditeur }}</div>
             <div class="ai-content" v-else style="color:var(--text3);">Aucune analyse de certificat éditeur effectuée.</div>
             <div class="ai-actions">
               <button class="ai-btn"
-                :disabled="!uploadedCertifFiles.length || aiLoading.certifEditeur"
+                :disabled="certifHasNoFile || aiLoading.certifEditeur"
                 @click="analyzeCertifEditeur">
                 <span v-if="aiLoading.certifEditeur" class="spinner"></span>
                 <span v-else>◈ Lancer l'analyse certificat</span>
@@ -681,8 +748,16 @@ const attSource = ref('jira')
 const selectedAttIds = ref([])
 const uploadedAttFiles = ref([])
 
-// Certificat éditeur (local uniquement)
+// Certificat éditeur
 const uploadedCertifFiles = ref([])
+const certifSource = ref('competence')
+const selectedCertifAttIds = ref([])
+const certifPrestataireAtts = ref([])
+const certifPrestataireLoading = ref(false)
+
+const certifHasNoFile = computed(() =>
+  certifSource.value === 'upload' ? uploadedCertifFiles.value.length === 0 : selectedCertifAttIds.value.length === 0
+)
 
 const submitting = ref(false)
 const extractedIntervenant = ref(null)
@@ -786,7 +861,7 @@ async function loadEval(id) {
   await onProgramChange()
   refType.value = data.referenceType
   selectedCategory.value = data.category || data.actionDomain
-  step.value = 4
+  step.value = data.status === 'SUBMITTED' ? 4 : 1
 }
 
 function goStep(n) { step.value = n; window.scrollTo(0, 0) }
@@ -1006,6 +1081,25 @@ function onCertifDrop(e) {
 
 function removeUploadedCertif(i) { uploadedCertifFiles.value.splice(i, 1) }
 
+function toggleCertifAtt(att) {
+  const idx = selectedCertifAttIds.value.indexOf(att.id)
+  if (idx >= 0) selectedCertifAttIds.value.splice(idx, 1)
+  else selectedCertifAttIds.value.push(att.id)
+}
+
+async function switchCertifSource(src) {
+  certifSource.value = src
+  selectedCertifAttIds.value = []
+  if (src === 'prestataire' && form.value.jiraKeyPrestataire) {
+    certifPrestataireLoading.value = true
+    try {
+      const { data } = await api.get(`/dossiers/${form.value.jiraKeyPrestataire}/attachments`)
+      certifPrestataireAtts.value = data
+    } catch { showNotif('Erreur chargement pièces jointes prestataire', 'err') }
+    finally { certifPrestataireLoading.value = false }
+  }
+}
+
 function guessMimeType(file) {
   if (file.type) return file.type
   const ext = file.name.split('.').pop()?.toLowerCase()
@@ -1144,9 +1238,23 @@ async function analyzeAttestations() {
 async function analyzeCertifEditeur() {
   aiLoading.value.certifEditeur = true
   try {
-    const filesData = []
-    for (const f of uploadedCertifFiles.value) {
-      filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
+    let filesData = []
+    if (certifSource.value === 'upload') {
+      for (const f of uploadedCertifFiles.value) {
+        filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
+      }
+    } else {
+      const jiraKey = certifSource.value === 'competence' ? form.value.jiraKeyCompetence
+        : certifSource.value === 'intervenant' ? form.value.jiraKeyIntervenant
+        : form.value.jiraKeyPrestataire
+      const pool = certifSource.value === 'competence' ? (selectedCompetence.value?.attachments || [])
+        : certifSource.value === 'intervenant' ? (selectedIntervenant.value?.attachments || [])
+        : certifPrestataireAtts.value
+      const atts = pool.filter(a => selectedCertifAttIds.value.includes(a.id))
+      for (const att of atts) {
+        const { data: buf } = await api.get(`/dossiers/${jiraKey}/attachment/${att.id}`, { responseType: 'arraybuffer' })
+        filesData.push({ base64: arrayBufferToBase64(buf), mimeType: att.mimeType, filename: att.filename })
+      }
     }
     const { data } = await api.post('/ai/analyze-certif-editeur', {
       filesData,

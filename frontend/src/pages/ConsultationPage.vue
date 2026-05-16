@@ -9,6 +9,11 @@
     <div class="content">
       <div class="row gap8 mb8">
         <input v-model="search" placeholder="Rechercher prestataire, solution..." style="width:280px;" />
+        <select v-if="auth.isGestionnaire" v-model="filterStatus" style="width:180px;">
+          <option value="">Tous les statuts</option>
+          <option value="DRAFT">En cours</option>
+          <option value="SUBMITTED">Soumises</option>
+        </select>
         <select v-model="filterDecision" style="width:180px;">
           <option value="">Toutes les décisions</option>
           <option value="REFERENCE">Référencé</option>
@@ -43,8 +48,9 @@
                 <th>Score intégrateur</th>
                 <th>Score global</th>
                 <th>Décision</th>
+                <th v-if="auth.isGestionnaire">Statut</th>
                 <th>Date</th>
-                <th>PV</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -56,9 +62,15 @@
                 <td>{{ ev.intScorePct !== null ? ev.intScorePct + '%' : '—' }}</td>
                 <td><strong>{{ ev.finalScorePct !== null ? ev.finalScorePct + '%' : '—' }}</strong></td>
                 <td><span class="badge" :class="decisionBadge(ev.finalDecision)">{{ decisionLabel(ev.finalDecision) }}</span></td>
-                <td class="text-mono">{{ ev.submittedAt ? new Date(ev.submittedAt).toLocaleDateString('fr-MA') : '—' }}</td>
+                <td v-if="auth.isGestionnaire">
+                  <span class="badge" :class="ev.status === 'DRAFT' ? 'badge-amber' : 'badge-green'">
+                    {{ ev.status === 'DRAFT' ? 'En cours' : 'Soumise' }}
+                  </span>
+                </td>
+                <td class="text-mono">{{ ev.submittedAt ? new Date(ev.submittedAt).toLocaleDateString('fr-MA') : new Date(ev.createdAt).toLocaleDateString('fr-MA') }}</td>
                 <td>
                   <button v-if="ev.pvText" class="btn btn-ghost btn-sm" @click="showPV(ev)">📄 PV</button>
+                  <RouterLink v-if="auth.isGestionnaire && ev.status === 'DRAFT'" :to="'/evaluation/' + ev.id" class="btn btn-ghost btn-sm">↩ Reprendre</RouterLink>
                 </td>
               </tr>
             </tbody>
@@ -84,12 +96,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const route = useRoute()
 
 const evaluations = ref([])
 const programs = ref([])
 const loading = ref(false)
 const search = ref('')
+const filterStatus = ref('')
 const filterDecision = ref('')
 const filterProgram = ref('')
 const pvModal = ref(null)
@@ -98,17 +116,20 @@ const filtered = computed(() =>
   evaluations.value.filter(ev => {
     const q = search.value.toLowerCase()
     const matchSearch = !q || ev.prestataire?.toLowerCase().includes(q) || ev.solution?.toLowerCase().includes(q) || ev.actionLabel?.toLowerCase().includes(q)
+    const matchStatus = !filterStatus.value || ev.status === filterStatus.value
     const matchDec = !filterDecision.value || ev.finalDecision === filterDecision.value
     const matchProg = !filterProgram.value || ev.programId === filterProgram.value
-    return matchSearch && matchDec && matchProg
+    return matchSearch && matchStatus && matchDec && matchProg
   })
 )
 
 onMounted(async () => {
+  if (route.query.program) filterProgram.value = route.query.program
   loading.value = true
   try {
+    const url = auth.isGestionnaire ? '/evaluations' : '/evaluations?status=SUBMITTED'
     const [evRes, progRes] = await Promise.all([
-      api.get('/evaluations?status=SUBMITTED'),
+      api.get(url),
       api.get('/programs')
     ])
     evaluations.value = evRes.data
