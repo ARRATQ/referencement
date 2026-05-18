@@ -136,16 +136,17 @@ tr:hover td { background: #F8F7F2; }
 .prio-tag { font-size: 9px; font-family: var(--mono); background: #FDE9C0; color: #7A4A00; padding: 1px 6px; border-radius: 3px; margin-left: 6px; }
 
 /* AI PANEL */
-.ai-panel { background: linear-gradient(135deg, #1A1916 0%, #2A2820 100%); border-radius: var(--radius2); padding: 20px 24px; margin-bottom: 16px; border: 1px solid #3A3830; }
+.ai-panel { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius2); padding: 20px 24px; margin-bottom: 16px; }
 .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.ai-badge { font-size: 10px; font-family: var(--mono); background: rgba(169,68,67,0.3); color: #F4A0A0; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.08em; }
-.ai-title { font-size: 13px; font-weight: 500; color: #FFF; }
-.ai-content { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.7; white-space: pre-wrap; }
-.ai-content.loading { color: rgba(255,255,255,0.3); font-family: var(--mono); font-size: 12px; }
+.ai-badge { font-size: 10px; font-family: var(--mono); background: rgba(169,68,67,0.08); color: var(--accent); padding: 3px 8px; border-radius: 3px; letter-spacing: 0.08em; border: 1px solid rgba(169,68,67,0.2); }
+.ai-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.ai-content { font-size: 13px; color: var(--text2); line-height: 1.7; white-space: pre-wrap; }
+.ai-content.loading { color: var(--text3); font-family: var(--mono); font-size: 12px; }
 .ai-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-.ai-btn { padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-family: var(--sans); cursor: pointer; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
-.ai-btn:hover { background: rgba(255,255,255,0.15); color: #FFF; }
+.ai-btn { padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-family: var(--sans); cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+.ai-btn:hover { border-color: var(--accent); color: var(--accent); background: #FDF5F5; }
 .ai-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ai-btn .spinner { border-color: rgba(0,0,0,0.15); border-top-color: var(--text); }
 
 /* TABS */
 .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
@@ -205,12 +206,6 @@ tr:hover td { background: #F8F7F2; }
 .att-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .att-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
 
-/* ATT LIST — surcharges pour fond sombre (ai-panel) */
-.ai-panel .att-item { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
-.ai-panel .att-item:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); }
-.ai-panel .att-item.sel { background: rgba(169,68,67,0.25); border-color: rgba(169,68,67,0.5); box-shadow: 0 0 0 2px rgba(169,68,67,0.2); }
-.ai-panel .att-name { color: rgba(255,255,255,0.9); }
-.ai-panel .att-meta { color: rgba(255,255,255,0.4); }
 
 /* MODULE TAGS */
 .module-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 26px; }
@@ -263,16 +258,6 @@ tr:hover td { background: #F8F7F2; }
 .sol-chip:hover { border-color: var(--accent); color: var(--accent); }
 .sol-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* Surcharges globales pour éléments dans ai-panel (fond sombre) */
-.ai-panel .upload-zone-label { color: rgba(255,255,255,0.4); }
-.ai-panel .source-tab { color: rgba(255,255,255,0.4); border-bottom-color: transparent; }
-.ai-panel .source-tab.active { color: #F4A0A0; border-bottom-color: #F4A0A0; }
-.ai-panel .source-tabs { border-bottom-color: rgba(255,255,255,0.12); }
-.ai-panel .drop-zone { border-color: rgba(255,255,255,0.15); }
-.ai-panel .drop-zone:hover { border-color: rgba(255,255,255,0.35); }
-.ai-panel .drop-zone > div { color: rgba(255,255,255,0.6) !important; }
-.ai-panel .empty-att { color: rgba(255,255,255,0.3); }
-.ai-panel .upload-count { color: rgba(255,255,255,0.4); }
 .ai-panel .uploaded-file-item { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); }
 .ai-panel .remove-file-btn { color: rgba(255,255,255,0.4); }
 .ai-panel .remove-file-btn:hover { color: #F87171; }

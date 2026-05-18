@@ -40,25 +40,25 @@ router.post('/check-coherence', async (req, res, next) => {
 // filesData: [{ base64, mimeType, filename }]
 router.post('/analyze-cv', async (req, res, next) => {
   try {
-    const { filesData, prestataire, solution, modules, programCode, intervenantContext } = req.body;
+    const { filesData, prestataire, solution, actionLabel, actionDescription, actionConsistance, refType, modules, programCode, intervenantContext } = req.body;
     if (!filesData?.length) return res.status(400).json({ error: 'Fichiers requis' });
     let programName = '', amiText = '';
     if (programCode) {
       const prog = await prisma.program.findUnique({ where: { code: programCode }, select: { name: true, amiText: true } });
       if (prog) { programName = prog.name; amiText = prog.amiText || ''; }
     }
-    const text = await ai.analyzeCV({ filesData, prestataire, solution, modules, programName, amiText, intervenantContext });
+    const text = await ai.analyzeCV({ filesData, prestataire, solution, actionLabel, actionDescription, actionConsistance, refType, modules, programName, amiText, intervenantContext });
     res.json({ text });
   } catch (err) { next(err); }
 });
 
 router.post('/analyze-attestations', async (req, res, next) => {
   try {
-    const { filesData, imageBase64List, solution, intervenant, cvAnalysis } = req.body;
+    const { filesData, imageBase64List, solution, actionLabel, refType, intervenant, cvAnalysis } = req.body;
     // Accepte soit filesData (nouveau format) soit imageBase64List (legacy)
     const files = filesData?.length ? filesData : (imageBase64List || []).map(b64 => ({ base64: b64, mimeType: 'image/jpeg', filename: 'attestation' }));
     if (!files.length) return res.status(400).json({ error: 'Fichiers requis' });
-    const text = await ai.analyzeAttestations({ filesData: files, solution, intervenant, cvAnalysis });
+    const text = await ai.analyzeAttestations({ filesData: files, solution, actionLabel, refType, intervenant, cvAnalysis });
     res.json({ text });
   } catch (err) { next(err); }
 });
@@ -98,14 +98,19 @@ router.post('/suggest-scores', async (req, res, next) => {
 
 router.post('/auto-fill', async (req, res, next) => {
   try {
-    const { cvAnalysis, programCode } = req.body;
+    const { cvAnalysis, programCode, category } = req.body;
     if (!cvAnalysis) return res.status(400).json({ error: 'cvAnalysis requis' });
-    let criteria = [], intCriteria = [];
+    let intCriteria = [], solCriteria = [];
     if (programCode) {
       const prog = await prisma.program.findUnique({ where: { code: programCode } });
-      if (prog) intCriteria = prog.intCriteria;
+      if (prog) {
+        intCriteria = prog.intCriteria;
+        if (category && prog.categories?.[category]) {
+          solCriteria = prog.categories[category].criteria || [];
+        }
+      }
     }
-    const data = await ai.autoFillFromCV({ cvAnalysis, criteria, intCriteria });
+    const data = await ai.autoFillFromCV({ cvAnalysis, intCriteria, solCriteria });
     res.json(data);
   } catch (err) { next(err); }
 });

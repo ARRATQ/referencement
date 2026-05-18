@@ -187,6 +187,28 @@ Fournis :
 8. Conformité avec le canevas CV officiel (structure, rubriques, signature, cachet dirigeant)
 Sois précis et factuel. Cite les données exactes du document.`,
 
+  prompt_cv_action: `Tu es expert RH et évaluateur de commission de référencement.
+{{lang}}
+{{ami}}
+{{canvas}}
+Le contenu complet du CV est fourni ci-dessus (documents PDF/images joints). Base-toi EXCLUSIVEMENT sur ce contenu pour ton analyse — ne suppose rien qui n'y figure pas.
+
+Action objet de l'évaluation : "{{actionLabel}}"
+{{actionDescription}}
+{{actionConsistance}}
+Programme : "{{programName}}" — Prestataire : "{{prestataire}}"
+
+Évalue ce CV par rapport à cette action spécifique. Fournis :
+1. Niveau de formation (diplôme exact, établissement, année) — citer le document
+2. Expérience totale calculée (années, depuis quelle date)
+3. Adéquation directe avec l'action "{{actionLabel}}" : missions, réalisations, compétences démontrées dans le CV qui correspondent à la description et à la consistance attendue
+4. Références clients vérifiables au Maroc pour ce type d'action (nom entreprise, durée, mission)
+5. Certifications ou accréditations pertinentes pour cette action
+6. Verdict d'adéquation : le profil répond-il aux exigences de la consistance attendue ? Points forts / points de vigilance
+7. Incohérences ou lacunes à signaler (dates, contradictions, etc.)
+8. Conformité avec le canevas CV officiel (structure, rubriques, signature, cachet dirigeant)
+Sois précis et factuel. Cite les données exactes du document.`,
+
   prompt_attestations: `Tu es expert en vérification documentaire pour commission de référencement.
 {{lang}}
 Les attestations de référence sont fournies ci-dessus (documents PDF/images). Base-toi EXCLUSIVEMENT sur leur contenu.
@@ -380,15 +402,13 @@ async function suggestScores({ category, criteria, dossierContext }) {
   }
 }
 
-async function analyzeCV({ filesData, prestataire, solution, modules, programName, amiText, intervenantContext }) {
+async function analyzeCV({ filesData, prestataire, solution, actionLabel, actionDescription, actionConsistance, refType, modules, programName, amiText, intervenantContext }) {
   const docs = await getDocs();
   const prompts = await getPrompts();
   const cfg = await getAIConfig();
-  // Priorité : amiText du programme passé explicitement, sinon doc global
   const ami = amiText || docs.doc_ami || '';
   const canvas = docs.doc_cv_canvas || '';
 
-  // Contexte intervenant issu des données Jira
   let intervenantBlock = '';
   if (intervenantContext) {
     const parts = [];
@@ -399,7 +419,9 @@ async function analyzeCV({ filesData, prestataire, solution, modules, programNam
   }
 
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
-  const tpl = prompts.prompt_cv || DEFAULT_PROMPTS.prompt_cv;
+  const isAction = refType === 'ACTION';
+  const tplKey = isAction ? 'prompt_cv_action' : 'prompt_cv';
+  const tpl = prompts[tplKey] || DEFAULT_PROMPTS[tplKey];
   const temporalCtx = `[Contexte : nous sommes le ${today}. Toute date antérieure à cette date est dans le passé. Pour les tableaux du CV : lis chaque ligne indépendamment — les dates d'une ligne n'appartiennent pas aux lignes voisines.]\n\n`;
   const textPrompt = temporalCtx + fillTemplate(tpl, {
     lang: langInstruction(cfg.lang),
@@ -407,6 +429,9 @@ async function analyzeCV({ filesData, prestataire, solution, modules, programNam
     canvas: canvas ? `--- Canevas CV officiel ---\n${canvas.slice(0, 1500)}\n---\n` : '',
     prestataire,
     solution: solution || '—',
+    actionLabel: actionLabel || solution || '—',
+    actionDescription: actionDescription ? `Description : ${actionDescription}\n` : '',
+    actionConsistance: actionConsistance ? `Consistance attendue : ${actionConsistance}\n` : '',
     programName: programName || '—',
     modules: Array.isArray(modules) && modules.length ? modules.join(', ') : (modules || '—')
   });
@@ -425,19 +450,21 @@ async function analyzeCV({ filesData, prestataire, solution, modules, programNam
   return callAI([{ role: 'user', content }], { maxTokens: 2500 });
 }
 
-async function analyzeAttestations({ filesData, solution, intervenant, cvAnalysis }) {
+async function analyzeAttestations({ filesData, solution, actionLabel, refType, intervenant, cvAnalysis }) {
   const prompts = await getPrompts();
   const cfg = await getAIConfig();
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const tpl = prompts.prompt_attestations || DEFAULT_PROMPTS.prompt_attestations;
+  const isAction = refType === 'ACTION';
+  const sujet = isAction ? (actionLabel || '—') : (solution || '—');
   const cvBlock = cvAnalysis
-    ? `\n--- Analyse CV du consultant (contexte de concordance) ---\n${cvAnalysis.slice(0, 2000)}\n---\nNote sur la concordance CV/attestation : l'analyse CV est une interprétation automatique d'un document parfois scanné — les dates extraites peuvent être imprécises (colonnes de tableau mal alignées, années tronquées). Lorsque tu constates un écart de dates entre le CV et une attestation pour le même client et la même solution, signale-le comme un point à vérifier sur les documents originaux plutôt que comme une incohérence certaine. En revanche, si l'écart porte sur des éléments structurels (client différent, solution différente, consultant non mentionné), signale-le comme incohérence réelle.\n---\n`
+    ? `\n--- Analyse CV du consultant (contexte de concordance) ---\n${cvAnalysis.slice(0, 2000)}\n---\nNote sur la concordance CV/attestation : l'analyse CV est une interprétation automatique d'un document parfois scanné — les dates extraites peuvent être imprécises (colonnes de tableau mal alignées, années tronquées). Lorsque tu constates un écart de dates entre le CV et une attestation pour le même client et la même ${isAction ? 'action' : 'solution'}, signale-le comme un point à vérifier sur les documents originaux plutôt que comme une incohérence certaine. En revanche, si l'écart porte sur des éléments structurels (client différent, ${isAction ? 'action différente' : 'solution différente'}, consultant non mentionné), signale-le comme incohérence réelle.\n---\n`
     : '';
   const temporalCtx = `[Contexte : nous sommes le ${today}. Toute date antérieure à cette date est dans le passé — ne qualifie jamais une mission passée de "future" ou "à venir".]\n\n`;
   const textPrompt = temporalCtx + fillTemplate(tpl, {
     lang: langInstruction(cfg.lang),
     intervenant: intervenant || '—',
-    solution: solution || '—'
+    solution: sujet
   }) + cvBlock;
 
   console.log('[analyzeAttestations] today:', today, '| textPrompt tail:', textPrompt.slice(-200));
@@ -477,7 +504,11 @@ async function analyzeCertifEditeur({ filesData, solution, prestataire, programN
   return callAI([{ role: 'user', content }], { maxTokens: 2000 });
 }
 
-async function autoFillFromCV({ cvAnalysis, criteria, intCriteria }) {
+async function autoFillFromCV({ cvAnalysis, intCriteria, solCriteria }) {
+  const solBlock = solCriteria?.length
+    ? `\n\nGrille fonctionnelle (critères sol) :\n${solCriteria.map((c, i) => `${i}. ${c.n} [poids ${c.w}]${c.consistance ? ` — Attendu: ${c.consistance}` : ''}`).join('\n')}\n\nAjoute "solScores": { "0": 0|1|2, ... } dans le JSON en notant chaque critère sol d'après le contenu du CV.`
+    : '';
+
   const prompt = `À partir de cette analyse de CV :
 ${cvAnalysis}
 
@@ -495,9 +526,9 @@ Règles intScores :
 - 0 (formation): bac+2=1, bac+3/4=1, bac+5+=2, autre=0
 - 1 (exp générale): <5ans=0, 5-10ans=1, >10ans=2
 - 2 (exp solution): <2ans=0, 2-5ans=1, >5ans=2
-- 5 (équipe): individuel=0, 2-4=1, 5+=2`;
+- 5 (équipe): individuel=0, 2-4=1, 5+=2${solBlock}`;
 
-  const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.1, maxTokens: 600 });
+  const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.1, maxTokens: 800 });
   try {
     const match = raw.match(/\{[\s\S]*\}/);
     return match ? JSON.parse(match[0]) : null;

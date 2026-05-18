@@ -83,13 +83,20 @@
               </div>
               <div class="field"><label>Prestataire / Société</label><input v-model="form.prestataire" /></div>
               <div class="field" v-if="refType === 'SOLUTION'"><label>Solution présentée</label><input v-model="form.solution" placeholder="ex. Odoo 17, SAP Business One..." /></div>
-              <div class="field" v-if="refType === 'ACTION'"><label>Intitulé de l'action</label><input v-model="form.actionLabel" /></div>
-              <div class="field"><label>Date</label><input v-model="form.dateDemo" type="date" /></div>
+              <div class="field full" v-if="refType === 'ACTION'"><label>Action objet de l'évaluation</label>
+                <select v-model="form.actionLabel">
+                  <option value="">— Sélectionner une action —</option>
+                  <option v-for="(c, i) in currentCriteria?.criteria" :key="i" :value="c.n">{{ c.n }}</option>
+                </select>
+                <div v-if="selectedAction?.d" class="action-meta">{{ selectedAction.d }}</div>
+                <div v-if="selectedAction?.consistance" class="action-consistance">Consistance attendue : {{ selectedAction.consistance }}</div>
+              </div>
+              <div v-if="refType === 'SOLUTION'" class="field"><label>Date</label><input v-model="form.dateDemo" type="date" /></div>
               <div class="field"><label>Rapporteur</label><input v-model="form.rapporteur" /></div>
-              <div class="field"><label>Origine</label>
+              <div v-if="refType === 'SOLUTION'" class="field"><label>Origine</label>
                 <select v-model="form.origine"><option value="">—</option><option>Marocaine</option><option>Étrangère</option></select>
               </div>
-              <div class="field"><label>Nature du prestataire</label>
+              <div v-if="refType === 'SOLUTION'" class="field"><label>Nature du prestataire</label>
                 <select v-model="form.nature"><option value="">—</option><option>Éditeur</option><option>Intégrateur</option><option>Éditeur-Intégrateur</option><option>Consultant</option><option>Formateur</option></select>
               </div>
               <div class="field" v-if="refType === 'SOLUTION'"><label>Mode d'acquisition</label>
@@ -240,8 +247,8 @@
           <!-- ================================================================ -->
           <div class="upload-section-title">Documents à uploader pour l'évaluation IA</div>
 
-          <!-- Panel Briefing IA -->
-          <div class="ai-panel">
+          <!-- Panel Briefing IA — solutions uniquement -->
+          <div v-if="refType === 'SOLUTION'" class="ai-panel">
             <div class="ai-header">
               <span class="ai-badge">IA — OpenRouter</span>
               <span class="ai-title">Briefing pré-commission</span>
@@ -551,8 +558,8 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-title">Grille fonctionnelle — {{ currentCriteria?.label }}</div>
-            <div v-for="(c, i) in currentCriteria?.criteria" :key="i" class="criteria-item">
+            <div class="card-title">Grille fonctionnelle — {{ refType === 'ACTION' ? form.actionLabel : currentCriteria?.label }}</div>
+            <div v-for="(c, i) in evalCriteria" :key="i" class="criteria-item">
               <div class="criteria-text">
                 <div class="criteria-name">{{ c.n }} <span v-if="c.w === 2" class="prio-tag">prioritaire</span></div>
                 <div class="criteria-desc">{{ c.d }}</div>
@@ -775,8 +782,19 @@ const currentCriteria = computed(() => {
   return currentProgram.value.actionTypes?.[selectedCategory.value]
 })
 
+const selectedAction = computed(() => {
+  if (!form.value.actionLabel || !currentCriteria.value?.criteria) return null
+  return currentCriteria.value.criteria.find(c => c.n === form.value.actionLabel) || null
+})
+
+const evalCriteria = computed(() => {
+  if (!currentCriteria.value?.criteria) return []
+  if (refType.value === 'ACTION' && selectedAction.value) return [selectedAction.value]
+  return currentCriteria.value.criteria
+})
+
 const solScore = computed(() => {
-  const crit = currentCriteria.value?.criteria || []
+  const crit = evalCriteria.value
   let max = 0, score = 0, answered = 0
   crit.forEach((c, i) => {
     max += 2 * (c.w || 1)
@@ -1190,9 +1208,12 @@ async function analyzeCV() {
       filesData,
       prestataire: form.value.prestataire,
       solution: form.value.solution,
+      actionLabel: form.value.actionLabel,
+      actionDescription: selectedAction.value?.d || '',
+      actionConsistance: selectedAction.value?.consistance || '',
+      refType: refType.value,
       modules: form.value.modules,
       programCode: selectedProgramCode.value,
-      // Contexte AMI complet
       intervenantContext: extractedIntervenant.value ? {
         nom: extractedIntervenant.value.nom,
         prenom: extractedIntervenant.value.prenom,
@@ -1225,6 +1246,8 @@ async function analyzeAttestations() {
     const { data } = await api.post('/ai/analyze-attestations', {
       filesData,
       solution: form.value.solution,
+      actionLabel: form.value.actionLabel,
+      refType: refType.value,
       intervenant: form.value.jiraKeyIntervenant || `${extractedIntervenant.value?.prenom || ''} ${extractedIntervenant.value?.nom || ''}`.trim(),
       cvAnalysis: aiTexts.value.cv || null
     })
@@ -1271,7 +1294,11 @@ async function analyzeCertifEditeur() {
 
 async function autoFill() {
   try {
-    const { data } = await api.post('/ai/auto-fill', { cvAnalysis: aiTexts.value.cv, programCode: selectedProgramCode.value })
+    const { data } = await api.post('/ai/auto-fill', {
+      cvAnalysis: aiTexts.value.cv,
+      programCode: selectedProgramCode.value,
+      category: selectedCategory.value
+    })
     if (data) {
       if (data.diplome) cvFields.value.diplome = data.diplome
       if (data.etablissement) cvFields.value.etablissement = data.etablissement
@@ -1280,6 +1307,7 @@ async function autoFill() {
       if (data.poste) cvFields.value.poste = data.poste
       if (data.certif) cvFields.value.certif = data.certif
       if (data.intScores) intScores.value = { ...intScores.value, ...data.intScores }
+      if (data.solScores) solScores.value = { ...solScores.value, ...data.solScores }
       showNotif('Dossier pré-rempli depuis le CV', 'ok')
     }
   } catch (e) { showNotif('Erreur auto-fill', 'err') }
@@ -1290,7 +1318,7 @@ async function checkCoherence() {
   try {
     const { data } = await api.post('/ai/check-coherence', {
       category: selectedCategory.value,
-      criteria: currentCriteria.value?.criteria || [],
+      criteria: evalCriteria.value,
       solScores: solScores.value,
       solObs: solObs.value,
       // Contexte complet pour que l'IA ait accès à toutes les analyses
@@ -1358,8 +1386,8 @@ function exportPDF() {
 }
 
 function downloadGrille() {
-  const crit = currentCriteria.value?.criteria || []
-  const label = currentCriteria.value?.label || selectedCategory.value || 'grille'
+  const crit = evalCriteria.value
+  const label = refType.value === 'ACTION' ? (form.value.actionLabel || selectedCategory.value) : (currentCriteria.value?.label || selectedCategory.value || 'grille')
   let lines = [
     `GRILLE FONCTIONNELLE — ${label}`,
     `Programme : ${currentProgram.value?.name || '—'}`,
@@ -1540,5 +1568,25 @@ function attIcon(mime) { if (!mime) return '📎'; if (mime.includes('pdf')) ret
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 4px;
+}
+
+.action-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text2);
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--border2, var(--border));
+}
+
+.action-consistance {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text);
+  padding: 6px 10px;
+  background: rgba(169,68,67,0.05);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
 }
 </style>

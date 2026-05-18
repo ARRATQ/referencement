@@ -709,7 +709,8 @@ function wrapVar(v) { return '{{' + v + '}}' }
 const promptDefs = [
   { key: 'prompt_briefing', label: 'Briefing pré-commission', vars: ['lang', 'ami', 'prestataire', 'solution', 'category', 'modules'] },
   { key: 'prompt_pv', label: 'Procès-verbal (PV)', vars: ['lang', 'programName', 'prestataire', 'solution', 'category', 'modules', 'solScorePct', 'solVerdict', 'intScorePct', 'intVerdict', 'finalScorePct', 'finalDecision', 'decisionMotive', 'conditions', 'commissionComments'] },
-  { key: 'prompt_cv', label: 'Analyse CV / Diplômes', vars: ['lang', 'ami', 'canvas', 'prestataire', 'solution', 'programName'] },
+  { key: 'prompt_cv', label: 'Analyse CV — Solution informatique', vars: ['lang', 'ami', 'canvas', 'prestataire', 'solution', 'programName'] },
+  { key: 'prompt_cv_action', label: 'Analyse CV — Action (formation, normalisation…)', vars: ['lang', 'ami', 'canvas', 'prestataire', 'actionLabel', 'programName'] },
   { key: 'prompt_attestations', label: 'Analyse attestations de référence', vars: ['lang', 'intervenant', 'solution'] },
   { key: 'prompt_coherence', label: 'Contrôle cohérence de la notation', vars: ['lang', 'category', 'noteDetails'] },
   { key: 'prompt_suggest_scores', label: 'Suggestion de scores automatique', vars: ['lang', 'category', 'dossierContext', 'criteriaList'] }
