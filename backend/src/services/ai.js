@@ -509,6 +509,10 @@ async function autoFillFromCV({ cvAnalysis, intCriteria, solCriteria }) {
     ? `\n\nGrille fonctionnelle (critères sol) :\n${solCriteria.map((c, i) => `${i}. ${c.n} [poids ${c.w}]${c.consistance ? ` — Attendu: ${c.consistance}` : ''}`).join('\n')}\n\nAjoute dans le JSON :\n- "solScores": { "0": 0|1|2, ... } — note chaque critère sol d'après le contenu du CV\n- "solObservations": { "0": "...", ... } — courte justification (1-2 phrases) citant les éléments du CV qui fondent la note`
     : '';
 
+  const intBlock = intCriteria?.length
+    ? `\n\nAjoute également dans le JSON :\n- "intObservations": { "0": "...", "1": "...", "2": "...", "5": "..." } — pour chaque critère intScores, une courte justification (1-2 phrases) citant les éléments du CV qui fondent la note`
+    : '';
+
   const prompt = `À partir de cette analyse de CV :
 ${cvAnalysis}
 
@@ -526,7 +530,7 @@ Règles intScores :
 - 0 (formation): bac+2=1, bac+3/4=1, bac+5+=2, autre=0
 - 1 (exp générale): <5ans=0, 5-10ans=1, >10ans=2
 - 2 (exp solution): <2ans=0, 2-5ans=1, >5ans=2
-- 5 (équipe): individuel=0, 2-4=1, 5+=2${solBlock}`;
+- 5 (équipe): individuel=0, 2-4=1, 5+=2${intBlock}${solBlock}`;
 
   const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.1, maxTokens: 800 });
   try {

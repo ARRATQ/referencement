@@ -358,7 +358,10 @@
                 <span v-if="aiLoading.cv" class="spinner"></span>
                 <span v-else>◈ Lancer l'analyse CV</span>
               </button>
-              <button v-if="aiTexts.cv" class="ai-btn" @click="autoFill">◈ Pré-remplir le dossier</button>
+              <button v-if="aiTexts.cv" class="ai-btn" :disabled="aiLoading.autoFill" @click="autoFill">
+                <span v-if="aiLoading.autoFill" class="spinner"></span>
+                <span v-else>◈ Pré-remplir le dossier</span>
+              </button>
             </div>
           </div>
 
@@ -736,7 +739,7 @@ const intScores = ref({})
 const intObs = ref({})
 const intEnabled = ref({})
 const aiTexts = ref({ briefing: '', cv: '', attestations: '', certifEditeur: '', coherence: '', pv: '', specsAnalysis: '', demoScenario: '', webInsights: '' })
-const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false, specs: false })
+const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false, specs: false, autoFill: false })
 
 // Spécifications fonctionnelles upload
 const uploadedSpecsFiles = ref([])
@@ -1309,6 +1312,7 @@ async function analyzeCertifEditeur() {
 }
 
 async function autoFill() {
+  aiLoading.value.autoFill = true
   try {
     const { data } = await api.post('/ai/auto-fill', {
       cvAnalysis: aiTexts.value.cv,
@@ -1326,9 +1330,11 @@ async function autoFill() {
       if (data.intScores) intScores.value = { ...intScores.value, ...data.intScores }
       if (data.solScores) solScores.value = { ...solScores.value, ...data.solScores }
       if (data.solObservations) solObs.value = { ...solObs.value, ...data.solObservations }
+      if (data.intObservations) intObs.value = { ...intObs.value, ...data.intObservations }
       showNotif('Dossier pré-rempli depuis le CV', 'ok')
     }
   } catch (e) { showNotif('Erreur auto-fill', 'err') }
+  finally { aiLoading.value.autoFill = false }
 }
 
 async function checkCoherence() {
