@@ -23,12 +23,12 @@
       <template v-else>
         <!-- BARRE D'ÉTAPES -->
         <div class="steps-bar">
-          <template v-for="(s, i) in steps" :key="i">
+          <template v-for="(s, i) in displaySteps" :key="s.stepNum">
             <div class="step-item">
-              <div class="step-num" :class="{ done: step > i, active: step === i }">{{ step > i ? '✓' : i + 1 }}</div>
-              <div class="step-label" :class="{ active: step === i }">{{ s }}</div>
+              <div class="step-num" :class="{ done: step > s.stepNum, active: step === s.stepNum }">{{ step > s.stepNum ? '✓' : i + 1 }}</div>
+              <div class="step-label" :class="{ active: step === s.stepNum }">{{ s.label }}</div>
             </div>
-            <div v-if="i < steps.length - 1" class="step-sep"></div>
+            <div v-if="i < displaySteps.length - 1" class="step-sep"></div>
           </template>
         </div>
 
@@ -582,16 +582,16 @@
                 <span v-if="aiLoading.coherence" class="spinner spinner-dark"></span>
                 <span v-else>◈ Vérifier cohérence</span>
               </button>
-              <button class="btn btn-primary" @click="saveAndGo(3)">Suivant → Intégrateur</button>
+              <button class="btn btn-primary" @click="saveAndGo(3)">Suivant → {{ refType === 'ACTION' ? 'Consultant' : 'Intégrateur' }}</button>
             </div>
           </div>
         </div>
 
-        <!-- ÉTAPE 3 : Profil intégrateur/intervenant -->
+        <!-- ÉTAPE 3 : Profil intégrateur/consultant -->
         <div v-if="step === 3">
           <div class="score-live">
             <div>
-              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Score intégrateur</div>
+              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">{{ refType === 'ACTION' ? 'Score consultant' : 'Score intégrateur' }}</div>
               <div class="score-big" :class="scoreClass(intScore.pct, 55, 40)">{{ intScore.pct !== null ? intScore.pct + '%' : '—' }}</div>
             </div>
             <div style="flex:1;">
@@ -603,7 +603,7 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-title">Profil & compétences de l'intervenant</div>
+            <div class="card-title">Profil & compétences {{ refType === 'ACTION' ? 'du consultant' : "de l'intervenant" }}</div>
             <div class="form-grid mb8" style="margin-bottom:16px;">
               <div class="field"><label>Formation / Diplôme</label><input v-model="cvFields.diplome" @input="autoScore" placeholder="ex. Ingénieur informatique, Bac+5..." /></div>
               <div class="field"><label>Établissement</label><input v-model="cvFields.etablissement" /></div>
@@ -659,7 +659,7 @@
             <div class="card-title">Scores consolidés</div>
             <div class="metrics-row">
               <div class="metric"><div class="metric-label">Score solution</div><div class="metric-value">{{ solScore.pct !== null ? solScore.pct + '%' : '—' }}</div></div>
-              <div class="metric"><div class="metric-label">Score intégrateur</div><div class="metric-value">{{ intScore.pct !== null ? intScore.pct + '%' : '—' }}</div></div>
+              <div class="metric"><div class="metric-label">{{ refType === 'ACTION' ? 'Score consultant' : 'Score intégrateur' }}</div><div class="metric-value">{{ intScore.pct !== null ? intScore.pct + '%' : '—' }}</div></div>
               <div class="metric"><div class="metric-label">Score global pondéré</div><div class="metric-value accent">{{ globalScore !== null ? globalScore + '%' : '—' }}</div></div>
               <div class="metric"><div class="metric-label">Décision</div><div class="metric-value" style="font-size:14px;">{{ { REFERENCE: 'Référencé', CONDITIONNEL: 'Conditionnel', REJETE: 'Rejeté' }[finalDecision] || '—' }}</div></div>
             </div>
@@ -774,7 +774,13 @@ const showRawIntervenant = ref(false)
 const showRawCompetence = ref(false)
 
 const verdictLabel = { FAVORABLE: 'Favorable ✓', CONDITIONNEL: 'Conditionnel', DEFAVORABLE: 'Défavorable ✗' }
-const steps = ['Type & Catégorie', 'Dossier', 'Grille évaluation', 'Intégrateur', 'Décision']
+const displaySteps = computed(() => [
+  { label: 'Type & Catégorie', stepNum: 0 },
+  { label: 'Dossier', stepNum: 1 },
+  { label: 'Grille évaluation', stepNum: 2 },
+  { label: refType.value === 'ACTION' ? 'Consultant' : 'Intégrateur', stepNum: 3 },
+  { label: 'Décision', stepNum: 4 },
+])
 
 const currentCriteria = computed(() => {
   if (!currentProgram.value || !selectedCategory.value) return null
@@ -1379,7 +1385,7 @@ async function submitEval() {
 }
 
 function exportPDF() {
-  const content = `PROCÈS-VERBAL DE COMMISSION DE RÉFÉRENCEMENT\n${currentProgram.value?.name}\n\nPrestataire : ${form.value.prestataire}\nSolution : ${form.value.solution || form.value.actionLabel || '—'}\nScore solution : ${solScore.value.pct ?? '—'}%\nScore intégrateur : ${intScore.value.pct ?? '—'}%\nScore global : ${globalScore.value ?? '—'}%\nDécision : ${{ REFERENCE: 'Référencé', CONDITIONNEL: 'Conditionnel', REJETE: 'Rejeté' }[finalDecision.value] || '—'}\n\n${aiTexts.value.pv || ''}`
+  const content = `PROCÈS-VERBAL DE COMMISSION DE RÉFÉRENCEMENT\n${currentProgram.value?.name}\n\nPrestataire : ${form.value.prestataire}\nSolution : ${form.value.solution || form.value.actionLabel || '—'}\nScore solution : ${solScore.value.pct ?? '—'}%\nScore ${refType.value === 'ACTION' ? 'consultant' : 'intégrateur'} : ${intScore.value.pct ?? '—'}%\nScore global : ${globalScore.value ?? '—'}%\nDécision : ${{ REFERENCE: 'Référencé', CONDITIONNEL: 'Conditionnel', REJETE: 'Rejeté' }[finalDecision.value] || '—'}\n\n${aiTexts.value.pv || ''}`
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
