@@ -296,21 +296,24 @@ async function main() {
   ];
 
   for (const prog of programs) {
-    await prisma.program.upsert({
-      where: { code: prog.code },
-      update: { name: prog.name, version: prog.version },
-      create: {
-        code: prog.code,
-        name: prog.name,
-        version: prog.version,
-        amiText: BASE_AMI_TEXT,
-        cvTemplate: `CANEVAS CV OFFICIEL ${prog.name} ${prog.version}\n\n1. IDENTITÉ\nNom et prénom :\nDate de naissance :\nNationalité :\nContact :\n\n2. FORMATION\n(Diplôme, Établissement, Année, Mention)\n\n3. EXPÉRIENCES PROFESSIONNELLES\n3.1 En tant que consultant/prestataire\n(Période — Société — Mission — Solution — Modules)\n\n3.2 En tant que salarié\n(Période — Société — Poste — Responsabilités)\n\n4. CERTIFICATIONS & FORMATIONS CONTINUES\n\n5. LANGUES\n\n6. RÉFÉRENCES DISPONIBLES\n\nJe soussigné certifie sur l'honneur l'exactitude des informations ci-dessus.\nSignature :`,
-        categories: CATEGORIES,
-        intCriteria: INT_CRITERIA,
-        actionTypes: ACTION_TYPES
-      }
-    });
-    console.log(`✓ Programme: ${prog.code}`);
+    const existing = await prisma.program.findUnique({ where: { code: prog.code } });
+    if (!existing) {
+      await prisma.program.create({
+        data: {
+          code: prog.code,
+          name: prog.name,
+          version: prog.version,
+          amiText: BASE_AMI_TEXT,
+          cvTemplate: `CANEVAS CV OFFICIEL ${prog.name} ${prog.version}\n\n1. IDENTITÉ\nNom et prénom :\nDate de naissance :\nNationalité :\nContact :\n\n2. FORMATION\n(Diplôme, Établissement, Année, Mention)\n\n3. EXPÉRIENCES PROFESSIONNELLES\n3.1 En tant que consultant/prestataire\n(Période — Société — Mission — Solution — Modules)\n\n3.2 En tant que salarié\n(Période — Société — Poste — Responsabilités)\n\n4. CERTIFICATIONS & FORMATIONS CONTINUES\n\n5. LANGUES\n\n6. RÉFÉRENCES DISPONIBLES\n\nJe soussigné certifie sur l'honneur l'exactitude des informations ci-dessus.\nSignature :`,
+          categories: CATEGORIES,
+          intCriteria: INT_CRITERIA,
+          actionTypes: ACTION_TYPES
+        }
+      });
+      console.log(`✓ Programme créé: ${prog.code}`);
+    } else {
+      console.log(`~ Programme existant (ignoré): ${prog.code}`);
+    }
   }
 
   // Config par défaut
