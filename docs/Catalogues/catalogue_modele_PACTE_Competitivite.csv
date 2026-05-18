@@ -1,0 +1,4 @@
+domaine_key,domaine_label,domaine_icon,critere_intitule,critere_description,critere_poids,critere_consistance
+competences_techniques,Compétences techniques,💻,Maîtrise de la solution,Niveau de maîtrise technique de la solution proposée,2,Le consultant doit démontrer une maîtrise approfondie via des certifications ou des projets réalisés
+competences_techniques,Compétences techniques,💻,Expérience sectorielle,Connaissance du secteur d'activité du client,1,Au moins 2 références dans le secteur concerné
+references,Références clients,📋,Références vérifiables,Attestations de référence signées et cachetées,2,Minimum 3 attestations avec nom client - solution - dates - signature
