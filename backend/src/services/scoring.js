@@ -1,6 +1,7 @@
-function computeSolutionScore(scores, criteria) {
+function computeSolutionScore(scores, criteria, enabled = {}) {
   let max = 0, score = 0, answered = 0;
   criteria.forEach((c, i) => {
+    if (enabled[i] === false) return;
     max += 2 * (c.w || 1);
     if (scores[i] !== undefined && scores[i] !== null) {
       score += Number(scores[i]) * (c.w || 1);
@@ -13,9 +14,10 @@ function computeSolutionScore(scores, criteria) {
   return { pct, verdict, answered };
 }
 
-function computeIntegratorScore(scores, criteria) {
+function computeIntegratorScore(scores, criteria, enabled = {}) {
   let max = 0, score = 0, answered = 0;
   criteria.forEach((c, i) => {
+    if (enabled[i] === false) return;
     max += 2 * (c.w || 1);
     if (scores[i] !== undefined && scores[i] !== null) {
       score += Number(scores[i]) * (c.w || 1);

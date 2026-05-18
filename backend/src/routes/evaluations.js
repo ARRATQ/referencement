@@ -81,7 +81,7 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
     const allowed = ['prestataire','solution','actionLabel','actionDescription','dateDemo','rapporteur',
       'origine','nature','modeAcquisition','secteur','typeIntervenant','modules','category',
       'jiraKeyPrestataire','jiraKeyIntervenant','jiraKeyCompetence','referenceType','actionDomain',
-      'solScores','solObservations','intScores','intObservations',
+      'solScores','solObservations','solEnabled','intScores','intObservations','intEnabled',
       'finalDecision','decisionDate','decisionMotive','conditions','commissionComments','pvText',
       'cvAnalysis','attestationsAnalysis','briefingText','coherenceCheck',
       'specsAnalysis','demoScenario','webInsights','certifEditeurAnalysis'];
@@ -97,7 +97,7 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
       } else if (ev.referenceType === 'ACTION' && ev.actionDomain) {
         criteria = program.actionTypes?.[ev.actionDomain]?.criteria || [];
       }
-      const { pct, verdict } = computeSolutionScore(data.solScores, criteria);
+      const { pct, verdict } = computeSolutionScore(data.solScores, criteria, data.solEnabled || {});
       data.solScorePct = pct;
       data.solVerdict = verdict;
     }
@@ -105,7 +105,7 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
     if (data.intScores !== undefined) {
       const program = await prisma.program.findUnique({ where: { id: ev.programId } });
       const intCrit = program.intCriteria || [];
-      const { pct, verdict } = computeIntegratorScore(data.intScores, intCrit);
+      const { pct, verdict } = computeIntegratorScore(data.intScores, intCrit, data.intEnabled || {});
       data.intScorePct = pct;
       data.intVerdict = verdict;
     }

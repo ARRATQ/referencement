@@ -559,14 +559,15 @@
           </div>
           <div class="card">
             <div class="card-title">Grille fonctionnelle — {{ refType === 'ACTION' ? form.actionLabel : currentCriteria?.label }}</div>
-            <div v-for="(c, i) in evalCriteria" :key="i" class="criteria-item">
+            <div v-for="(c, i) in evalCriteria" :key="i" class="criteria-item" :class="{ 'criteria-disabled': solEnabled[i] === false }">
+              <button class="toggle-crit" :title="solEnabled[i] === false ? 'Activer ce critère' : 'Désactiver ce critère'" @click="solEnabled[i] = solEnabled[i] === false ? undefined : false">{{ solEnabled[i] === false ? '○' : '●' }}</button>
               <div class="criteria-text">
                 <div class="criteria-name">{{ c.n }} <span v-if="c.w === 2" class="prio-tag">prioritaire</span></div>
                 <div class="criteria-desc">{{ c.d }}</div>
-                <textarea class="criteria-obs" :placeholder="'Observation...'" v-model="solObs[i]" @input="scheduleSolSave"></textarea>
+                <textarea class="criteria-obs" :placeholder="'Observation...'" v-model="solObs[i]" @input="scheduleSolSave" :disabled="solEnabled[i] === false"></textarea>
               </div>
               <div class="score-btns">
-                <button v-for="v in [0,1,2]" :key="v" class="sbtn" :class="[`s${v}`, solScores[i] === v ? 'sel' : '']" @click="setSolScore(i, v)">{{ v }}</button>
+                <button v-for="v in [0,1,2]" :key="v" class="sbtn" :class="[`s${v}`, solScores[i] === v ? 'sel' : '']" @click="setSolScore(i, v)" :disabled="solEnabled[i] === false">{{ v }}</button>
               </div>
             </div>
           </div>
@@ -616,14 +617,15 @@
             </div>
             <hr class="divider">
             <div class="card-title">Critères d'évaluation</div>
-            <div v-for="(c, i) in currentProgram.intCriteria" :key="i" class="criteria-item">
+            <div v-for="(c, i) in currentProgram.intCriteria" :key="i" class="criteria-item" :class="{ 'criteria-disabled': intEnabled[i] === false }">
+              <button class="toggle-crit" :title="intEnabled[i] === false ? 'Activer ce critère' : 'Désactiver ce critère'" @click="intEnabled[i] = intEnabled[i] === false ? undefined : false">{{ intEnabled[i] === false ? '○' : '●' }}</button>
               <div class="criteria-text">
                 <div class="criteria-name">{{ c.n }}</div>
                 <div class="criteria-desc">{{ c.d }}</div>
-                <textarea class="criteria-obs" v-model="intObs[i]" @input="scheduleIntSave"></textarea>
+                <textarea class="criteria-obs" v-model="intObs[i]" @input="scheduleIntSave" :disabled="intEnabled[i] === false"></textarea>
               </div>
               <div class="score-btns">
-                <button v-for="v in [0,1,2]" :key="v" class="sbtn" :class="[`s${v}`, intScores[i] === v ? 'sel' : '']" @click="setIntScore(i, v)">{{ v }}</button>
+                <button v-for="v in [0,1,2]" :key="v" class="sbtn" :class="[`s${v}`, intScores[i] === v ? 'sel' : '']" @click="setIntScore(i, v)" :disabled="intEnabled[i] === false">{{ v }}</button>
               </div>
             </div>
           </div>
@@ -729,8 +731,10 @@ const form = ref({ prestataire: '', solution: '', actionLabel: '', jiraKeyPresta
 const cvFields = ref({ diplome: '', etablissement: '', exp: 0, expSol: 0, poste: '', equipe: 1, certif: '', refs: '' })
 const solScores = ref({})
 const solObs = ref({})
+const solEnabled = ref({})
 const intScores = ref({})
 const intObs = ref({})
+const intEnabled = ref({})
 const aiTexts = ref({ briefing: '', cv: '', attestations: '', certifEditeur: '', coherence: '', pv: '', specsAnalysis: '', demoScenario: '', webInsights: '' })
 const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false, specs: false })
 
@@ -795,6 +799,7 @@ const selectedAction = computed(() => {
 
 const evalCriteria = computed(() => {
   if (!currentCriteria.value?.criteria) return []
+  if (refType.value === 'ACTION' && selectedAction.value) return [selectedAction.value]
   return currentCriteria.value.criteria
 })
 
@@ -802,6 +807,7 @@ const solScore = computed(() => {
   const crit = evalCriteria.value
   let max = 0, score = 0, answered = 0
   crit.forEach((c, i) => {
+    if (solEnabled.value[i] === false) return
     max += 2 * (c.w || 1)
     if (solScores.value[i] !== undefined) { score += solScores.value[i] * (c.w || 1); answered++ }
   })
@@ -814,6 +820,7 @@ const intScore = computed(() => {
   const crit = currentProgram.value?.intCriteria || []
   let max = 0, score = 0, answered = 0
   crit.forEach((c, i) => {
+    if (intEnabled.value[i] === false) return
     max += 2 * (c.w || 1)
     if (intScores.value[i] !== undefined) { score += intScores.value[i] * (c.w || 1); answered++ }
   })
@@ -869,8 +876,10 @@ async function loadEval(id) {
   form.value = { ...form.value, ...data }
   solScores.value = data.solScores || {}
   solObs.value = data.solObservations || {}
+  solEnabled.value = data.solEnabled || {}
   intScores.value = data.intScores || {}
   intObs.value = data.intObservations || {}
+  intEnabled.value = data.intEnabled || {}
   aiTexts.value.pv = data.pvText || ''
   aiTexts.value.briefing = data.briefingText || ''
   aiTexts.value.coherence = data.coherenceCheck || ''
@@ -904,8 +913,10 @@ async function saveEval() {
     actionLabel: Array.isArray(form.value.actionLabel) ? form.value.actionLabel.join(', ') : (form.value.actionLabel || ''),
     solScores: solScores.value,
     solObservations: solObs.value,
+    solEnabled: solEnabled.value,
     intScores: intScores.value,
     intObservations: intObs.value,
+    intEnabled: intEnabled.value,
     cvAnalysis: aiTexts.value.cv,
     attestationsAnalysis: aiTexts.value.attestations,
     certifEditeurAnalysis: aiTexts.value.certifEditeur,
@@ -1595,5 +1606,30 @@ function attIcon(mime) { if (!mime) return '📎'; if (mime.includes('pdf')) ret
   background: rgba(169,68,67,0.05);
   border-radius: var(--radius);
   border-left: 3px solid var(--accent);
+}
+
+.toggle-crit {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--accent);
+  padding: 0;
+  line-height: 1;
+  margin-right: 8px;
+  opacity: 0.7;
+}
+.toggle-crit:hover { opacity: 1; }
+
+.criteria-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.criteria-disabled .toggle-crit {
+  pointer-events: all;
+  opacity: 0.6;
 }
 </style>
