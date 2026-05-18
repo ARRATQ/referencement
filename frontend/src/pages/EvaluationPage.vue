@@ -1297,7 +1297,8 @@ async function autoFill() {
     const { data } = await api.post('/ai/auto-fill', {
       cvAnalysis: aiTexts.value.cv,
       programCode: selectedProgramCode.value,
-      category: selectedCategory.value
+      category: selectedCategory.value,
+      refType: refType.value
     })
     if (data) {
       if (data.diplome) cvFields.value.diplome = data.diplome

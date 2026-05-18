@@ -98,15 +98,19 @@ router.post('/suggest-scores', async (req, res, next) => {
 
 router.post('/auto-fill', async (req, res, next) => {
   try {
-    const { cvAnalysis, programCode, category } = req.body;
+    const { cvAnalysis, programCode, category, refType } = req.body;
     if (!cvAnalysis) return res.status(400).json({ error: 'cvAnalysis requis' });
     let intCriteria = [], solCriteria = [];
     if (programCode) {
       const prog = await prisma.program.findUnique({ where: { code: programCode } });
       if (prog) {
         intCriteria = prog.intCriteria;
-        if (category && prog.categories?.[category]) {
-          solCriteria = prog.categories[category].criteria || [];
+        if (category) {
+          if (refType === 'ACTION' && prog.actionTypes?.[category]) {
+            solCriteria = prog.actionTypes[category].criteria || [];
+          } else if (prog.categories?.[category]) {
+            solCriteria = prog.categories[category].criteria || [];
+          }
         }
       }
     }
