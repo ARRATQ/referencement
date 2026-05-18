@@ -1308,6 +1308,7 @@ async function autoFill() {
       if (data.certif) cvFields.value.certif = data.certif
       if (data.intScores) intScores.value = { ...intScores.value, ...data.intScores }
       if (data.solScores) solScores.value = { ...solScores.value, ...data.solScores }
+      if (data.solObservations) solObs.value = { ...solObs.value, ...data.solObservations }
       showNotif('Dossier pré-rempli depuis le CV', 'ok')
     }
   } catch (e) { showNotif('Erreur auto-fill', 'err') }

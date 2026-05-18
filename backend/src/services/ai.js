@@ -506,7 +506,7 @@ async function analyzeCertifEditeur({ filesData, solution, prestataire, programN
 
 async function autoFillFromCV({ cvAnalysis, intCriteria, solCriteria }) {
   const solBlock = solCriteria?.length
-    ? `\n\nGrille fonctionnelle (critères sol) :\n${solCriteria.map((c, i) => `${i}. ${c.n} [poids ${c.w}]${c.consistance ? ` — Attendu: ${c.consistance}` : ''}`).join('\n')}\n\nAjoute "solScores": { "0": 0|1|2, ... } dans le JSON en notant chaque critère sol d'après le contenu du CV.`
+    ? `\n\nGrille fonctionnelle (critères sol) :\n${solCriteria.map((c, i) => `${i}. ${c.n} [poids ${c.w}]${c.consistance ? ` — Attendu: ${c.consistance}` : ''}`).join('\n')}\n\nAjoute dans le JSON :\n- "solScores": { "0": 0|1|2, ... } — note chaque critère sol d'après le contenu du CV\n- "solObservations": { "0": "...", ... } — courte justification (1-2 phrases) citant les éléments du CV qui fondent la note`
     : '';
 
   const prompt = `À partir de cette analyse de CV :
