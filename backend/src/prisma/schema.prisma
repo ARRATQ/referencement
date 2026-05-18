@@ -96,11 +96,13 @@ model Evaluation {
 
   solScores       Json     @default("{}")
   solObservations Json     @default("{}")
+  solEnabled      Json     @default("{}")
   solScorePct     Int?
   solVerdict      Verdict?
 
   intScores       Json     @default("{}")
   intObservations Json     @default("{}")
+  intEnabled      Json     @default("{}")
   intScorePct     Int?
   intVerdict      Verdict?
 

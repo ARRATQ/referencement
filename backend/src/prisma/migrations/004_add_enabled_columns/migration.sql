@@ -1,0 +1,2 @@
+ALTER TABLE "Evaluation" ADD COLUMN "solEnabled" JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE "Evaluation" ADD COLUMN "intEnabled" JSONB NOT NULL DEFAULT '{}';
