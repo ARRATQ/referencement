@@ -795,7 +795,6 @@ const selectedAction = computed(() => {
 
 const evalCriteria = computed(() => {
   if (!currentCriteria.value?.criteria) return []
-  if (refType.value === 'ACTION' && selectedAction.value) return [selectedAction.value]
   return currentCriteria.value.criteria
 })
 
