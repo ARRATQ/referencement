@@ -505,18 +505,26 @@ async function analyzeCertifEditeur({ filesData, solution, prestataire, programN
 }
 
 async function autoFillFromCV({ cvAnalysis, intCriteria, solCriteria }) {
-  const solBlock = solCriteria?.length
-    ? `\n\nGrille fonctionnelle (critères sol) :\n${solCriteria.map((c, i) => `${i}. ${c.n} [poids ${c.w}]${c.consistance ? ` — Attendu: ${c.consistance}` : ''}`).join('\n')}\n\nAjoute dans le JSON :\n- "solScores": { "0": 0|1|2, ... } — note chaque critère sol d'après le contenu du CV\n- "solObservations": { "0": "...", ... } — courte justification (1-2 phrases) citant les éléments du CV qui fondent la note`
+  const hasSol = solCriteria?.length > 0;
+  const hasInt = intCriteria?.length > 0;
+
+  const solCriteriaBlock = hasSol
+    ? `\n\nGrille fonctionnelle (critères solution) :\n${solCriteria.map((c, i) => `${i}. ${c.n} [poids ${c.w}]${c.consistance ? ` — Attendu: ${c.consistance}` : ''}`).join('\n')}`
     : '';
 
-  const intBlock = intCriteria?.length
-    ? `\n\nAjoute également dans le JSON :\n- "intObservations": { "0": "...", "1": "...", "2": "...", "5": "..." } — pour chaque critère intScores, une courte justification (1-2 phrases) citant les éléments du CV qui fondent la note`
+  const solJsonFields = hasSol
+    ? `,\n  "solScores": { ${solCriteria.map((_, i) => `"${i}": 0|1|2`).join(', ')} },\n  "solObservations": { ${solCriteria.map((_, i) => `"${i}": "justification 1-2 phrases"`).join(', ')} }`
+    : '';
+
+  const intObsField = hasInt
+    ? `,\n  "intObservations": { "0": "...", "1": "...", "2": "...", "5": "..." }`
     : '';
 
   const prompt = `À partir de cette analyse de CV :
 ${cvAnalysis}
+${solCriteriaBlock}
 
-Génère un JSON avec exactement cette structure (rien d'autre) :
+Réponds uniquement avec ce JSON (sans markdown, sans texte autour) :
 {
   "diplome": "...",
   "etablissement": "...",
@@ -524,15 +532,16 @@ Génère un JSON avec exactement cette structure (rien d'autre) :
   "expSol": <nombre années sur la solution>,
   "poste": "...",
   "certif": "...",
-  "intScores": { "0": 0|1|2, "1": 0|1|2, "2": 0|1|2, "5": 0|1|2 }
+  "intScores": { "0": 0|1|2, "1": 0|1|2, "2": 0|1|2, "5": 0|1|2 }${intObsField}${solJsonFields}
 }
 Règles intScores :
 - 0 (formation): bac+2=1, bac+3/4=1, bac+5+=2, autre=0
 - 1 (exp générale): <5ans=0, 5-10ans=1, >10ans=2
 - 2 (exp solution): <2ans=0, 2-5ans=1, >5ans=2
-- 5 (équipe): individuel=0, 2-4=1, 5+=2${intBlock}${solBlock}`;
+- 5 (équipe): individuel=0, 2-4=1, 5+=2
+${hasSol ? 'Pour solScores : note chaque critère d\'après le contenu du CV (0=absent/insuffisant, 1=partiel, 2=pleinement satisfait).\nPour solObservations : 1-2 phrases citant les éléments du CV qui fondent la note.' : ''}`;
 
-  const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.1, maxTokens: 800 });
+  const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.1, maxTokens: 1600 });
   try {
     const match = raw.match(/\{[\s\S]*\}/);
     return match ? JSON.parse(match[0]) : null;
