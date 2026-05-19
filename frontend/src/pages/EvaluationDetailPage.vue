@@ -51,6 +51,10 @@
             <div v-if="ev.nature" class="detail-row"><span class="detail-label">Nature</span><span class="detail-value">{{ ev.nature }}</span></div>
             <div v-if="ev.modeAcquisition" class="detail-row"><span class="detail-label">Mode d'acquisition</span><span class="detail-value">{{ ev.modeAcquisition }}</span></div>
             <div v-if="ev.secteur" class="detail-row"><span class="detail-label">Secteur</span><span class="detail-value">{{ ev.secteur }}</span></div>
+            <div v-if="ev.typeIntervenant" class="detail-row"><span class="detail-label">Type d'intervenant</span><span class="detail-value">{{ ev.typeIntervenant }}</span></div>
+            <div v-if="ev.jiraKeyIntervenant" class="detail-row"><span class="detail-label">Ticket intervenant</span><span class="detail-value text-mono">{{ ev.jiraKeyIntervenant }}</span></div>
+            <div v-if="ev.jiraKeyCompetence" class="detail-row"><span class="detail-label">Ticket compétence</span><span class="detail-value text-mono">{{ ev.jiraKeyCompetence }}</span></div>
+            <div v-if="ev.actionDescription" class="detail-row"><span class="detail-label">Description</span><span class="detail-value">{{ ev.actionDescription }}</span></div>
           </div>
           <div v-if="ev.modules?.length" style="margin-top:12px;">
             <div class="detail-label" style="margin-bottom:6px;">Modules</div>
