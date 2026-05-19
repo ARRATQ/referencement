@@ -853,13 +853,13 @@ function jiraLink(key) {
 }
 
 onMounted(async () => {
-  const [{ data: progs }, { data: cfg }] = await Promise.all([
-    api.get('/programs'),
-    api.get('/admin/config')
-  ])
+  const { data: progs } = await api.get('/programs')
   programs.value = progs.filter(p => p.active)
+
+  const cfg = await api.get('/admin/config').then(r => r.data).catch(() => [])
   const urlCfg = cfg.find(c => c.key === 'jira_url')
   if (urlCfg?.value) jiraBaseUrl.value = urlCfg.value
+
   if (route.query.jiraKey) {
     form.value.jiraKeyPrestataire = route.query.jiraKey
     await loadJiraHierarchy()
