@@ -60,6 +60,29 @@
           </div>
         </div>
 
+        <!-- Analyses IA pré-commission -->
+        <template v-if="ev.briefingText || ev.specsAnalysis || ev.demoScenario || ev.webInsights">
+          <div class="ai-panel">
+            <div class="ai-header"><span class="ai-badge">IA — Pré-commission</span></div>
+            <div v-if="ev.briefingText" class="ai-block">
+              <div class="ai-block-label">Briefing pré-commission</div>
+              <div class="ai-content">{{ ev.briefingText }}</div>
+            </div>
+            <div v-if="ev.specsAnalysis" class="ai-block">
+              <div class="ai-block-label">Analyse des spécifications fonctionnelles</div>
+              <div class="ai-content">{{ ev.specsAnalysis }}</div>
+            </div>
+            <div v-if="ev.demoScenario" class="ai-block">
+              <div class="ai-block-label">Scénario de démo</div>
+              <div class="ai-content">{{ ev.demoScenario }}</div>
+            </div>
+            <div v-if="ev.webInsights" class="ai-block">
+              <div class="ai-block-label">Web insights</div>
+              <div class="ai-content">{{ ev.webInsights }}</div>
+            </div>
+          </div>
+        </template>
+
         <!-- SECTION 2 : Grille fonctionnelle -->
         <div class="card">
           <div class="card-title">2 — Grille {{ ev.referenceType === 'ACTION' ? 'action' : 'solution' }}</div>
@@ -97,6 +120,12 @@
           </div>
         </div>
 
+        <!-- Analyse cohérence IA -->
+        <div v-if="ev.coherenceCheck" class="ai-panel">
+          <div class="ai-header"><span class="ai-badge">IA — Cohérence</span></div>
+          <div class="ai-content">{{ ev.coherenceCheck }}</div>
+        </div>
+
         <!-- SECTION 3 : Profil intégrateur/consultant -->
         <div class="card">
           <div class="card-title">3 — Profil {{ ev.referenceType === 'ACTION' ? 'consultant' : 'intégrateur' }}</div>
@@ -132,6 +161,25 @@
             </div>
           </div>
         </div>
+
+        <!-- Analyses IA intervenant -->
+        <template v-if="ev.cvAnalysis || ev.attestationsAnalysis || ev.certifEditeurAnalysis">
+          <div class="ai-panel">
+            <div class="ai-header"><span class="ai-badge">IA — Intervenant</span></div>
+            <div v-if="ev.cvAnalysis" class="ai-block">
+              <div class="ai-block-label">Analyse CV</div>
+              <div class="ai-content">{{ ev.cvAnalysis }}</div>
+            </div>
+            <div v-if="ev.attestationsAnalysis" class="ai-block">
+              <div class="ai-block-label">Attestations intervenant</div>
+              <div class="ai-content">{{ ev.attestationsAnalysis }}</div>
+            </div>
+            <div v-if="ev.certifEditeurAnalysis" class="ai-block">
+              <div class="ai-block-label">Certificat éditeur</div>
+              <div class="ai-content">{{ ev.certifEditeurAnalysis }}</div>
+            </div>
+          </div>
+        </template>
 
         <!-- SECTION 4 : Décision finale -->
         <div class="card">
@@ -286,4 +334,8 @@ async function copyPV() {
 .decision-banner.ref .decision-verdict { color: #22c55e; }
 .decision-banner.cond .decision-verdict { color: #f59e0b; }
 .decision-banner.rej .decision-verdict { color: #ef4444; }
+
+.ai-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); }
+.ai-block:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.ai-block-label { font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,0.4); margin-bottom: 6px; }
 </style>
