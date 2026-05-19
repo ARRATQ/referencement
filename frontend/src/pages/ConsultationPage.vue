@@ -3,13 +3,13 @@
     <div class="topbar">
       <div>
         <div class="topbar-title">Consultation</div>
-        <div class="topbar-sub">Évaluations soumises à la commission</div>
+        <div class="topbar-sub">Évaluations de la commission</div>
       </div>
     </div>
     <div class="content">
       <div class="row gap8 mb8">
         <input v-model="search" placeholder="Rechercher prestataire, solution..." style="width:280px;" />
-        <select v-if="auth.isGestionnaire" v-model="filterStatus" style="width:180px;">
+        <select v-model="filterStatus" style="width:180px;">
           <option value="">Tous les statuts</option>
           <option value="DRAFT">En cours</option>
           <option value="SUBMITTED">Soumises</option>
@@ -32,8 +32,8 @@
 
       <div v-else-if="!filtered.length" class="empty-state">
         <div class="empty-icon">📋</div>
-        <div class="empty-title">Aucune évaluation soumise</div>
-        <div class="text-sm mt8">Les évaluations validées par le gestionnaire apparaîtront ici.</div>
+        <div class="empty-title">Aucune évaluation</div>
+        <div class="text-sm mt8">Les évaluations de la commission apparaîtront ici.</div>
       </div>
 
       <div v-else class="card" style="padding:0; overflow:hidden;">
@@ -48,7 +48,7 @@
                 <th>Score intégrateur</th>
                 <th>Score global</th>
                 <th>Décision</th>
-                <th v-if="auth.isGestionnaire">Statut</th>
+                <th>Statut</th>
                 <th>Date</th>
                 <th>Actions</th>
               </tr>
@@ -62,13 +62,14 @@
                 <td>{{ ev.intScorePct !== null ? ev.intScorePct + '%' : '—' }}</td>
                 <td><strong>{{ ev.finalScorePct !== null ? ev.finalScorePct + '%' : '—' }}</strong></td>
                 <td><span class="badge" :class="decisionBadge(ev.finalDecision)">{{ decisionLabel(ev.finalDecision) }}</span></td>
-                <td v-if="auth.isGestionnaire">
+                <td>
                   <span class="badge" :class="ev.status === 'DRAFT' ? 'badge-amber' : 'badge-green'">
                     {{ ev.status === 'DRAFT' ? 'En cours' : 'Soumise' }}
                   </span>
                 </td>
                 <td class="text-mono">{{ ev.submittedAt ? new Date(ev.submittedAt).toLocaleDateString('fr-MA') : new Date(ev.createdAt).toLocaleDateString('fr-MA') }}</td>
                 <td>
+                  <RouterLink :to="'/evaluations/' + ev.id" class="btn btn-ghost btn-sm">👁 Voir</RouterLink>
                   <button v-if="ev.pvText" class="btn btn-ghost btn-sm" @click="showPV(ev)">📄 PV</button>
                   <RouterLink v-if="auth.isGestionnaire && ev.status === 'DRAFT'" :to="'/evaluation/' + ev.id" class="btn btn-ghost btn-sm">↩ Reprendre</RouterLink>
                 </td>
@@ -127,9 +128,8 @@ onMounted(async () => {
   if (route.query.program) filterProgram.value = route.query.program
   loading.value = true
   try {
-    const url = auth.isGestionnaire ? '/evaluations' : '/evaluations?status=SUBMITTED'
     const [evRes, progRes] = await Promise.all([
-      api.get(url),
+      api.get('/evaluations'),
       api.get('/programs')
     ])
     evaluations.value = evRes.data

@@ -8,6 +8,7 @@ const routes = [
   { path: '/evaluation', component: () => import('@/pages/EvaluationPage.vue'), meta: { roles: ['GESTIONNAIRE', 'ADMIN'] } },
   { path: '/evaluation/:id', component: () => import('@/pages/EvaluationPage.vue'), meta: { roles: ['GESTIONNAIRE', 'ADMIN'] } },
   { path: '/consultation', component: () => import('@/pages/ConsultationPage.vue'), meta: { roles: ['PARTICIPANT', 'GESTIONNAIRE', 'ADMIN'] } },
+  { path: '/evaluations/:id', component: () => import('@/pages/EvaluationDetailPage.vue'), meta: { roles: ['PARTICIPANT', 'GESTIONNAIRE', 'ADMIN'] } },
   { path: '/admin', component: () => import('@/pages/AdminPage.vue'), meta: { roles: ['ADMIN'] } },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]

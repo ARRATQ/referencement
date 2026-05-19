@@ -65,4 +65,27 @@ router.get('/me', authMiddleware, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.put('/change-password', authMiddleware, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Ancien et nouveau mot de passe requis' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 8 caractères' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

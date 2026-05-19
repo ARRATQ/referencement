@@ -20,10 +20,6 @@ router.get('/', async (req, res, next) => {
     const where = {};
     if (status) where.status = status;
     if (programId) where.programId = programId;
-    if (req.user.role === 'PARTICIPANT') {
-      // participants voient toutes les évaluations soumises
-      where.status = 'SUBMITTED';
-    }
     const evals = await prisma.evaluation.findMany({
       where,
       include: { program: { select: { code: true, name: true } }, evaluator: { select: { name: true, email: true } } },
@@ -40,9 +36,6 @@ router.get('/:id', async (req, res, next) => {
       include: { program: true, evaluator: { select: { name: true, email: true } } }
     });
     if (!ev) return res.status(404).json({ error: 'Évaluation introuvable' });
-    if (req.user.role === 'PARTICIPANT' && ev.status !== 'SUBMITTED') {
-      return res.status(403).json({ error: 'Accès interdit' });
-    }
     res.json(ev);
   } catch (err) { next(err); }
 });
