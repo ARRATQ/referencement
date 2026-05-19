@@ -31,3 +31,6 @@ Thumbs.db
 
 # Archives
 *.zip
+
+#docs
+docs/
