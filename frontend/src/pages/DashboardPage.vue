@@ -81,8 +81,26 @@ onMounted(async () => {
     } catch {}
   } else {
     try {
-      const { data } = await api.get('/evaluations?status=SUBMITTED')
-      stats.value = { total: data.length }
+      const { data } = await api.get('/evaluations')
+      const byDecision = {}
+      const byStatus = {}
+      const byProgramMap = {}
+      for (const ev of data) {
+        const d = ev.finalDecision || 'pending'
+        byDecision[d] = (byDecision[d] || 0) + 1
+        byStatus[ev.status] = (byStatus[ev.status] || 0) + 1
+        if (ev.program) {
+          const pid = ev.programId
+          if (!byProgramMap[pid]) byProgramMap[pid] = { id: ev.programId, code: ev.program.code, name: ev.program.name, count: 0 }
+          byProgramMap[pid].count++
+        }
+      }
+      stats.value = {
+        total: data.length,
+        byDecision,
+        byStatus,
+        byProgram: Object.values(byProgramMap)
+      }
     } catch {}
   }
 })

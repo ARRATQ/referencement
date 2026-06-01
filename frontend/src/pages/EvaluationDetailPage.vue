@@ -246,7 +246,11 @@ const error = ref('')
 const verdictLabel = { OK: 'Validé', PARTIEL: 'Partiel', KO: 'Insuffisant' }
 
 const solCriteria = computed(() => {
-  if (!program.value || !ev.value) return []
+  if (!ev.value) return []
+  if (Array.isArray(ev.value.customCriteria) && ev.value.customCriteria.length > 0) {
+    return ev.value.customCriteria
+  }
+  if (!program.value) return []
   if (ev.value.referenceType === 'SOLUTION' && ev.value.category) {
     return program.value.categories?.[ev.value.category]?.criteria || []
   }
