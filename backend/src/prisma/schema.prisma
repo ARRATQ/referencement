@@ -122,6 +122,7 @@ model Evaluation {
   demoScenario          String? @db.Text
   webInsights           String? @db.Text
   certifEditeurAnalysis String? @db.Text
+  customCriteria        Json?
 
   status      EvalStatus @default(DRAFT)
   createdAt   DateTime   @default(now())
