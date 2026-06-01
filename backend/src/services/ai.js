@@ -270,6 +270,29 @@ Génère un scénario de démonstration structuré permettant de VÉRIFIER ces f
 3. Signe d'alerte si la fonctionnalité est simulée ou absente
 Format : tableau ou liste numérotée, très concis, orienté vérification terrain.`,
 
+  prompt_criteria_from_specs: `Tu es expert en évaluation de solutions informatiques pour une commission de référencement.
+{{lang}}
+Prestataire : {{prestataire}} | Solution : {{solution}} | Catégorie : {{category}}
+
+Voici les spécifications fonctionnelles déclarées par le prestataire :
+{{specsContent}}
+
+Ta mission : générer une grille d'évaluation fonctionnelle personnalisée basée sur ces spécifications.
+Crée entre 6 et 15 critères d'évaluation couvrant les fonctionnalités clés déclarées.
+
+Pour chaque critère :
+- "n" : nom court et clair (max 60 caractères)
+- "d" : description de ce qui doit être vérifié lors de la démo (1-2 phrases)
+- "w" : poids (1 = standard, 2 = prioritaire / fonctionnalité critique)
+
+Réponds UNIQUEMENT en JSON valide, rien d'autre :
+{
+  "criteria": [
+    { "n": "Nom critère", "d": "Description vérification", "w": 1 },
+    ...
+  ]
+}`,
+
   prompt_suggest_scores: `Tu es évaluateur expert pour la commission de référencement.
 {{lang}}
 Domaine évalué : {{category}}
@@ -620,7 +643,28 @@ async function analyzeSpecs({ filesData, prestataire, solution, category, module
   });
   const demoScenario = await callAI([{ role: 'user', content: promptDemo }], { maxTokens: 2000 });
 
-  // Étape 3 — comparaison avec les fonctionnalités réelles connues (web search via perplexity)
+  // Étape 3 — génération grille fonctionnelle personnalisée
+  let suggestedCriteria = [];
+  try {
+    const tplCriteria = prompts.prompt_criteria_from_specs || DEFAULT_PROMPTS.prompt_criteria_from_specs;
+    const promptCriteria = fillTemplate(tplCriteria, {
+      lang: langInstr,
+      prestataire: prestataire || '—',
+      solution: solution || '—',
+      category: category || '—',
+      specsContent: specsContent.slice(0, 12000)
+    });
+    const criteriaRaw = await callAI([{ role: 'user', content: promptCriteria }], { maxTokens: 2000 });
+    const jsonMatch = criteriaRaw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(parsed.criteria)) suggestedCriteria = parsed.criteria;
+    }
+  } catch (e) {
+    console.warn('[analyzeSpecs] Criteria generation failed:', e.message);
+  }
+
+  // Étape 4 — comparaison avec les fonctionnalités réelles connues (web search via perplexity)
   let webInsights = '';
   try {
     const webPrompt = `Tu es expert en solutions informatiques B2B. Recherche des informations sur la solution "${solution || prestataire}" dans la catégorie "${category || 'logiciel de gestion'}".
@@ -644,7 +688,7 @@ Sois factuel et cite tes sources si possible.`;
     webInsights = `Recherche web non disponible (${e.message.slice(0, 100)}).`;
   }
 
-  return { specsAnalysis, demoScenario, webInsights };
+  return { specsAnalysis, demoScenario, webInsights, suggestedCriteria };
 }
 
 module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, analyzeCertifEditeur, autoFillFromCV, analyzeSpecs, DEFAULT_PROMPTS };

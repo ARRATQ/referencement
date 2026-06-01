@@ -77,7 +77,7 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
       'solScores','solObservations','solEnabled','intScores','intObservations','intEnabled',
       'finalDecision','decisionDate','decisionMotive','conditions','commissionComments','pvText',
       'cvAnalysis','attestationsAnalysis','briefingText','coherenceCheck',
-      'specsAnalysis','demoScenario','webInsights','certifEditeurAnalysis'];
+      'specsAnalysis','demoScenario','webInsights','certifEditeurAnalysis','customCriteria'];
 
     const data = cleanDates(pick(req.body, allowed), ['dateDemo', 'decisionDate']);
 
@@ -85,7 +85,11 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
     if (data.solScores !== undefined) {
       const program = await prisma.program.findUnique({ where: { id: ev.programId } });
       let criteria = [];
-      if (ev.referenceType === 'SOLUTION' && ev.category) {
+      // Priorité : critères personnalisés (grille dynamique) > critères du programme
+      const customCriteria = data.customCriteria || ev.customCriteria;
+      if (Array.isArray(customCriteria) && customCriteria.length > 0) {
+        criteria = customCriteria;
+      } else if (ev.referenceType === 'SOLUTION' && ev.category) {
         criteria = program.categories?.[ev.category]?.criteria || [];
       } else if (ev.referenceType === 'ACTION' && ev.actionDomain) {
         criteria = program.actionTypes?.[ev.actionDomain]?.criteria || [];

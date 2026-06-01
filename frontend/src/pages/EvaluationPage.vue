@@ -561,17 +561,67 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-title">Grille fonctionnelle — {{ refType === 'ACTION' ? form.actionLabel : currentCriteria?.label }}</div>
-            <div v-for="(c, i) in evalCriteria" :key="i" class="criteria-item" :class="{ 'criteria-disabled': solEnabled[i] === false }">
-              <button class="toggle-crit" :title="solEnabled[i] === false ? 'Activer ce critère' : 'Désactiver ce critère'" @click="solEnabled[i] = solEnabled[i] === false ? undefined : false">{{ solEnabled[i] === false ? '○' : '●' }}</button>
-              <div class="criteria-text">
-                <div class="criteria-name">{{ c.n }} <span v-if="c.w === 2" class="prio-tag">prioritaire</span></div>
-                <div class="criteria-desc">{{ c.d }}</div>
-                <textarea class="criteria-obs" :placeholder="'Observation...'" v-model="solObs[i]" @input="scheduleSolSave" :disabled="solEnabled[i] === false"></textarea>
+            <div class="card-title-row">
+              <div class="card-title">
+                Grille fonctionnelle — {{ refType === 'ACTION' ? form.actionLabel : currentCriteria?.label }}
+                <span v-if="customCriteria.length > 0" class="badge-custom-grid">IA — Personnalisée</span>
               </div>
-              <div class="score-btns">
+              <div class="grid-actions-row">
+                <button v-if="uploadedSpecsFiles.length || customCriteria.length" class="btn btn-ghost btn-sm" :disabled="aiLoading.criteriaGen" @click="regenerateCriteriaFromSpecs" title="Régénérer la grille depuis les spécifications uploadées">
+                  <span v-if="aiLoading.criteriaGen" class="spinner spinner-dark"></span>
+                  <span v-else>◈ Régénérer depuis specs</span>
+                </button>
+                <button v-if="customCriteria.length > 0" class="btn btn-ghost btn-sm" @click="resetToDefaultCriteria" title="Revenir à la grille standard du programme">Grille standard</button>
+              </div>
+            </div>
+
+            <!-- Critères -->
+            <div v-for="(c, i) in evalCriteria" :key="i" class="criteria-item" :class="{ 'criteria-disabled': solEnabled[i] === false }">
+              <button class="toggle-crit" :title="solEnabled[i] === false ? 'Activer ce critère' : 'Désactiver ce critère'" @click="solEnabled[i] = solEnabled[i] === false ? undefined : false; saveEval()">{{ solEnabled[i] === false ? '○' : '●' }}</button>
+
+              <!-- Mode édition inline (grille personnalisée uniquement) -->
+              <div v-if="customCriteria.length > 0 && editingCritIndex === i" class="criteria-edit-form">
+                <input class="crit-edit-name" v-model="editingCrit.n" placeholder="Nom du critère" @keyup.enter="saveEditCrit" @keyup.escape="cancelEditCrit" />
+                <textarea class="crit-edit-desc" v-model="editingCrit.d" placeholder="Description / ce qui doit être vérifié" rows="2"></textarea>
+                <div class="crit-edit-row">
+                  <label class="crit-weight-label">
+                    <input type="checkbox" :checked="editingCrit.w === 2" @change="editingCrit.w = $event.target.checked ? 2 : 1" /> Prioritaire
+                  </label>
+                  <button class="btn btn-primary btn-sm" @click="saveEditCrit">Enregistrer</button>
+                  <button class="btn btn-ghost btn-sm" @click="cancelEditCrit">Annuler</button>
+                </div>
+              </div>
+
+              <!-- Mode affichage -->
+              <div v-else class="criteria-text">
+                <div class="criteria-name-row">
+                  <span class="criteria-name">{{ c.n }} <span v-if="c.w === 2" class="prio-tag">prioritaire</span></span>
+                  <div v-if="customCriteria.length > 0" class="crit-manage-btns">
+                    <button class="crit-btn-edit" @click="startEditCrit(i)" title="Modifier">✎</button>
+                    <button class="crit-btn-remove" @click="removeCrit(i)" title="Supprimer">✕</button>
+                  </div>
+                </div>
+                <div class="criteria-desc">{{ c.d }}</div>
+                <textarea class="criteria-obs" placeholder="Observation..." v-model="solObs[i]" @input="scheduleSolSave" :disabled="solEnabled[i] === false"></textarea>
+              </div>
+
+              <div class="score-btns" v-if="!(customCriteria.length > 0 && editingCritIndex === i)">
                 <button v-for="v in [0,1,2]" :key="v" class="sbtn" :class="[`s${v}`, solScores[i] === v ? 'sel' : '']" @click="setSolScore(i, v)" :disabled="solEnabled[i] === false">{{ v }}</button>
               </div>
+            </div>
+
+            <!-- Ajouter un critère (grille personnalisée) -->
+            <div v-if="customCriteria.length > 0" class="add-crit-row">
+              <button class="btn btn-ghost btn-sm" @click="addCrit">+ Ajouter un critère</button>
+            </div>
+
+            <!-- Générer grille IA si pas encore de critères personnalisés -->
+            <div v-if="customCriteria.length === 0 && uploadedSpecsFiles.length > 0 && !aiLoading.specs" class="generate-grid-hint">
+              <div class="hint-text">Des spécifications ont été uploadées — vous pouvez générer une grille personnalisée.</div>
+              <button class="ai-btn" :disabled="aiLoading.criteriaGen" @click="regenerateCriteriaFromSpecs">
+                <span v-if="aiLoading.criteriaGen" class="spinner"></span>
+                <span v-else>◈ Générer la grille depuis les specs</span>
+              </button>
             </div>
           </div>
           <!-- Panel cohérence IA -->
@@ -739,7 +789,10 @@ const intScores = ref({})
 const intObs = ref({})
 const intEnabled = ref({})
 const aiTexts = ref({ briefing: '', cv: '', attestations: '', certifEditeur: '', coherence: '', pv: '', specsAnalysis: '', demoScenario: '', webInsights: '' })
-const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false, specs: false, autoFill: false })
+const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false, specs: false, autoFill: false, criteriaGen: false })
+const customCriteria = ref([]) // grille dynamique générée par l'IA depuis les specs
+const editingCritIndex = ref(null) // index du critère en cours d'édition inline
+const editingCrit = ref({ n: '', d: '', w: 1 }) // buffer d'édition
 
 // Spécifications fonctionnelles upload
 const uploadedSpecsFiles = ref([])
@@ -801,6 +854,8 @@ const selectedAction = computed(() => {
 })
 
 const evalCriteria = computed(() => {
+  // Grille personnalisée (depuis specs) a la priorité
+  if (customCriteria.value.length > 0) return customCriteria.value
   if (!currentCriteria.value?.criteria) return []
   if (refType.value === 'ACTION' && selectedAction.value) return [selectedAction.value]
   return currentCriteria.value.criteria
@@ -892,6 +947,7 @@ async function loadEval(id) {
   aiTexts.value.specsAnalysis = data.specsAnalysis || ''
   aiTexts.value.demoScenario = data.demoScenario || ''
   aiTexts.value.webInsights = data.webInsights || ''
+  customCriteria.value = Array.isArray(data.customCriteria) ? data.customCriteria : []
   selectedProgramCode.value = data.program?.code
   await onProgramChange()
   refType.value = data.referenceType
@@ -929,6 +985,7 @@ async function saveEval() {
     specsAnalysis: aiTexts.value.specsAnalysis,
     demoScenario: aiTexts.value.demoScenario,
     webInsights: aiTexts.value.webInsights,
+    customCriteria: customCriteria.value.length > 0 ? customCriteria.value : null,
     finalDecision: finalDecision.value
   }
   if (evalId.value) {
@@ -1202,6 +1259,10 @@ async function analyzeSpecs() {
     aiTexts.value.specsAnalysis = data.specsAnalysis || ''
     aiTexts.value.demoScenario = data.demoScenario || ''
     aiTexts.value.webInsights = data.webInsights || ''
+    if (Array.isArray(data.suggestedCriteria) && data.suggestedCriteria.length > 0) {
+      customCriteria.value = data.suggestedCriteria
+      showNotif(`Grille générée : ${data.suggestedCriteria.length} critères`, 'ok')
+    }
     await saveEval()
   } catch (e) { showNotif(e.response?.data?.error || 'Erreur analyse specs', 'err') }
   finally { aiLoading.value.specs = false }
@@ -1335,6 +1396,63 @@ async function autoFill() {
     }
   } catch (e) { showNotif('Erreur auto-fill', 'err') }
   finally { aiLoading.value.autoFill = false }
+}
+
+function startEditCrit(i) {
+  editingCritIndex.value = i
+  editingCrit.value = { ...customCriteria.value[i] }
+}
+function saveEditCrit() {
+  if (!editingCrit.value.n.trim()) return
+  const updated = [...customCriteria.value]
+  updated[editingCritIndex.value] = { ...editingCrit.value }
+  customCriteria.value = updated
+  editingCritIndex.value = null
+  saveEval()
+}
+function cancelEditCrit() { editingCritIndex.value = null }
+function removeCrit(i) {
+  customCriteria.value = customCriteria.value.filter((_, idx) => idx !== i)
+  const newScores = {}, newObs = {}, newEnabled = {}
+  Object.entries(solScores.value).forEach(([k, v]) => { const n = parseInt(k); if (n < i) newScores[k] = v; else if (n > i) newScores[String(n - 1)] = v })
+  Object.entries(solObs.value).forEach(([k, v]) => { const n = parseInt(k); if (n < i) newObs[k] = v; else if (n > i) newObs[String(n - 1)] = v })
+  Object.entries(solEnabled.value).forEach(([k, v]) => { const n = parseInt(k); if (n < i) newEnabled[k] = v; else if (n > i) newEnabled[String(n - 1)] = v })
+  solScores.value = newScores; solObs.value = newObs; solEnabled.value = newEnabled
+  saveEval()
+}
+function addCrit() {
+  customCriteria.value = [...customCriteria.value, { n: '', d: '', w: 1 }]
+  editingCritIndex.value = customCriteria.value.length - 1
+  editingCrit.value = { n: '', d: '', w: 1 }
+}
+function resetToDefaultCriteria() {
+  customCriteria.value = []
+  solScores.value = {}; solObs.value = {}; solEnabled.value = {}
+  saveEval()
+}
+async function regenerateCriteriaFromSpecs() {
+  if (!uploadedSpecsFiles.value.length) return showNotif('Uploadez un fichier de spécifications d\'abord', 'err')
+  aiLoading.value.criteriaGen = true
+  try {
+    const filesData = []
+    for (const f of uploadedSpecsFiles.value) {
+      filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
+    }
+    const { data } = await api.post('/ai/analyze-specs', {
+      filesData,
+      prestataire: form.value.prestataire,
+      solution: form.value.solution || form.value.actionLabel,
+      category: selectedCategory.value,
+      modules: form.value.modules,
+      programCode: selectedProgramCode.value
+    })
+    if (Array.isArray(data.suggestedCriteria) && data.suggestedCriteria.length > 0) {
+      customCriteria.value = data.suggestedCriteria
+      showNotif(`Grille régénérée : ${data.suggestedCriteria.length} critères`, 'ok')
+      await saveEval()
+    }
+  } catch (e) { showNotif(e.response?.data?.error || 'Erreur génération grille', 'err') }
+  finally { aiLoading.value.criteriaGen = false }
 }
 
 async function checkCoherence() {
@@ -1637,5 +1755,129 @@ function attIcon(mime) { if (!mime) return '📎'; if (mime.includes('pdf')) ret
 .criteria-disabled .toggle-crit {
   pointer-events: all;
   opacity: 0.6;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.card-title-row .card-title { margin-bottom: 0; }
+
+.badge-custom-grid {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  background: rgba(var(--accent-rgb, 100,100,255), 0.15);
+  color: var(--accent);
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: var(--mono);
+  vertical-align: middle;
+}
+
+.grid-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.criteria-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.crit-manage-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.criteria-item:hover .crit-manage-btns { opacity: 1; }
+
+.crit-btn-edit, .crit-btn-remove {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text2);
+  padding: 0;
+}
+.crit-btn-edit:hover { color: var(--accent); border-color: var(--accent); }
+.crit-btn-remove:hover { color: var(--red, #e55); border-color: var(--red, #e55); }
+
+.criteria-edit-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.crit-edit-name {
+  width: 100%;
+  font-size: 13px;
+  padding: 6px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+.crit-edit-desc {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  resize: vertical;
+}
+.crit-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.crit-weight-label {
+  font-size: 12px;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.add-crit-row {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  text-align: center;
+}
+
+.generate-grid-hint {
+  margin-top: 16px;
+  padding: 14px;
+  background: rgba(var(--accent-rgb, 100,100,255), 0.06);
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hint-text {
+  font-size: 12px;
+  color: var(--text2);
+  flex: 1;
 }
 </style>
