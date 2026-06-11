@@ -249,11 +249,15 @@
 
           <!-- Panel Briefing IA — solutions uniquement -->
           <div v-if="refType === 'SOLUTION'" class="ai-panel">
-            <div class="ai-header">
+            <div class="ai-header panel-toggle" @click="togglePanel('briefing')">
               <span class="ai-badge">IA — OpenRouter</span>
               <span class="ai-title">Briefing pré-commission</span>
-              <span v-if="aiTexts.briefing" class="badge badge-green" style="margin-left:auto;">✓ Généré</span>
+              <span class="panel-right">
+                <span v-if="aiTexts.briefing" class="badge badge-green">✓ Généré</span>
+                <span class="panel-chevron">{{ collapsedPanels.briefing ? '▸' : '▾' }}</span>
+              </span>
             </div>
+            <div v-show="!collapsedPanels.briefing">
 
             <!-- Upload spécifications fonctionnelles -->
             <div class="upload-zone-label">Spécifications fonctionnelles (Excel / PDF) — optionnel</div>
@@ -272,18 +276,18 @@
             </div>
             <div v-if="aiTexts.specsAnalysis" class="specs-analysis-block">
               <div class="specs-analysis-label">Analyse des spécifications fonctionnelles</div>
-              <div class="ai-content" style="white-space:pre-wrap;font-size:0.82rem;">{{ aiTexts.specsAnalysis }}</div>
+              <AiText class="ai-content" style="font-size:0.82rem;" :text="aiTexts.specsAnalysis" />
             </div>
             <div v-if="aiTexts.demoScenario" class="specs-analysis-block">
               <div class="specs-analysis-label">Scénario de vérification pour la démo</div>
-              <div class="ai-content" style="white-space:pre-wrap;font-size:0.82rem;">{{ aiTexts.demoScenario }}</div>
+              <AiText class="ai-content" style="font-size:0.82rem;" :text="aiTexts.demoScenario" />
             </div>
             <div v-if="aiTexts.webInsights" class="specs-analysis-block">
               <div class="specs-analysis-label">Comparaison fonctionnalités réelles (sources web)</div>
-              <div class="ai-content" style="white-space:pre-wrap;font-size:0.82rem;">{{ aiTexts.webInsights }}</div>
+              <AiText class="ai-content" style="font-size:0.82rem;" :text="aiTexts.webInsights" />
             </div>
 
-            <div class="ai-content" :class="{ loading: aiLoading.briefing }">{{ aiTexts.briefing || 'Renseignez le prestataire et la solution, puis lancez le briefing IA.' }}</div>
+            <AiText class="ai-content" :class="{ loading: aiLoading.briefing }" :text="aiTexts.briefing" placeholder="Renseignez le prestataire et la solution, puis lancez le briefing IA." />
             <div class="ai-actions">
               <button class="ai-btn" :disabled="aiLoading.briefing || !form.prestataire" @click="generateBriefing">
                 <span v-if="aiLoading.briefing" class="spinner"></span>
@@ -294,15 +298,20 @@
                 <span v-else>◈ Analyser les specs + démo</span>
               </button>
             </div>
+            </div>
           </div>
 
           <!-- Panel CV — Upload séparé + bouton manuel -->
           <div class="ai-panel">
-            <div class="ai-header">
+            <div class="ai-header panel-toggle" @click="togglePanel('cv')">
               <span class="ai-badge">IA — Analyse CV</span>
               <span class="ai-title">CV / Diplômes de l'intervenant</span>
-              <span v-if="aiTexts.cv" class="badge badge-green" style="margin-left:auto;">✓ Analysé</span>
+              <span class="panel-right">
+                <span v-if="aiTexts.cv" class="badge badge-green">✓ Analysé</span>
+                <span class="panel-chevron">{{ collapsedPanels.cv ? '▸' : '▾' }}</span>
+              </span>
             </div>
+            <div v-show="!collapsedPanels.cv">
             <div class="upload-zone-label">1 — Ajoutez les fichiers (un à un ou en lot)</div>
             <!-- Source tabs -->
             <div class="source-tabs">
@@ -349,8 +358,7 @@
               </div>
             </div>
             <div class="upload-zone-label mt8">2 — Lancez l'analyse manuellement</div>
-            <div class="ai-content" v-if="aiTexts.cv">{{ aiTexts.cv }}</div>
-            <div class="ai-content" v-else style="color:var(--text3);">Aucune analyse CV effectuée.</div>
+            <AiText class="ai-content" :text="aiTexts.cv" placeholder="Aucune analyse CV effectuée." />
             <div class="ai-actions">
               <button class="ai-btn"
                 :disabled="(cvSource === 'jira' ? !selectedCVAttIds.length : !uploadedCVFiles.length) || aiLoading.cv"
@@ -363,15 +371,20 @@
                 <span v-else>◈ Pré-remplir le dossier</span>
               </button>
             </div>
+            </div>
           </div>
 
           <!-- Panel Attestations de référence intervenant — Upload séparé + bouton manuel -->
           <div class="ai-panel">
-            <div class="ai-header">
+            <div class="ai-header panel-toggle" @click="togglePanel('att')">
               <span class="ai-badge">IA — Attestations</span>
               <span class="ai-title">Attestations de référence — Intervenant</span>
-              <span v-if="aiTexts.attestations" class="badge badge-green" style="margin-left:auto;">✓ Analysé</span>
+              <span class="panel-right">
+                <span v-if="aiTexts.attestations" class="badge badge-green">✓ Analysé</span>
+                <span class="panel-chevron">{{ collapsedPanels.att ? '▸' : '▾' }}</span>
+              </span>
             </div>
+            <div v-show="!collapsedPanels.att">
             <div class="upload-zone-label">1 — Ajoutez les attestations (Jira ou ordinateur)</div>
             <!-- Source tabs -->
             <div class="source-tabs">
@@ -418,8 +431,7 @@
               </div>
             </div>
             <div class="upload-zone-label mt8">2 — Lancez l'analyse manuellement</div>
-            <div class="ai-content" v-if="aiTexts.attestations">{{ aiTexts.attestations }}</div>
-            <div class="ai-content" v-else style="color:var(--text3);">Aucune analyse d'attestations effectuée.</div>
+            <AiText class="ai-content" :text="aiTexts.attestations" placeholder="Aucune analyse d'attestations effectuée." />
             <div class="ai-actions">
               <button class="ai-btn"
                 :disabled="(attSource === 'jira' ? !selectedAttIds.length : !uploadedAttFiles.length) || aiLoading.att"
@@ -428,15 +440,20 @@
                 <span v-else>◈ Lancer l'analyse attestations</span>
               </button>
             </div>
+            </div>
           </div>
 
           <!-- Panel Certificat Éditeur (solutions uniquement) -->
           <div v-if="refType === 'SOLUTION'" class="ai-panel">
-            <div class="ai-header">
+            <div class="ai-header panel-toggle" @click="togglePanel('certif')">
               <span class="ai-badge" style="background:rgba(251,180,36,0.15); color:#fbbf24; border-color:rgba(251,180,36,0.3);">IA — Certificat Éditeur</span>
               <span class="ai-title">Certificat de référence éditeur</span>
-              <span v-if="aiTexts.certifEditeur" class="badge badge-green" style="margin-left:auto;">✓ Analysé</span>
+              <span class="panel-right">
+                <span v-if="aiTexts.certifEditeur" class="badge badge-green">✓ Analysé</span>
+                <span class="panel-chevron">{{ collapsedPanels.certif ? '▸' : '▾' }}</span>
+              </span>
             </div>
+            <div v-show="!collapsedPanels.certif">
             <div class="upload-zone-label">1 — Ajoutez le certificat de l'éditeur</div>
             <div class="source-tabs">
               <div class="source-tab" :class="{ active: certifSource === 'competence' }" @click="switchCertifSource('competence')">
@@ -525,8 +542,7 @@
             </div>
 
             <div class="upload-zone-label mt8">2 — Lancez l'analyse manuellement</div>
-            <div class="ai-content" v-if="aiTexts.certifEditeur">{{ aiTexts.certifEditeur }}</div>
-            <div class="ai-content" v-else style="color:var(--text3);">Aucune analyse de certificat éditeur effectuée.</div>
+            <AiText class="ai-content" :text="aiTexts.certifEditeur" placeholder="Aucune analyse de certificat éditeur effectuée." />
             <div class="ai-actions">
               <button class="ai-btn"
                 :disabled="certifHasNoFile || aiLoading.certifEditeur"
@@ -534,6 +550,7 @@
                 <span v-if="aiLoading.certifEditeur" class="spinner"></span>
                 <span v-else>◈ Lancer l'analyse certificat</span>
               </button>
+            </div>
             </div>
           </div>
 
@@ -626,8 +643,12 @@
           </div>
           <!-- Panel cohérence IA -->
           <div v-if="aiTexts.coherence" class="ai-panel">
-            <div class="ai-header"><span class="ai-badge">IA — Cohérence</span><span class="ai-title">Analyse de la notation</span></div>
-            <div class="ai-content">{{ aiTexts.coherence }}</div>
+            <div class="ai-header panel-toggle" @click="togglePanel('coherence')">
+              <span class="ai-badge">IA — Cohérence</span>
+              <span class="ai-title">Analyse de la notation</span>
+              <span class="panel-right"><span class="panel-chevron">{{ collapsedPanels.coherence ? '▸' : '▾' }}</span></span>
+            </div>
+            <AiText v-show="!collapsedPanels.coherence" class="ai-content" :text="aiTexts.coherence" />
           </div>
           <div class="row-between mt16">
             <button class="btn btn-ghost" @click="goStep(1)">← Retour</button>
@@ -684,18 +705,24 @@
           </div>
           <!-- Récap analyses IA disponibles -->
           <div v-if="aiTexts.cv || aiTexts.attestations || aiTexts.certifEditeur" class="ai-panel">
-            <div class="ai-header"><span class="ai-badge">IA — Synthèse analyses</span><span class="ai-title">Résumé des analyses effectuées</span></div>
-            <div v-if="aiTexts.cv" style="margin-bottom:10px;">
-              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Analyse CV</div>
-              <div class="ai-content" style="font-size:12px;">{{ aiTexts.cv }}</div>
+            <div class="ai-header panel-toggle" @click="togglePanel('recap')">
+              <span class="ai-badge">IA — Synthèse analyses</span>
+              <span class="ai-title">Résumé des analyses effectuées</span>
+              <span class="panel-right"><span class="panel-chevron">{{ collapsedPanels.recap ? '▸' : '▾' }}</span></span>
             </div>
-            <div v-if="aiTexts.attestations" style="margin-bottom:10px;">
-              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Attestations intervenant</div>
-              <div class="ai-content" style="font-size:12px;">{{ aiTexts.attestations }}</div>
-            </div>
-            <div v-if="aiTexts.certifEditeur">
-              <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Certificat éditeur</div>
-              <div class="ai-content" style="font-size:12px;">{{ aiTexts.certifEditeur }}</div>
+            <div v-show="!collapsedPanels.recap">
+              <div v-if="aiTexts.cv" style="margin-bottom:10px;">
+                <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Analyse CV</div>
+                <AiText class="ai-content" style="font-size:12px;" :text="aiTexts.cv" />
+              </div>
+              <div v-if="aiTexts.attestations" style="margin-bottom:10px;">
+                <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Attestations intervenant</div>
+                <AiText class="ai-content" style="font-size:12px;" :text="aiTexts.attestations" />
+              </div>
+              <div v-if="aiTexts.certifEditeur">
+                <div style="font-size:11px; font-family:var(--mono); color:rgba(255,255,255,0.4); margin-bottom:4px;">Certificat éditeur</div>
+                <AiText class="ai-content" style="font-size:12px;" :text="aiTexts.certifEditeur" />
+              </div>
             </div>
           </div>
           <div class="row-between mt16">
@@ -767,6 +794,7 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
+import AiText from '@/components/AiText.vue'
 
 const showNotif = inject('showNotif')
 const route = useRoute()
@@ -791,6 +819,8 @@ const intEnabled = ref({})
 const aiTexts = ref({ briefing: '', cv: '', attestations: '', certifEditeur: '', coherence: '', pv: '', specsAnalysis: '', demoScenario: '', webInsights: '' })
 const aiLoading = ref({ briefing: false, cv: false, att: false, certifEditeur: false, coherence: false, pv: false, specs: false, autoFill: false, criteriaGen: false })
 const customCriteria = ref([]) // grille dynamique générée par l'IA depuis les specs
+const collapsedPanels = ref({}) // état replié/déplié des zones d'évaluation IA
+function togglePanel(key) { collapsedPanels.value = { ...collapsedPanels.value, [key]: !collapsedPanels.value[key] } }
 const editingCritIndex = ref(null) // index du critère en cours d'édition inline
 const editingCrit = ref({ n: '', d: '', w: 1 }) // buffer d'édition
 
@@ -953,6 +983,28 @@ async function loadEval(id) {
   refType.value = data.referenceType
   selectedCategory.value = data.category || data.actionDomain
   step.value = data.status === 'SUBMITTED' ? 4 : 1
+  await restoreJiraSelection(data)
+}
+
+// À la reprise d'une évaluation : recharge la hiérarchie Jira puis re-sélectionne
+// automatiquement les tickets intervenant et compétence sauvegardés.
+async function restoreJiraSelection(data) {
+  if (!data.jiraKeyPrestataire) return
+  try {
+    await loadJiraHierarchy()
+    if (!jiraHierarchy.value) return
+    const intervenants = jiraHierarchy.value.intervenants || []
+    if (data.jiraKeyIntervenant) {
+      const int = intervenants.find(i => i.key === data.jiraKeyIntervenant)
+      if (int) await selectIntervenant(int)
+    }
+    if (data.jiraKeyCompetence) {
+      const comp = intervenants.flatMap(i => i.competences || []).find(c => c.key === data.jiraKeyCompetence)
+      if (comp) await selectCompetence(comp)
+    }
+  } catch (e) {
+    showNotif('Rechargement Jira partiel : ' + (e.response?.data?.error || e.message), 'warn')
+  }
 }
 
 function goStep(n) { step.value = n; window.scrollTo(0, 0) }
@@ -1564,6 +1616,26 @@ function attIcon(mime) { if (!mime) return '📎'; if (mime.includes('pdf')) ret
 </script>
 
 <style scoped>
+.ai-header.panel-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.panel-chevron {
+  color: var(--text3);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.ai-header.panel-toggle:hover .panel-chevron { color: var(--accent); }
+
 .upload-section-title {
   font-size: 13px;
   font-weight: 600;

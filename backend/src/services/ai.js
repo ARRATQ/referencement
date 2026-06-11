@@ -89,6 +89,27 @@ function fillTemplate(tpl, vars) {
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] !== undefined ? vars[k] : `{{${k}}}`);
 }
 
+// Structure synthèse/détail imposée aux analyses IA — le frontend (AiText.vue)
+// parse ces balises pour afficher la synthèse seule avec détail dépliable.
+const SYNTH_INSTRUCTION = `
+
+IMPORTANT — Structure ta réponse EXACTEMENT comme suit (les deux balises sont obligatoires, telles quelles) :
+===SYNTHESE===
+3 à 5 puces maximum : l'essentiel actionnable pour l'évaluateur (verdict global, points forts, points de vigilance). Pas de tableau dans cette section.
+===DETAIL===
+L'analyse complète et détaillée.`;
+
+const DEMO_TABLE_INSTRUCTION = `
+
+Le scénario dans la section DETAIL doit être un tableau markdown ENTIÈREMENT REMPLI avec exactement ces colonnes :
+| N° | Fonctionnalité clé (Domaine) | Action concrète à demander au prestataire | Résultat attendu | Signe d'alerte |
+Génère entre 8 et 12 lignes. Chaque cellule doit contenir un contenu concret et spécifique à la solution évaluée — ne rends JAMAIS un tableau vide, des cellules "à compléter" ou de simples en-têtes sans lignes.`;
+
+// Retire les balises de structure avant réinjection d'une analyse comme contexte d'un autre prompt
+function stripMarkers(text) {
+  return (text || '').replace(/===\s*(SYNTHESE|DETAIL)\s*===/gi, '').trim();
+}
+
 function isPdf(f) {
   if (f.mimeType === 'application/pdf') return true;
   const ext = (f.filename || '').split('.').pop()?.toLowerCase();
@@ -264,11 +285,10 @@ Prestataire : {{prestataire}} | Solution : {{solution}} | Catégorie : {{categor
 Fonctionnalités déclarées (extrait de l'analyse) :
 {{specsAnalysis}}
 
-Génère un scénario de démonstration structuré permettant de VÉRIFIER ces fonctionnalités. Pour chaque fonctionnalité clé :
-1. Action concrète à demander au prestataire (ex: "Montrez la création d'une facture avec...")
-2. Résultat attendu si la fonctionnalité est réelle
-3. Signe d'alerte si la fonctionnalité est simulée ou absente
-Format : tableau ou liste numérotée, très concis, orienté vérification terrain.`,
+Génère un scénario de démonstration structuré permettant de VÉRIFIER ces fonctionnalités.
+Format : tableau markdown ENTIÈREMENT REMPLI (8 à 12 lignes), colonnes :
+| N° | Fonctionnalité clé (Domaine) | Action concrète à demander au prestataire (ex: "Montrez la création d'une facture avec...") | Résultat attendu si la fonctionnalité est réelle | Signe d'alerte si simulée ou absente |
+Chaque cellule doit être renseignée avec un contenu concret et spécifique — jamais de tableau vide ni de cellules à compléter. Très concis, orienté vérification terrain.`,
 
   prompt_criteria_from_specs: `Tu es expert en évaluation de solutions informatiques pour une commission de référencement.
 {{lang}}
@@ -340,7 +360,7 @@ async function generateBriefing({ prestataire, solution, category, modules, amiT
     category: category || '—',
     modules: modules?.join(', ') || '—'
   });
-  return callAI([{ role: 'user', content: prompt }]);
+  return callAI([{ role: 'user', content: prompt + SYNTH_INSTRUCTION }]);
 }
 
 async function generatePV({ prestataire, solution, category, solScorePct, intScorePct, finalScorePct, finalDecision, solVerdict, intVerdict, decisionMotive, conditions, commissionComments, modules, programName, cvAnalysis, attestationsAnalysis, certifEditeurAnalysis }) {
@@ -350,9 +370,9 @@ async function generatePV({ prestataire, solution, category, solScorePct, intSco
 
   // Synthèse des analyses documentaires disponibles
   const analysesParts = [];
-  if (cvAnalysis) analysesParts.push(`Analyse CV intervenant :\n${cvAnalysis.slice(0, 600)}`);
-  if (attestationsAnalysis) analysesParts.push(`Attestations de référence :\n${attestationsAnalysis.slice(0, 600)}`);
-  if (certifEditeurAnalysis) analysesParts.push(`Certificat éditeur :\n${certifEditeurAnalysis.slice(0, 600)}`);
+  if (cvAnalysis) analysesParts.push(`Analyse CV intervenant :\n${stripMarkers(cvAnalysis).slice(0, 600)}`);
+  if (attestationsAnalysis) analysesParts.push(`Attestations de référence :\n${stripMarkers(attestationsAnalysis).slice(0, 600)}`);
+  if (certifEditeurAnalysis) analysesParts.push(`Certificat éditeur :\n${stripMarkers(certifEditeurAnalysis).slice(0, 600)}`);
   const analysesBlock = analysesParts.length ? `\n--- Synthèse documentaire ---\n${analysesParts.join('\n\n')}\n---` : '';
 
   const prompt = fillTemplate(tpl, {
@@ -387,9 +407,9 @@ async function checkCoherence({ category, criteria, solScores, solObs, context }
   let contextBlock = '';
   if (context) {
     const parts = [];
-    if (context.cvAnalysis) parts.push(`Analyse CV :\n${context.cvAnalysis.slice(0, 1000)}`);
-    if (context.attestationsAnalysis) parts.push(`Attestations intervenant :\n${context.attestationsAnalysis.slice(0, 800)}`);
-    if (context.certifEditeurAnalysis) parts.push(`Certificat éditeur :\n${context.certifEditeurAnalysis.slice(0, 800)}`);
+    if (context.cvAnalysis) parts.push(`Analyse CV :\n${stripMarkers(context.cvAnalysis).slice(0, 1000)}`);
+    if (context.attestationsAnalysis) parts.push(`Attestations intervenant :\n${stripMarkers(context.attestationsAnalysis).slice(0, 800)}`);
+    if (context.certifEditeurAnalysis) parts.push(`Certificat éditeur :\n${stripMarkers(context.certifEditeurAnalysis).slice(0, 800)}`);
     if (parts.length) contextBlock = `\n\n--- Contexte documentaire disponible ---\n${parts.join('\n\n')}\n---`;
   }
 
@@ -399,7 +419,7 @@ async function checkCoherence({ category, criteria, solScores, solObs, context }
     category: category || '—',
     noteDetails
   }) + contextBlock;
-  return callAI([{ role: 'user', content: prompt }]);
+  return callAI([{ role: 'user', content: prompt + SYNTH_INSTRUCTION }]);
 }
 
 async function suggestScores({ category, criteria, dossierContext }) {
@@ -465,9 +485,9 @@ async function analyzeCV({ filesData, prestataire, solution, actionLabel, action
   if (pdfTexts.length === 0 && imagesParts.length === 0) {
     throw new Error(`Aucun fichier lisible parmi les ${filesData.length} fichier(s) fourni(s).`);
   }
-  const fullText = pdfTexts.length > 0
+  const fullText = (pdfTexts.length > 0
     ? `Contenu des documents PDF :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
-    : textPrompt;
+    : textPrompt) + SYNTH_INSTRUCTION;
 
   const content = [...imagesParts, { type: 'text', text: fullText }];
   return callAI([{ role: 'user', content }], { maxTokens: 2500 });
@@ -481,7 +501,7 @@ async function analyzeAttestations({ filesData, solution, actionLabel, refType, 
   const isAction = refType === 'ACTION';
   const sujet = isAction ? (actionLabel || '—') : (solution || '—');
   const cvBlock = cvAnalysis
-    ? `\n--- Analyse CV du consultant (contexte de concordance) ---\n${cvAnalysis.slice(0, 2000)}\n---\nNote sur la concordance CV/attestation : l'analyse CV est une interprétation automatique d'un document parfois scanné — les dates extraites peuvent être imprécises (colonnes de tableau mal alignées, années tronquées). Lorsque tu constates un écart de dates entre le CV et une attestation pour le même client et la même ${isAction ? 'action' : 'solution'}, signale-le comme un point à vérifier sur les documents originaux plutôt que comme une incohérence certaine. En revanche, si l'écart porte sur des éléments structurels (client différent, ${isAction ? 'action différente' : 'solution différente'}, consultant non mentionné), signale-le comme incohérence réelle.\n---\n`
+    ? `\n--- Analyse CV du consultant (contexte de concordance) ---\n${stripMarkers(cvAnalysis).slice(0, 2000)}\n---\nNote sur la concordance CV/attestation : l'analyse CV est une interprétation automatique d'un document parfois scanné — les dates extraites peuvent être imprécises (colonnes de tableau mal alignées, années tronquées). Lorsque tu constates un écart de dates entre le CV et une attestation pour le même client et la même ${isAction ? 'action' : 'solution'}, signale-le comme un point à vérifier sur les documents originaux plutôt que comme une incohérence certaine. En revanche, si l'écart porte sur des éléments structurels (client différent, ${isAction ? 'action différente' : 'solution différente'}, consultant non mentionné), signale-le comme incohérence réelle.\n---\n`
     : '';
   const temporalCtx = `[Contexte : nous sommes le ${today}. Toute date antérieure à cette date est dans le passé — ne qualifie jamais une mission passée de "future" ou "à venir".]\n\n`;
   const textPrompt = temporalCtx + fillTemplate(tpl, {
@@ -496,9 +516,9 @@ async function analyzeAttestations({ filesData, solution, actionLabel, refType, 
   if (pdfTexts.length === 0 && imagesParts.length === 0) {
     throw new Error(`Aucun fichier lisible parmi les ${filesData.length} fichier(s) fourni(s). Vérifiez que les attestations sont des PDF avec texte sélectionnable ou des images (PNG/JPG).`);
   }
-  const fullText = pdfTexts.length > 0
+  const fullText = (pdfTexts.length > 0
     ? `Contenu des attestations PDF :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
-    : textPrompt;
+    : textPrompt) + SYNTH_INSTRUCTION;
   const content = [...imagesParts, { type: 'text', text: fullText }];
   return callAI([{ role: 'user', content }], { maxTokens: 2000 });
 }
@@ -520,9 +540,9 @@ async function analyzeCertifEditeur({ filesData, solution, prestataire, programN
 
   const { imagesParts, pdfTexts } = await buildFileParts(filesData, 5000);
   console.log(`[analyzeCertifEditeur] ${filesData.length} fichier(s) — ${pdfTexts.length} PDF(s), ${imagesParts.length} part(s) inline`);
-  const fullText = pdfTexts.length > 0
+  const fullText = (pdfTexts.length > 0
     ? `Contenu du certificat PDF :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
-    : textPrompt;
+    : textPrompt) + SYNTH_INSTRUCTION;
   const content = [...imagesParts, { type: 'text', text: fullText }];
   return callAI([{ role: 'user', content }], { maxTokens: 2000 });
 }
@@ -544,7 +564,7 @@ async function autoFillFromCV({ cvAnalysis, intCriteria, solCriteria }) {
     : '';
 
   const prompt = `À partir de cette analyse de CV :
-${cvAnalysis}
+${stripMarkers(cvAnalysis)}
 ${solCriteriaBlock}
 
 Réponds uniquement avec ce JSON (sans markdown, sans texte autour) :
@@ -630,7 +650,7 @@ async function analyzeSpecs({ filesData, prestataire, solution, category, module
     category: category || '—',
     specsContent
   });
-  const specsAnalysis = await callAI([{ role: 'user', content: promptSpecs }], { maxTokens: 2000 });
+  const specsAnalysis = await callAI([{ role: 'user', content: promptSpecs + SYNTH_INSTRUCTION }], { maxTokens: 2500 });
 
   // Étape 2 — scénario de démo
   const tplDemo = prompts.prompt_demo_scenario || DEFAULT_PROMPTS.prompt_demo_scenario;
@@ -639,9 +659,9 @@ async function analyzeSpecs({ filesData, prestataire, solution, category, module
     prestataire: prestataire || '—',
     solution: solution || '—',
     category: category || '—',
-    specsAnalysis: specsAnalysis.slice(0, 3000)
+    specsAnalysis: stripMarkers(specsAnalysis).slice(0, 3000)
   });
-  const demoScenario = await callAI([{ role: 'user', content: promptDemo }], { maxTokens: 2000 });
+  const demoScenario = await callAI([{ role: 'user', content: promptDemo + DEMO_TABLE_INSTRUCTION + SYNTH_INSTRUCTION }], { maxTokens: 3000 });
 
   // Étape 3 — génération grille fonctionnelle personnalisée
   let suggestedCriteria = [];
@@ -677,7 +697,7 @@ Sur la base de tes connaissances et des sources disponibles :
 2. Y a-t-il des fonctionnalités déclarées qui semblent exagérées, inhabituelles ou non standard pour ce type de solution ?
 3. Quelle est la réputation générale de cette solution sur le marché (éditeur, maturité, présence au Maroc) ?
 4. Points de vigilance à avoir lors de la démo.
-Sois factuel et cite tes sources si possible.`;
+Sois factuel et cite tes sources si possible.${SYNTH_INSTRUCTION}`;
 
     webInsights = await callAI(
       [{ role: 'user', content: webPrompt }],

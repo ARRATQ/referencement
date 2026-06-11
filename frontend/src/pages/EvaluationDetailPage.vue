@@ -70,19 +70,19 @@
             <div class="ai-header"><span class="ai-badge">IA — Pré-commission</span></div>
             <div v-if="ev.briefingText" class="ai-block">
               <div class="ai-block-label">Briefing pré-commission</div>
-              <div class="ai-content">{{ ev.briefingText }}</div>
+              <AiText class="ai-content" :text="ev.briefingText" />
             </div>
             <div v-if="ev.specsAnalysis" class="ai-block">
               <div class="ai-block-label">Analyse des spécifications fonctionnelles</div>
-              <div class="ai-content">{{ ev.specsAnalysis }}</div>
+              <AiText class="ai-content" :text="ev.specsAnalysis" />
             </div>
             <div v-if="ev.demoScenario" class="ai-block">
               <div class="ai-block-label">Scénario de démo</div>
-              <div class="ai-content">{{ ev.demoScenario }}</div>
+              <AiText class="ai-content" :text="ev.demoScenario" />
             </div>
             <div v-if="ev.webInsights" class="ai-block">
               <div class="ai-block-label">Web insights</div>
-              <div class="ai-content">{{ ev.webInsights }}</div>
+              <AiText class="ai-content" :text="ev.webInsights" />
             </div>
           </div>
         </template>
@@ -127,7 +127,7 @@
         <!-- Analyse cohérence IA -->
         <div v-if="ev.coherenceCheck" class="ai-panel">
           <div class="ai-header"><span class="ai-badge">IA — Cohérence</span></div>
-          <div class="ai-content">{{ ev.coherenceCheck }}</div>
+          <AiText class="ai-content" :text="ev.coherenceCheck" />
         </div>
 
         <!-- SECTION 3 : Profil intégrateur/consultant -->
@@ -172,15 +172,15 @@
             <div class="ai-header"><span class="ai-badge">IA — Intervenant</span></div>
             <div v-if="ev.cvAnalysis" class="ai-block">
               <div class="ai-block-label">Analyse CV</div>
-              <div class="ai-content">{{ ev.cvAnalysis }}</div>
+              <AiText class="ai-content" :text="ev.cvAnalysis" />
             </div>
             <div v-if="ev.attestationsAnalysis" class="ai-block">
               <div class="ai-block-label">Attestations intervenant</div>
-              <div class="ai-content">{{ ev.attestationsAnalysis }}</div>
+              <AiText class="ai-content" :text="ev.attestationsAnalysis" />
             </div>
             <div v-if="ev.certifEditeurAnalysis" class="ai-block">
               <div class="ai-block-label">Certificat éditeur</div>
-              <div class="ai-content">{{ ev.certifEditeurAnalysis }}</div>
+              <AiText class="ai-content" :text="ev.certifEditeurAnalysis" />
             </div>
           </div>
         </template>
@@ -236,6 +236,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/services/api'
+import AiText from '@/components/AiText.vue'
 
 const route = useRoute()
 const ev = ref(null)

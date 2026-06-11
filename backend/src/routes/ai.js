@@ -31,8 +31,8 @@ router.post('/generate-pv', async (req, res, next) => {
 
 router.post('/check-coherence', async (req, res, next) => {
   try {
-    const { category, criteria, solScores, solObs } = req.body;
-    const text = await ai.checkCoherence({ category, criteria, solScores, solObs });
+    const { category, criteria, solScores, solObs, context } = req.body;
+    const text = await ai.checkCoherence({ category, criteria, solScores, solObs, context });
     res.json({ text });
   } catch (err) { next(err); }
 });
