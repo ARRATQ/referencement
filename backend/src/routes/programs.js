@@ -12,7 +12,7 @@ router.get('/', async (req, res, next) => {
   try {
     const programs = await prisma.program.findMany({
       where: req.user.role === 'ADMIN' ? {} : { active: true },
-      select: { id: true, code: true, name: true, version: true, amiText: true, cvTemplate: true, active: true, createdAt: true }
+      select: { id: true, code: true, name: true, version: true, amiText: true, cvTemplate: true, active: true, createdAt: true, categories: true, actionTypes: true, intCriteria: true }
     });
     res.json(programs);
   } catch (err) { next(err); }

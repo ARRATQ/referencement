@@ -71,5 +71,34 @@ export const useEvaluationStore = defineStore('evaluation', () => {
     error.value = null
   }
 
-  return { current, loading, error, solScorePct, intScorePct, finalScorePct, create, load, save, scheduleSave, submit, reset }
+  const DRAFT_KEY = 'eval_draft'
+  let draftTimer = null
+
+  function saveDraft(data) {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, updatedAt: new Date().toISOString() }))
+  }
+
+  function scheduleDraftSave(data, delay = 1500) {
+    if (draftTimer) clearTimeout(draftTimer)
+    draftTimer = setTimeout(() => saveDraft(data), delay)
+  }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  }
+
+  function clearDraft() {
+    if (draftTimer) clearTimeout(draftTimer)
+    localStorage.removeItem(DRAFT_KEY)
+  }
+
+  async function list(params = {}) {
+    const { data } = await api.get('/evaluations', { params })
+    return data
+  }
+
+  return { current, loading, error, solScorePct, intScorePct, finalScorePct, create, load, save, scheduleSave, submit, reset, saveDraft, scheduleDraftSave, loadDraft, clearDraft, list }
 })
