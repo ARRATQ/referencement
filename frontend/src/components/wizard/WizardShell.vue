@@ -10,6 +10,25 @@
     />
 
     <div class="wiz-main">
+      <div v-if="wizStep > 0 && (state.form.prestataire || state.form.jiraKeyPrestataire)" class="wiz-context-bar">
+        <div class="ctx-item">
+          <span class="ctx-label">Prestataire</span>
+          <span class="ctx-val">{{ state.form.prestataire || '—' }}</span>
+        </div>
+        <div v-if="state.form.jiraKeyPrestataire" class="ctx-item">
+          <span class="ctx-label">Dossier</span>
+          <span class="ctx-val ctx-mono">{{ state.form.jiraKeyPrestataire }}</span>
+        </div>
+        <div v-if="state.form.jiraKeyIntervenant" class="ctx-item">
+          <span class="ctx-label">Intervenant</span>
+          <span class="ctx-val ctx-mono">{{ state.form.jiraKeyIntervenant }}</span>
+        </div>
+        <div v-if="state.form.jiraKeyCompetence" class="ctx-item">
+          <span class="ctx-label">Compétence</span>
+          <span class="ctx-val ctx-mono">{{ state.form.jiraKeyCompetence }}</span>
+        </div>
+      </div>
+
       <div class="wiz-content">
         <StepContexte v-if="wizStep === 0" />
         <StepIdentification v-else-if="wizStep === 1" />
@@ -59,7 +78,8 @@ import { useEvaluationStore } from '@/stores/evaluation'
 import api from '@/services/api'
 
 const props = defineProps({
-  initialDraft: { type: Object, default: null }
+  initialDraft: { type: Object, default: null },
+  evaluationId: { type: String, default: null }
 })
 const emit = defineEmits(['close', 'submitted'])
 
@@ -77,6 +97,7 @@ const wizStep = ref(0)
 const savedAt = ref('')
 const programs = ref([])
 const jiraBaseUrl = ref('')
+const currentEvalId = ref(props.evaluationId)
 const submitError = ref('')
 const showExitConfirm = ref(false)
 
@@ -273,8 +294,8 @@ function doClose() {
 async function submitEval() {
   submitError.value = ''
   const payload = {
-    programCode: state.programCode,
-    refType: state.refType,
+    programId: currentProgram.value?.id,
+    referenceType: state.refType,
     category: state.selectedCategory,
     ...state.form,
     solScores: state.solScores,
@@ -288,10 +309,18 @@ async function submitEval() {
     customCriteria: state.customCriteria,
   }
   try {
-    const created = await evalStore.create(payload)
-    await evalStore.submit()
+    let result
+    if (currentEvalId.value) {
+      // Reprise d'un dossier existant : on met à jour le même enregistrement au lieu d'en créer un nouveau
+      await api.put(`/evaluations/${currentEvalId.value}`, payload)
+      const { data: submitted } = await api.post(`/evaluations/${currentEvalId.value}/submit`)
+      result = submitted
+    } else {
+      const created = await evalStore.create(payload)
+      result = await evalStore.submit()
+    }
     evalStore.clearDraft()
-    emit('submitted', created)
+    emit('submitted', result)
   } catch (e) {
     submitError.value = e.response?.data?.error || e.message
     throw e
@@ -350,7 +379,7 @@ provide('wizard', {
 
 <style scoped>
 .wiz-shell {
-  /* Fresh blue-navy theme — CSS vars inherited by all child step components */
+  /* Navy theme — applies to the sidebar/steps rail. CSS vars inherited by children unless overridden. */
   --wiz-bg: #111827;
   --wiz-sidebar: #0d1628;
   --wiz-card: #1e2d47;
@@ -359,6 +388,9 @@ provide('wizard', {
   --wiz-text2: #93b4d8;
   --wiz-text3: #4d6e96;
   --wiz-accent: #3b82f6;
+  --wiz-overlay-rgb: 255, 255, 255;
+  --wiz-option-bg: #1c2333;
+  --wiz-option-text: #e2e8f0;
 
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -369,10 +401,42 @@ provide('wizard', {
 }
 
 .wiz-main {
+  /* Light-blue theme for the working area — overrides the navy vars from .wiz-shell */
+  --wiz-bg: #eef4fb;
+  --wiz-sidebar: #e3edfa;
+  --wiz-card: #ffffff;
+  --wiz-border: rgba(30, 75, 140, 0.13);
+  --wiz-text: #16243f;
+  --wiz-text2: #4d6a94;
+  --wiz-text3: #8aa2c4;
+  --wiz-overlay-rgb: 20, 50, 95;
+  --wiz-option-bg: #ffffff;
+  --wiz-option-text: #16243f;
+
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--wiz-bg);
+  color: var(--wiz-text);
 }
+
+.wiz-context-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 44px;
+  border-bottom: 1px solid var(--wiz-border);
+  background: var(--wiz-card);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.ctx-item { display: flex; align-items: center; gap: 8px; }
+.ctx-label {
+  font-size: 10px; font-family: var(--mono, monospace); color: var(--wiz-text3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.ctx-val { font-size: 13px; font-weight: 600; color: var(--wiz-text); }
+.ctx-val.ctx-mono { font-family: var(--mono, monospace); font-weight: 500; color: var(--wiz-accent); }
 
 .wiz-content {
   flex: 1;

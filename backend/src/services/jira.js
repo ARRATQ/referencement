@@ -135,6 +135,13 @@ async function extractIntervenantData(key) {
       niveauFormation: findByName(fieldsMeta, rawById, 'niveau de formation', 'niveau', 'education', 'diplôme') || null,
       permanent: findByName(fieldsMeta, rawById, 'permanent') || null,
       totalActionCount: findByName(fieldsMeta, rawById, 'total action', 'action count') || null,
+      etablissement: findByName(fieldsMeta, rawById, 'établissement', 'etablissement', 'école', 'ecole', 'université', 'universite') || null,
+      experienceTotale: findByName(fieldsMeta, rawById, 'expérience totale', 'experience totale', "années d'expérience", "nombre d'années d'expérience") || null,
+      experienceSolution: findByName(fieldsMeta, rawById, 'expérience sur la solution', 'expérience solution', 'experience solution') || null,
+      posteOccupe: findByName(fieldsMeta, rawById, 'poste occupé', 'poste actuel', 'fonction') || null,
+      tailleEquipe: findByName(fieldsMeta, rawById, "taille de l'équipe", 'taille équipe', 'taille de l equipe') || null,
+      certifications: findByName(fieldsMeta, rawById, 'certification', 'certifications') || null,
+      references: findByName(fieldsMeta, rawById, 'référence', 'references clients', 'références clients') || null,
     }
   };
 }

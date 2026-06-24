@@ -60,7 +60,12 @@ router.post('/', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
         ...pickedData
       }
     });
-    await audit(req.user.id, ev.id, 'created', { programId, referenceType }, req.ip);
+    await audit(req.user.id, ev.id, 'created', {
+      programCode: program.code,
+      programName: program.name,
+      referenceType,
+      prestataire: ev.prestataire
+    }, req.ip);
     res.status(201).json(ev);
   } catch (err) { next(err); }
 });
@@ -114,7 +119,10 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
     }
 
     const updated = await prisma.evaluation.update({ where: { id: req.params.id }, data });
-    await audit(req.user.id, req.params.id, 'updated', Object.keys(data), req.ip);
+    await audit(req.user.id, req.params.id, 'updated', {
+      prestataire: updated.prestataire,
+      fields: Object.keys(data)
+    }, req.ip);
     res.json(updated);
   } catch (err) { next(err); }
 });
@@ -152,17 +160,38 @@ router.post('/:id/submit', requireMinRole('GESTIONNAIRE'), async (req, res, next
       where: { id: req.params.id },
       data: { status: 'SUBMITTED', submittedAt: new Date() }
     });
-    await audit(req.user.id, req.params.id, 'submitted', { jiraKey, decision: ev.finalDecision }, req.ip);
+    await audit(req.user.id, req.params.id, 'submitted', {
+      prestataire: ev.prestataire,
+      programCode: ev.program?.code,
+      jiraKey,
+      decision: ev.finalDecision
+    }, req.ip);
     res.json(updated);
   } catch (err) { next(err); }
 });
 
 router.delete('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
   try {
-    const ev = await prisma.evaluation.findUnique({ where: { id: req.params.id } });
+    const ev = await prisma.evaluation.findUnique({
+      where: { id: req.params.id },
+      include: { program: { select: { code: true, name: true } } }
+    });
     if (!ev) return res.status(404).json({ error: 'Évaluation introuvable' });
-    if (ev.status === 'SUBMITTED') return res.status(400).json({ error: 'Impossible de supprimer une évaluation soumise' });
-    await prisma.auditLog.deleteMany({ where: { evaluationId: req.params.id } });
+    if (ev.status === 'SUBMITTED' && req.user.role !== 'ADMIN') {
+      return res.status(400).json({ error: 'Seul un administrateur peut supprimer un référencement déjà soumis' });
+    }
+    // Le snapshot est conservé dans le journal d'audit même après suppression
+    // (la FK evaluationId passe à NULL via ON DELETE SET NULL, mais les détails restent).
+    await audit(req.user.id, ev.id, 'deleted', {
+      prestataire: ev.prestataire,
+      solution: ev.solution || ev.actionLabel || null,
+      programCode: ev.program?.code,
+      programName: ev.program?.name,
+      status: ev.status,
+      finalDecision: ev.finalDecision,
+      solScorePct: ev.solScorePct,
+      intScorePct: ev.intScorePct
+    }, req.ip);
     await prisma.evaluation.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
   } catch (err) { next(err); }

@@ -163,8 +163,16 @@
     <!-- ══════════════════════════════════════════ -->
     <template v-else-if="subStep === 'profil'">
       <div class="wiz-section">
-        <div class="wiz-section-label">
-          {{ state.refType === 'SOLUTION' ? "Profil de l'intégrateur" : 'Profil du consultant' }}
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+          <div class="wiz-section-label" style="margin-bottom:0;">
+            {{ state.refType === 'SOLUTION' ? "Profil de l'intégrateur" : 'Profil du consultant' }}
+          </div>
+          <button
+            class="wiz-btn-secondary"
+            :disabled="!state.extractedIntervenant"
+            :title="!state.extractedIntervenant ? 'Sélectionnez un intervenant à l\'étape Identification' : ''"
+            @click="fillProfilFromJira"
+          >↻ Pré-remplir depuis Jira</button>
         </div>
         <div class="form-grid">
           <div class="wiz-field">
@@ -446,6 +454,19 @@ function nextSub() {
   if (i < subTabs.value.length - 1) subStep.value = subTabs.value[i + 1].id
 }
 
+function fillProfilFromJira() {
+  const p = state.extractedIntervenant
+  if (!p) return
+  if (p.niveauFormation) state.cvFields.diplome = p.niveauFormation
+  if (p.etablissement) state.cvFields.etablissement = p.etablissement
+  if (p.experienceTotale != null) state.cvFields.exp = Number(p.experienceTotale) || state.cvFields.exp
+  if (p.experienceSolution != null) state.cvFields.expSol = Number(p.experienceSolution) || state.cvFields.expSol
+  if (p.posteOccupe || p.typeFormation) state.cvFields.poste = p.posteOccupe || p.typeFormation
+  if (p.tailleEquipe != null) state.cvFields.equipe = Number(p.tailleEquipe) || state.cvFields.equipe
+  if (p.certifications) state.cvFields.certif = p.certifications
+  if (p.references) state.cvFields.refs = p.references
+}
+
 function isDone(id) {
   if (id === 'infos') return !!(state.form.rapporteur)
   if (id === 'profil') return !!(state.cvFields.diplome || state.cvFields.exp > 0)
@@ -663,7 +684,7 @@ async function analyzeCertif() {
 /* Sub-tabs */
 .sub-tabs {
   flex: 1; display: flex; gap: 4px;
-  padding: 4px; background: rgba(255,255,255,0.04); border-radius: 10px;
+  padding: 4px; background: rgba(var(--wiz-overlay-rgb),0.04); border-radius: 10px;
   border: 1px solid var(--wiz-border);
 }
 .sub-tab {
@@ -671,7 +692,7 @@ async function analyzeCertif() {
   padding: 10px 8px; background: transparent; border: none; border-radius: 7px;
   cursor: pointer; transition: all 0.15s; color: var(--wiz-text3); font-family: var(--sans);
 }
-.sub-tab:hover { background: rgba(255,255,255,0.05); color: var(--wiz-text2); }
+.sub-tab:hover { background: rgba(var(--wiz-overlay-rgb),0.05); color: var(--wiz-text2); }
 .sub-tab.active { background: var(--wiz-card); color: var(--wiz-text); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
 .sub-tab.done .sub-tab-num { color: #22c55e; }
 .sub-tab-num {
@@ -686,7 +707,7 @@ async function analyzeCertif() {
 .wiz-section { margin-bottom: 28px; }
 .wiz-section-label { font-size: 11px; font-family: var(--mono); color: var(--wiz-text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 .req { color: var(--wiz-accent); }
-.opt-badge { font-size: 9px; padding: 2px 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--wiz-border); border-radius: 10px; color: var(--wiz-text3); text-transform: none; letter-spacing: 0; }
+.opt-badge { font-size: 9px; padding: 2px 6px; background: rgba(var(--wiz-overlay-rgb),0.05); border: 1px solid var(--wiz-border); border-radius: 10px; color: var(--wiz-text3); text-transform: none; letter-spacing: 0; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .wiz-field { display: flex; flex-direction: column; gap: 6px; }
 .wiz-field.full { grid-column: 1 / -1; }
@@ -694,41 +715,41 @@ async function analyzeCertif() {
 .wiz-input { background: var(--wiz-card); border: 1px solid var(--wiz-border); border-radius: 6px; padding: 9px 12px; font-size: 13px; color: var(--wiz-text); font-family: var(--sans); outline: none; transition: border-color 0.15s; width: 100%; box-sizing: border-box; }
 .wiz-input:focus { border-color: var(--wiz-accent); }
 select.wiz-input, textarea.wiz-input { cursor: pointer; }
-option { background: #1c2333; color: #e2e8f0; }
+option { background: var(--wiz-option-bg); color: var(--wiz-option-text); }
 
 /* Chips & modules */
 .sol-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-.sol-chip { padding: 5px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--wiz-border); border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.12s; color: var(--wiz-text2); }
+.sol-chip { padding: 5px 12px; background: rgba(var(--wiz-overlay-rgb),0.05); border: 1px solid var(--wiz-border); border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.12s; color: var(--wiz-text2); }
 .sol-chip.active { border-color: var(--wiz-accent); color: var(--wiz-accent); background: rgba(59,130,246,0.1); }
 .modules-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--wiz-border); }
 .modules-label { font-size: 11px; font-family: var(--mono); color: var(--wiz-text2); display: block; margin-bottom: 10px; }
 .input-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.wiz-btn-secondary { padding: 9px 16px; background: rgba(255,255,255,0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 13px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; white-space: nowrap; font-family: var(--sans); }
-.wiz-btn-secondary:hover { border-color: rgba(255,255,255,0.2); color: var(--wiz-text); }
+.wiz-btn-secondary { padding: 9px 16px; background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 13px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; white-space: nowrap; font-family: var(--sans); }
+.wiz-btn-secondary:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); color: var(--wiz-text); }
 .module-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.module-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--wiz-border); border-radius: 20px; font-size: 12px; color: var(--wiz-text2); }
+.module-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; background: rgba(var(--wiz-overlay-rgb),0.05); border: 1px solid var(--wiz-border); border-radius: 20px; font-size: 12px; color: var(--wiz-text2); }
 .module-tag button { background: none; border: none; cursor: pointer; color: var(--wiz-text3); font-size: 12px; padding: 0 2px; }
 .module-tag button:hover { color: #f87171; }
 .wiz-empty-sm { font-size: 12px; color: var(--wiz-text3); font-family: var(--mono); }
 
 /* Upload */
 .upload-zone { border: 2px dashed var(--wiz-border); border-radius: 8px; transition: border-color 0.15s; }
-.upload-zone:hover { border-color: rgba(255,255,255,0.2); }
+.upload-zone:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); }
 .upload-area { display: flex; flex-direction: column; align-items: center; padding: 24px; cursor: pointer; gap: 6px; }
 .upload-icon { font-size: 26px; }
 .upload-text { font-size: 13px; color: var(--wiz-text2); }
 .upload-link { color: var(--wiz-accent); text-decoration: underline; }
 .upload-sub { font-size: 11px; color: var(--wiz-text3); font-family: var(--mono); }
 .files-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
-.file-item { display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); font-family: var(--mono); }
+.file-item { display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(var(--wiz-overlay-rgb),0.04); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); font-family: var(--mono); }
 .file-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-remove { background: none; border: none; cursor: pointer; color: var(--wiz-text3); font-size: 11px; padding: 0; }
 .file-remove:hover { color: #f87171; }
 
 /* Jira attachments list */
 .att-list { display: flex; flex-direction: column; gap: 6px; }
-.att-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--wiz-border); border-radius: 6px; cursor: pointer; transition: background 0.12s; }
-.att-item:hover { background: rgba(255,255,255,0.06); }
+.att-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: rgba(var(--wiz-overlay-rgb),0.03); border: 1px solid var(--wiz-border); border-radius: 6px; cursor: pointer; transition: background 0.12s; }
+.att-item:hover { background: rgba(var(--wiz-overlay-rgb),0.06); }
 .att-check { accent-color: var(--wiz-accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
 .att-icon { font-size: 16px; flex-shrink: 0; }
 .att-name { flex: 1; font-size: 12px; color: var(--wiz-text); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -737,11 +758,11 @@ option { background: #1c2333; color: #e2e8f0; }
 /* Source tabs */
 .source-tabs { display: flex; gap: 6px; margin-bottom: 4px; }
 .src-tab { padding: 7px 16px; background: transparent; border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; font-family: var(--sans); transition: all 0.15s; }
-.src-tab:hover { border-color: rgba(255,255,255,0.2); color: var(--wiz-text); }
+.src-tab:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); color: var(--wiz-text); }
 .src-tab.active { border-color: var(--wiz-accent); color: var(--wiz-accent); background: rgba(59,130,246,0.1); }
 
 /* Action blocks */
-.action-meta { padding: 10px 14px; background: rgba(255,255,255,0.04); border-radius: 6px; border-left: 3px solid var(--wiz-border); font-size: 13px; color: var(--wiz-text2); }
+.action-meta { padding: 10px 14px; background: rgba(var(--wiz-overlay-rgb),0.04); border-radius: 6px; border-left: 3px solid var(--wiz-border); font-size: 13px; color: var(--wiz-text2); }
 .action-consistance { padding: 10px 14px; background: rgba(59,130,246,0.08); border-radius: 6px; border-left: 3px solid var(--wiz-accent); font-size: 13px; color: var(--wiz-text); }
 
 /* AI panels */
@@ -752,16 +773,16 @@ option { background: #1c2333; color: #e2e8f0; }
 .wiz-ai-done { margin-left: auto; font-size: 11px; color: #22c55e; font-family: var(--mono); }
 .wiz-ai-content { font-size: 12px; color: var(--wiz-text2); line-height: 1.7; white-space: pre-wrap; margin-bottom: 14px; max-height: 180px; overflow-y: auto; }
 .wiz-ai-actions { display: flex; gap: 8px; }
-.wiz-btn-ai { padding: 7px 14px; background: rgba(255,255,255,0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: var(--sans); }
+.wiz-btn-ai { padding: 7px 14px; background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: var(--sans); }
 .wiz-btn-ai:hover { border-color: var(--wiz-accent); color: var(--wiz-accent); }
 .wiz-btn-ai:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Info hint */
-.info-hint { padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 13px; color: var(--wiz-text3); font-family: var(--mono); }
+.info-hint { padding: 12px 16px; background: rgba(var(--wiz-overlay-rgb),0.03); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 13px; color: var(--wiz-text3); font-family: var(--mono); }
 
 .mt8 { margin-top: 8px; }
 .mt12 { margin-top: 12px; }
 
-.spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+.spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(var(--wiz-overlay-rgb),0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

@@ -323,21 +323,44 @@
 
       <!-- AUDIT -->
       <div v-if="tab === 'audit'">
+        <div class="row gap8 mb8">
+          <select v-model="auditFilterAction" style="width:200px;" @change="loadAudit(true)">
+            <option value="">Toutes les actions</option>
+            <option v-for="a in auditActions" :key="a" :value="a">{{ auditActionLabel(a) }}</option>
+          </select>
+          <select v-model="auditFilterUser" style="width:220px;" @change="loadAudit(true)">
+            <option value="">Tous les utilisateurs</option>
+            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+          </select>
+          <div class="text-sm" style="color:var(--text3); margin-left:auto;">{{ auditTotal }} entrée(s)</div>
+        </div>
         <div class="card" style="padding:0; overflow:hidden;">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Détails</th></tr></thead>
+              <thead><tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Dossier</th><th>Détails</th></tr></thead>
               <tbody>
                 <tr v-for="log in auditLogs" :key="log.id">
                   <td class="text-mono">{{ new Date(log.createdAt).toLocaleString('fr-MA') }}</td>
-                  <td>{{ log.user?.name }}</td>
-                  <td><span class="badge badge-blue">{{ log.action }}</span></td>
-                  <td class="text-mono" style="font-size:11px;">{{ JSON.stringify(log.details || {}).slice(0, 80) }}</td>
+                  <td>{{ log.user?.name || '—' }}</td>
+                  <td><span class="badge" :class="auditActionBadge(log.action)">{{ auditActionLabel(log.action) }}</span></td>
+                  <td>
+                    <RouterLink v-if="log.evaluationId" :to="'/evaluations/' + log.evaluationId" class="text-mono" style="font-size:12px;">
+                      {{ log.evaluation?.prestataire || log.evaluationId.slice(0, 8) }}
+                    </RouterLink>
+                    <span v-else-if="log.details?.prestataire" class="text-mono" style="font-size:12px; color:var(--text3);">
+                      {{ log.details.prestataire }} (supprimé)
+                    </span>
+                    <span v-else>—</span>
+                  </td>
+                  <td style="font-size:12px;">{{ auditDetailsText(log) }}</td>
                 </tr>
-                <tr v-if="!auditLogs.length"><td colspan="4" style="text-align:center; color:var(--text3); padding:24px;">Aucun log</td></tr>
+                <tr v-if="!auditLogs.length"><td colspan="5" style="text-align:center; color:var(--text3); padding:24px;">Aucun log</td></tr>
               </tbody>
             </table>
           </div>
+        </div>
+        <div class="row" style="justify-content:center; margin-top:12px;" v-if="auditLogs.length < auditTotal">
+          <button class="btn btn-ghost btn-sm" @click="loadAudit(false)">Charger plus</button>
         </div>
       </div>
 
@@ -609,9 +632,72 @@ async function loadConfig() {
   cfg.value = Object.fromEntries(data.map(c => [c.key, c.value === '***' ? '' : c.value]))
 }
 
-async function loadAudit() {
-  const { data } = await api.get('/admin/audit-log')
-  auditLogs.value = data
+const auditTotal = ref(0)
+const auditFilterAction = ref('')
+const auditFilterUser = ref('')
+const auditActions = ['created', 'updated', 'submitted', 'deleted', 'config_updated', 'prompts_updated']
+const AUDIT_ACTION_LABELS = {
+  created: 'Création',
+  updated: 'Modification',
+  submitted: 'Soumission',
+  deleted: 'Suppression',
+  config_updated: 'Config. modifiée',
+  prompts_updated: 'Prompts modifiés'
+}
+const AUDIT_ACTION_BADGES = {
+  created: 'badge-blue',
+  updated: 'badge-amber',
+  submitted: 'badge-green',
+  deleted: 'badge-red',
+  config_updated: 'badge-gray',
+  prompts_updated: 'badge-gray'
+}
+const AUDIT_FIELD_LABELS = {
+  prestataire: 'Prestataire', solution: 'Solution', actionLabel: 'Action', actionDescription: 'Description',
+  dateDemo: 'Date démo', rapporteur: 'Rapporteur', origine: 'Origine', nature: 'Nature',
+  modeAcquisition: "Mode d'acquisition", secteur: 'Secteur', typeIntervenant: 'Type intervenant',
+  modules: 'Modules', category: 'Catégorie', jiraKeyPrestataire: 'Clé Jira prestataire',
+  jiraKeyIntervenant: 'Clé Jira intervenant', jiraKeyCompetence: 'Clé Jira compétence',
+  referenceType: 'Type de référencement', actionDomain: 'Domaine action',
+  solScores: 'Scores solution', solObservations: 'Observations solution', solEnabled: 'Critères solution activés',
+  intScores: 'Scores intégrateur', intObservations: 'Observations intégrateur', intEnabled: 'Critères intégrateur activés',
+  finalDecision: 'Décision finale', decisionDate: 'Date décision', decisionMotive: 'Motif décision',
+  conditions: 'Conditions', commissionComments: 'Commentaires commission', pvText: 'PV',
+  cvAnalysis: 'Analyse CV', attestationsAnalysis: 'Analyse attestations', briefingText: 'Briefing',
+  coherenceCheck: 'Vérification cohérence', specsAnalysis: 'Analyse specs', demoScenario: 'Scénario démo',
+  webInsights: 'Recherche web', certifEditeurAnalysis: 'Analyse certif. éditeur', customCriteria: 'Grille personnalisée'
+}
+
+function auditActionLabel(a) { return AUDIT_ACTION_LABELS[a] || a }
+function auditActionBadge(a) { return AUDIT_ACTION_BADGES[a] || 'badge-gray' }
+
+function auditDetailsText(log) {
+  const d = log.details || {}
+  switch (log.action) {
+    case 'created':
+      return `Programme ${d.programCode || '—'} · ${d.referenceType === 'ACTION' ? 'Action' : 'Solution'}`
+    case 'updated':
+      return d.fields?.length ? `Champs modifiés : ${d.fields.map(f => AUDIT_FIELD_LABELS[f] || f).join(', ')}` : '—'
+    case 'submitted':
+      return `Décision : ${d.decision || '—'}${d.jiraKey ? ` · Jira ${d.jiraKey}` : ''}`
+    case 'deleted':
+      return `${d.programCode || '—'} · statut ${d.status || '—'}${d.finalDecision ? ` · décision ${d.finalDecision}` : ''}`
+    case 'config_updated':
+    case 'prompts_updated':
+      return d.keys?.length ? `Clés modifiées : ${d.keys.join(', ')}` : '—'
+    default:
+      return JSON.stringify(d).slice(0, 120)
+  }
+}
+
+async function loadAudit(reset = true) {
+  if (reset) auditLogs.value = []
+  const params = { limit: 50, offset: reset ? 0 : auditLogs.value.length }
+  if (auditFilterAction.value) params.action = auditFilterAction.value
+  if (auditFilterUser.value) params.userId = auditFilterUser.value
+  const { data } = await api.get('/admin/audit-log', { params })
+  auditLogs.value = reset ? data.logs : [...auditLogs.value, ...data.logs]
+  auditTotal.value = data.total
 }
 
 async function saveConfig(scope) {

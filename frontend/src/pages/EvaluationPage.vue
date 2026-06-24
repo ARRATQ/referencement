@@ -2,6 +2,7 @@
   <div v-if="wizardActive" class="wiz-overlay">
     <WizardShell
       :initial-draft="resumeDraft"
+      :evaluation-id="resumeEvaluationId"
       @close="onWizardClose"
       @submitted="onWizardSubmitted"
     />
@@ -73,15 +74,77 @@ import { ref, onMounted, watchEffect, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import WizardShell from '@/components/wizard/WizardShell.vue'
 import { useEvaluationStore } from '@/stores/evaluation'
+import api from '@/services/api'
+
+const props = defineProps({
+  id: { type: String, default: null }
+})
 
 const evalStore = useEvaluationStore()
 const router = useRouter()
 
 const wizardActive = ref(false)
 const resumeDraft = ref(null)
+const resumeEvaluationId = ref(null)
 const draft = ref(null)
 const evaluations = ref([])
 const loading = ref(false)
+
+// Convertit une évaluation DB (brouillon non soumis) dans le format attendu par WizardShell.loadFromDraft
+function evalToDraft(ev) {
+  const refType = ev.referenceType || 'SOLUTION'
+  const selectedCategory = refType === 'SOLUTION' ? (ev.category || null) : (ev.actionDomain || null)
+  const hasScores = Object.keys(ev.solScores || {}).length > 0 || Object.keys(ev.intScores || {}).length > 0
+  let step = 0
+  if (ev.programId && selectedCategory) step = 1
+  if (ev.prestataire) step = 2
+  if (hasScores) step = 3
+  if (ev.finalDecision) step = 4
+
+  return {
+    step,
+    programCode: ev.program?.code || '',
+    refType,
+    selectedCategory,
+    identMode: ev.jiraKeyPrestataire ? 'jira' : null,
+    form: {
+      prestataire: ev.prestataire || '', solution: ev.solution || '', actionLabel: ev.actionLabel || '',
+      actionDescription: ev.actionDescription || '',
+      jiraKeyPrestataire: ev.jiraKeyPrestataire || '', jiraKeyIntervenant: ev.jiraKeyIntervenant || '',
+      jiraKeyCompetence: ev.jiraKeyCompetence || '',
+      modules: ev.modules || [], origine: ev.origine || '', nature: ev.nature || '',
+      modeAcquisition: ev.modeAcquisition || '', secteur: ev.secteur || '', rapporteur: ev.rapporteur || '',
+      dateDemo: ev.dateDemo ? ev.dateDemo.slice(0, 10) : '',
+      finalDecision: ev.finalDecision || '', conditions: ev.conditions || '',
+      commissionComments: ev.commissionComments || '',
+      decisionDate: ev.decisionDate ? ev.decisionDate.slice(0, 10) : '',
+    },
+    solScores: ev.solScores || {}, solObs: ev.solObservations || {},
+    intScores: ev.intScores || {}, intObs: ev.intObservations || {},
+    cvFields: {},
+    aiTexts: {
+      briefing: ev.briefingText || '', cv: ev.cvAnalysis || '', attestations: ev.attestationsAnalysis || '',
+      certifEditeur: ev.certifEditeurAnalysis || '', coherence: ev.coherenceCheck || '', pv: ev.pvText || '',
+      specsAnalysis: ev.specsAnalysis || '', demoScenario: ev.demoScenario || '', webInsights: ev.webInsights || ''
+    },
+    customCriteria: ev.customCriteria || [],
+    customIntCriteria: [],
+  }
+}
+
+async function resumeFromServer(id) {
+  loading.value = true
+  try {
+    const { data: ev } = await api.get(`/evaluations/${id}`)
+    resumeDraft.value = evalToDraft(ev)
+    resumeEvaluationId.value = ev.id
+    wizardActive.value = true
+  } catch {
+    router.replace('/evaluation')
+  } finally {
+    loading.value = false
+  }
+}
 
 function progressPct(step = 0) {
   return Math.round(((step + 1) / 5) * 100)
@@ -94,11 +157,13 @@ function formatDate(iso) {
 
 function startNew() {
   resumeDraft.value = null
+  resumeEvaluationId.value = null
   wizardActive.value = true
 }
 
 function resumeWizard() {
   resumeDraft.value = draft.value
+  resumeEvaluationId.value = null
   wizardActive.value = true
 }
 
@@ -112,13 +177,18 @@ function discardDraft() {
 function onWizardClose() {
   wizardActive.value = false
   resumeDraft.value = null
+  const wasResumingById = !!resumeEvaluationId.value
+  resumeEvaluationId.value = null
   draft.value = evalStore.loadDraft()
+  if (wasResumingById) router.replace('/evaluation')
 }
 
 async function onWizardSubmitted() {
   wizardActive.value = false
   resumeDraft.value = null
+  resumeEvaluationId.value = null
   draft.value = null
+  if (props.id) router.replace('/evaluation')
   await loadEvaluations()
 }
 
@@ -139,6 +209,7 @@ onUnmounted(() => document.body.classList.remove('wizard-mode'))
 onMounted(async () => {
   draft.value = evalStore.loadDraft()
   await loadEvaluations()
+  if (props.id) await resumeFromServer(props.id)
 })
 </script>
 

@@ -102,7 +102,7 @@ function selectType(type) {
   padding: 18px 20px; background: var(--wiz-card); border: 1px solid var(--wiz-border);
   border-radius: 8px; cursor: pointer; transition: all 0.15s;
 }
-.prog-card:hover { border-color: rgba(255,255,255,0.2); }
+.prog-card:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); }
 .prog-card.active { border-color: var(--wiz-accent); background: rgba(59,130,246,0.12); }
 .prog-name { font-weight: 600; font-size: 14px; color: var(--wiz-text); }
 .prog-meta { font-size: 11px; color: var(--wiz-text3); font-family: var(--mono); margin-top: 4px; }
@@ -113,7 +113,7 @@ function selectType(type) {
   border-radius: 10px; cursor: pointer; text-align: left; color: var(--wiz-text);
   transition: all 0.15s; display: flex; flex-direction: column; gap: 6px;
 }
-.type-card:hover { border-color: rgba(255,255,255,0.2); }
+.type-card:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); }
 .type-card.active { border-color: var(--wiz-accent); background: rgba(59,130,246,0.12); }
 .type-icon { font-size: 28px; margin-bottom: 6px; }
 .type-label { font-size: 15px; font-weight: 600; }
@@ -124,7 +124,7 @@ function selectType(type) {
   padding: 18px 14px; background: var(--wiz-card); border: 1px solid var(--wiz-border);
   border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.15s;
 }
-.cat-card:hover { border-color: rgba(255,255,255,0.2); }
+.cat-card:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); }
 .cat-card.active { border-color: var(--wiz-accent); background: rgba(59,130,246,0.12); }
 .cat-icon { font-size: 26px; margin-bottom: 8px; }
 .cat-name { font-size: 13px; font-weight: 500; color: var(--wiz-text); }

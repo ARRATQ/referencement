@@ -36,9 +36,29 @@
           target="_blank" rel="noopener" class="wiz-btn-ghost">↗ Jira</a>
       </div>
       <div v-if="jiraError" class="wiz-error">{{ jiraError }}</div>
+    </div>
 
-      <!-- Hiérarchie -->
-      <div v-if="state.jiraHierarchy" class="hierarchy-box">
+    <!-- Chemin JQL -->
+    <div class="wiz-section" v-if="state.identMode === 'jql'">
+      <div class="wiz-section-label">Sélectionner dans la liste</div>
+      <div class="input-row">
+        <select class="wiz-input wiz-select" v-model="jqlSelected" @change="onJqlSelect">
+          <option value="">— Sélectionner un ticket —</option>
+          <option v-for="t in jqlTickets" :key="t.key" :value="t.key">{{ t.key }} — {{ t.summary }}</option>
+        </select>
+        <button class="wiz-btn-secondary" :disabled="jqlLoading" @click="loadJqlList">
+          <span v-if="jqlLoading" class="spinner-sm"></span>
+          <span v-else>↻ Actualiser</span>
+        </button>
+      </div>
+      <div v-if="jqlError" class="wiz-error">{{ jqlError }}</div>
+      <div v-if="jiraError" class="wiz-error">{{ jiraError }}</div>
+    </div>
+
+    <!-- Hiérarchie (commune aux deux modes) -->
+    <div class="wiz-section" v-if="state.jiraHierarchy">
+      <div class="wiz-section-label">Sous-tickets</div>
+      <div class="hierarchy-box">
         <div class="hier-prest">
           <span class="hier-dot dot-prest"></span>
           <strong>{{ state.jiraHierarchy.key }}</strong> — {{ state.jiraHierarchy.summary }}
@@ -60,22 +80,6 @@
           </div>
         </template>
       </div>
-    </div>
-
-    <!-- Chemin JQL -->
-    <div class="wiz-section" v-if="state.identMode === 'jql'">
-      <div class="wiz-section-label">Sélectionner dans la liste</div>
-      <div class="input-row">
-        <select class="wiz-input wiz-select" v-model="jqlSelected" @change="onJqlSelect">
-          <option value="">— Sélectionner un ticket —</option>
-          <option v-for="t in jqlTickets" :key="t.key" :value="t.key">{{ t.key }} — {{ t.summary }}</option>
-        </select>
-        <button class="wiz-btn-secondary" :disabled="jqlLoading" @click="loadJqlList">
-          <span v-if="jqlLoading" class="spinner-sm"></span>
-          <span v-else>↻ Actualiser</span>
-        </button>
-      </div>
-      <div v-if="jqlError" class="wiz-error">{{ jqlError }}</div>
     </div>
 
     <!-- Prestataire (toujours visible si mode choisi) -->
@@ -110,14 +114,14 @@ const jqlTickets = ref([])
 const jqlSelected = ref('')
 const jqlError = ref('')
 
-async function loadJiraHierarchy() {
+async function loadJiraHierarchy(force = false) {
   if (!state.form.jiraKeyPrestataire) return
   jiraLoading.value = true
   jiraError.value = ''
   try {
     const { data } = await api.get(`/dossiers/${state.form.jiraKeyPrestataire}/intervenants`)
     state.jiraHierarchy = data
-    if (data.summary && !state.form.prestataire) {
+    if (data.summary && (force || !state.form.prestataire)) {
       state.form.prestataire = data.summary.split(' — ')[0] || data.summary
     }
   } catch (e) {
@@ -136,6 +140,10 @@ async function selectIntervenant(int) {
       nom: p.nom || '', prenom: p.prenom || '', cin: p.cin || '',
       gsm: p.gsm || '', email: p.email || '',
       typeFormation: p.typeFormation || '', niveauFormation: p.niveauFormation || '',
+      etablissement: p.etablissement || '', experienceTotale: p.experienceTotale ?? null,
+      experienceSolution: p.experienceSolution ?? null, posteOccupe: p.posteOccupe || '',
+      tailleEquipe: p.tailleEquipe ?? null, certifications: p.certifications || '',
+      references: p.references || '',
       _raw: data.allCustomFields || {}
     }
     if (p.niveauFormation && !state.cvFields.diplome) state.cvFields.diplome = p.niveauFormation
@@ -168,7 +176,7 @@ async function loadJqlList() {
   jqlLoading.value = true
   jqlError.value = ''
   try {
-    const { data } = await api.get('/dossiers/jql-filter')
+    const { data } = await api.get('/dossiers')
     jqlTickets.value = data
   } catch (e) {
     jqlError.value = 'Erreur JQL: ' + (e.response?.data?.error || e.message)
@@ -187,8 +195,11 @@ function onJqlSelect() {
   const ticket = jqlTickets.value.find(t => t.key === jqlSelected.value)
   if (ticket) {
     state.form.jiraKeyPrestataire = ticket.key
-    if (!state.form.prestataire) state.form.prestataire = ticket.summary || ticket.key
-    loadJiraHierarchy()
+    state.form.jiraKeyIntervenant = ''
+    state.form.jiraKeyCompetence = ''
+    state.jiraHierarchy = null
+    state.form.prestataire = ticket.summary || ticket.key
+    loadJiraHierarchy(true)
   }
 }
 </script>
@@ -211,7 +222,7 @@ function onJqlSelect() {
   border-radius: 10px; cursor: pointer; text-align: left; color: var(--wiz-text);
   transition: all 0.15s; display: flex; flex-direction: column; gap: 4px;
 }
-.mode-card:hover { border-color: rgba(255,255,255,0.2); }
+.mode-card:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); }
 .mode-card.active { border-color: var(--wiz-accent); background: rgba(59,130,246,0.12); }
 .mode-icon { font-size: 24px; margin-bottom: 8px; }
 .mode-label { font-size: 14px; font-weight: 600; }
@@ -225,20 +236,20 @@ function onJqlSelect() {
 }
 .wiz-input:focus { border-color: var(--wiz-accent); }
 .wiz-select { cursor: pointer; }
-option { background: #1c2333; color: #e2e8f0; }
+option { background: var(--wiz-option-bg); color: var(--wiz-option-text); }
 .wiz-btn-secondary {
-  padding: 9px 16px; background: rgba(255,255,255,0.06); border: 1px solid var(--wiz-border);
+  padding: 9px 16px; background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border);
   border-radius: 6px; font-size: 13px; color: var(--wiz-text2); cursor: pointer;
   transition: all 0.15s; white-space: nowrap; font-family: var(--sans);
 }
-.wiz-btn-secondary:hover { border-color: rgba(255,255,255,0.2); color: var(--wiz-text); }
+.wiz-btn-secondary:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); color: var(--wiz-text); }
 .wiz-btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
 .wiz-btn-ghost {
   padding: 9px 14px; background: transparent; border: 1px solid var(--wiz-border);
   border-radius: 6px; font-size: 12px; color: var(--wiz-text3); cursor: pointer;
   text-decoration: none; white-space: nowrap; transition: all 0.15s;
 }
-.wiz-btn-ghost:hover { color: var(--wiz-text); border-color: rgba(255,255,255,0.2); }
+.wiz-btn-ghost:hover { color: var(--wiz-text); border-color: rgba(var(--wiz-overlay-rgb),0.2); }
 
 .hierarchy-box {
   margin-top: 14px; padding: 16px; background: var(--wiz-card);
@@ -252,7 +263,7 @@ option { background: #1c2333; color: #e2e8f0; }
 }
 .hier-intervenant { margin-left: 16px; }
 .hier-competence { margin-left: 36px; color: var(--wiz-text2); }
-.hier-intervenant:hover, .hier-competence:hover { background: rgba(255,255,255,0.04); }
+.hier-intervenant:hover, .hier-competence:hover { background: rgba(var(--wiz-overlay-rgb),0.04); }
 .hier-intervenant.selected { background: rgba(59,130,246,0.1); }
 .hier-competence.selected { background: rgba(139,92,246,0.1); }
 .hier-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -272,11 +283,11 @@ option { background: #1c2333; color: #e2e8f0; }
 .recap-badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .recap-badge {
   font-size: 11px; font-family: var(--mono); padding: 3px 10px;
-  background: rgba(255,255,255,0.06); border: 1px solid var(--wiz-border); border-radius: 20px; color: var(--wiz-text2);
+  background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border); border-radius: 20px; color: var(--wiz-text2);
 }
 
 .spinner-sm {
-  display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.2);
+  display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(var(--wiz-overlay-rgb),0.2);
   border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }

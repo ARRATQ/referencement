@@ -191,8 +191,8 @@ async function doSubmit() {
 .recap-val { font-size: 13px; color: var(--wiz-text); }
 
 .scores-row { display: flex; gap: 12px; flex-wrap: wrap; }
-.score-cell { flex: 1; min-width: 100px; padding: 14px 16px; background: rgba(255,255,255,0.04); border: 1px solid var(--wiz-border); border-radius: 8px; text-align: center; }
-.score-cell.global-cell { border-color: rgba(255,255,255,0.15); }
+.score-cell { flex: 1; min-width: 100px; padding: 14px 16px; background: rgba(var(--wiz-overlay-rgb),0.04); border: 1px solid var(--wiz-border); border-radius: 8px; text-align: center; }
+.score-cell.global-cell { border-color: rgba(var(--wiz-overlay-rgb),0.15); }
 .score-big { font-size: 28px; font-weight: 700; font-family: var(--mono); line-height: 1; color: var(--wiz-text); }
 .score-lbl { font-size: 10px; color: var(--wiz-text3); font-family: var(--mono); margin-top: 4px; }
 .score-verd { font-size: 11px; margin-top: 4px; color: var(--wiz-text2); font-family: var(--mono); }
@@ -207,31 +207,31 @@ async function doSubmit() {
 .wiz-ai-done { margin-left: auto; font-size: 11px; color: #22c55e; font-family: var(--mono); }
 .wiz-ai-content { font-size: 12px; color: var(--wiz-text2); line-height: 1.7; white-space: pre-wrap; margin-bottom: 14px; max-height: 280px; overflow-y: auto; }
 .wiz-ai-actions { display: flex; gap: 8px; }
-.wiz-btn-ai { padding: 7px 14px; background: rgba(255,255,255,0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: var(--sans); }
+.wiz-btn-ai { padding: 7px 14px; background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: var(--sans); }
 .wiz-btn-ai:hover { border-color: var(--wiz-accent); color: var(--wiz-accent); }
 .wiz-btn-ai:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.submit-zone { padding: 20px 24px; background: rgba(255,255,255,0.03); border: 1px solid var(--wiz-border); border-radius: 10px; }
+.submit-zone { padding: 20px 24px; background: rgba(var(--wiz-overlay-rgb),0.03); border: 1px solid var(--wiz-border); border-radius: 10px; }
 .submit-error { color: #f87171; font-size: 12px; font-family: var(--mono); margin-bottom: 12px; }
 .submit-btns { display: flex; gap: 12px; justify-content: flex-end; }
 .wiz-btn-draft { padding: 10px 20px; background: transparent; border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 13px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; font-family: var(--sans); }
-.wiz-btn-draft:hover { border-color: rgba(255,255,255,0.2); color: var(--wiz-text); }
+.wiz-btn-draft:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); color: var(--wiz-text); }
 .wiz-btn-submit { padding: 10px 28px; background: #16a34a; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; font-family: var(--sans); display: flex; align-items: center; gap: 8px; }
 .wiz-btn-submit:hover { background: #15803d; }
 .wiz-btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.confirm-modal { background: #1c2333; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 28px; max-width: 420px; width: 90%; }
+.confirm-modal { background: #1c2333; border: 1px solid rgba(var(--wiz-overlay-rgb),0.1); border-radius: 12px; padding: 28px; max-width: 420px; width: 90%; }
 .confirm-title { font-size: 17px; font-weight: 600; color: #e2e8f0; margin-bottom: 12px; }
 .confirm-text { font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 22px; }
 .confirm-text strong { color: #e2e8f0; }
 .confirm-btns { display: flex; gap: 10px; justify-content: flex-end; }
-.wiz-btn-ghost-sm { padding: 8px 18px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 13px; color: #94a3b8; cursor: pointer; font-family: var(--sans); transition: all 0.15s; }
+.wiz-btn-ghost-sm { padding: 8px 18px; background: transparent; border: 1px solid rgba(var(--wiz-overlay-rgb),0.1); border-radius: 6px; font-size: 13px; color: #94a3b8; cursor: pointer; font-family: var(--sans); transition: all 0.15s; }
 .wiz-btn-ghost-sm:hover { color: #e2e8f0; }
 .wiz-btn-submit-sm { padding: 8px 20px; background: #16a34a; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--sans); display: flex; align-items: center; gap: 8px; }
 .wiz-btn-submit-sm:hover { background: #15803d; }
 .wiz-btn-submit-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+.spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(var(--wiz-overlay-rgb),0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

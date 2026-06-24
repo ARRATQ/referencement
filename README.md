@@ -1,27 +1,52 @@
-# Commission de Référencement — v2
+# Commission de Référencement — Plateforme d'Évaluation v2
 
-Outil de gestion des référencements de prestataires (solutions IT et actions non-IT). Interface multi-rôles avec persistance PostgreSQL, intégration Jira Data Center et assistance IA via OpenRouter.
+Plateforme web complète pour la gestion et l'instruction des dossiers de référencement des solutions informatiques et actions de renforcement de capacités proposées par les prestataires, avec intégration Jira Data Center et assistance IA multimodale via OpenRouter.
 
 ---
 
-## Table des matières
+## Sommaire
 
-1. [Architecture](#architecture)
-2. [Prérequis](#prérequis)
-3. [Installation](#installation)
-4. [Configuration](#configuration)
-5. [Démarrage](#démarrage)
-6. [Comptes par défaut](#comptes-par-défaut)
-7. [Premiers pas après installation](#premiers-pas-après-installation)
-8. [Utilisation](#utilisation)
-9. [Prompts IA personnalisables](#prompts-ia-personnalisables)
-10. [API Backend](#api-backend)
-11. [Rôles et permissions](#rôles-et-permissions)
-12. [Programmes disponibles](#programmes-disponibles)
-13. [Intégration Jira](#intégration-jira)
-14. [Intégration IA](#intégration-ia)
-15. [Dépannage](#dépannage)
-16. [Structure du projet](#structure-du-projet)
+1. [Vue d'ensemble](#vue-densemble)
+2. [Architecture](#architecture)
+3. [Fonctionnalités par rôle](#fonctionnalités-par-rôle)
+   - [Rôle ADMIN](#rôle-admin)
+   - [Rôle GESTIONNAIRE](#rôle-gestionnaire)
+   - [Rôle PARTICIPANT](#rôle-participant)
+4. [Formulaire d'évaluation multi-étapes](#formulaire-dévaluation-multi-étapes)
+5. [Système de notation et décision](#système-de-notation-et-décision)
+6. [Intégration Jira](#intégration-jira)
+7. [Assistance IA](#assistance-ia)
+8. [Prompts IA personnalisables](#prompts-ia-personnalisables)
+9. [Rôles et permissions](#rôles-et-permissions)
+10. [Programmes disponibles](#programmes-disponibles)
+11. [API Backend](#api-backend)
+12. [Prérequis](#prérequis)
+13. [Installation](#installation)
+14. [Configuration](#configuration)
+15. [Démarrage](#démarrage)
+16. [Comptes par défaut](#comptes-par-défaut)
+17. [Premiers pas après installation](#premiers-pas-après-installation)
+18. [Dépannage](#dépannage)
+19. [Structure du projet](#structure-du-projet)
+
+---
+
+## Vue d'ensemble
+
+La Commission de Référencement instruit les dossiers des prestataires souhaitant faire certifier leurs solutions ou actions. La plateforme couvre l'intégralité du cycle d'évaluation :
+
+1. **Chargement des dossiers** depuis Jira (prestataires, intervenants, compétences)
+2. **Notation multi-critères pondérée** (critères solution 60 % + critères intégrateur 40 %)
+3. **Analyse documentaire assistée par IA** (CV, attestations, fiches techniques, certificats éditeur)
+4. **Génération du procès-verbal** officiel de la commission
+5. **Synchronisation des résultats** vers les tickets Jira
+
+Deux types de référencement sont supportés :
+
+| Type | Description | Exemples |
+|------|-------------|---------|
+| **Solutions informatiques** | Logiciels métier évalués par catégorie | ERP, CRM, Comptabilité, BI, GMAO, RH |
+| **Actions** | Formations et accompagnements évalués par domaine | Formation, Normalisation, Productivité, Numérique |
 
 ---
 
@@ -56,6 +81,232 @@ Navigateur (Vue.js :8090)
 - Auth : JWT (access 15 min + refresh 7 jours, httpOnly cookie)
 - Base de données : PostgreSQL 16
 - Conteneurisation : Docker Compose
+
+---
+
+## Fonctionnalités par rôle
+
+### Rôle ADMIN
+
+#### Gestion des utilisateurs
+
+- Créer, modifier et désactiver des comptes utilisateurs
+- Attribuer et changer les rôles (`ADMIN`, `GESTIONNAIRE`, `PARTICIPANT`)
+- Réinitialiser les mots de passe
+- Activer / désactiver un compte sans le supprimer
+
+#### Gestion des programmes
+
+Un **programme** est le référentiel d'évaluation utilisé pour noter un dossier. L'admin peut :
+
+- Créer et versionner des programmes (code unique, nom, version)
+- Configurer pour chaque programme :
+  - **Catégories de solutions IT** et leurs **critères pondérés** (libellé, poids, score max 0–2)
+  - **Types d'actions** et leurs **domaines d'évaluation**
+  - **Critères intégrateurs** fixes (niveau d'études, expérience, équipe, etc.)
+  - **Texte AMI** (Appel à Manifestation d'Intérêt) injecté comme contexte dans les analyses IA
+  - **Canevas CV de référence** utilisé par l'IA pour comparer les profils intervenants
+- Activer / désactiver des programmes
+- Désactiver individuellement des critères non applicables à certains dossiers
+
+#### Configuration système
+
+Depuis **Admin > Configuration**, toutes les intégrations sont paramétrables sans redéploiement :
+
+**Connexion Jira**
+
+| Clé | Description |
+|-----|-------------|
+| `jira_url` | URL de l'instance Jira Data Center |
+| `jira_pat` | Personal Access Token (authentification recommandée) |
+| `jira_user` / `jira_pass` | Authentification Basic (alternative au PAT) |
+| `jira_project` | Clé du projet Jira (ex. `REF`) |
+| `jira_jql` | Filtre JQL pour la liste des dossiers prestataires |
+| `jira_cf_score_sol` | Identifiant du champ custom "score solution" |
+| `jira_cf_score_int` | Identifiant du champ custom "score intégrateur" |
+| `jira_type_intervenant` | Type de ticket pour les intervenants |
+
+**Intelligence Artificielle**
+
+| Clé | Description |
+|-----|-------------|
+| `ai_key` | Clé API OpenRouter (`sk-or-v1-...`) |
+| `ai_model` | Modèle utilisé (ex. `anthropic/claude-sonnet-4-6`) |
+| `ai_temp` | Température (0.0–1.0, défaut : 0.3) |
+| `ai_lang` | Langue des réponses IA (`fr` ou `ar`) |
+
+Un bouton **"Tester la connexion Jira"** valide immédiatement la configuration sans quitter la page.
+
+#### Prompts IA
+
+Depuis **Admin > Prompts IA**, chaque gabarit de prompt est éditable individuellement. Voir la section [Prompts IA personnalisables](#prompts-ia-personnalisables).
+
+#### Statistiques et tableau de bord
+
+- Nombre total d'évaluations, répartition par **statut** (Brouillon / Soumis / Archivé)
+- Répartition par **programme** et par **type** (Solution / Action)
+- Répartition par **décision** (Référencé / Conditionnel / Rejeté)
+
+#### Journal d'audit
+
+- Historique complet de toutes les actions utilisateurs
+- Filtrage par utilisateur, type d'action, évaluation et plage de dates
+- Chaque entrée contient : horodatage, adresse IP, utilisateur, action, détails
+
+---
+
+### Rôle GESTIONNAIRE
+
+#### Tableau de bord
+
+- Vue d'ensemble de ses propres évaluations en cours
+- Accès direct à la création d'une nouvelle évaluation
+
+#### Gestion des évaluations
+
+- Créer une évaluation (brouillon)
+- Modifier une évaluation en cours (statut DRAFT)
+- Supprimer un brouillon
+- Archiver une évaluation soumise
+- Filtrer la liste par programme, statut, prestataire et date
+
+#### Navigation des dossiers Jira
+
+Depuis la page **Dossiers**, le gestionnaire peut :
+
+- Parcourir les tickets prestataires filtrés par le JQL configuré
+- Chercher un dossier par mot-clé
+- Voir la liste des intervenants et compétences associés à chaque prestataire
+- Accéder aux pièces jointes (CV, attestations, fiches techniques) directement depuis Jira
+- Lancer une nouvelle évaluation à partir d'un dossier Jira
+
+#### Génération du briefing pré-commission
+
+Disponible depuis le formulaire d'évaluation, génère automatiquement un document de synthèse destiné à préparer la présentation en commission, à partir des informations du dossier et du texte AMI du programme.
+
+---
+
+### Rôle PARTICIPANT
+
+- Consulter la liste complète des évaluations soumises
+- Accéder au détail d'une évaluation :
+  - Informations dossier (prestataire, solution, modules, dates)
+  - Scores et verdicts (solution, intégrateur, global)
+  - Décision finale et conditions éventuelles
+  - Textes générés par l'IA (briefing, analyse CV, attestations, PV)
+- Accès en **lecture seule** — aucune création ni modification possible
+
+---
+
+## Formulaire d'évaluation multi-étapes
+
+Le formulaire guide le gestionnaire à travers 5 étapes séquentielles avec sauvegarde automatique.
+
+### Étape 0 — Type et catégorie
+
+- Sélectionner le **type de référencement** : Solution informatique ou Action
+- Choisir la **catégorie** (ERP, CRM, BI, etc.) ou le **type d'action** (Formation, Normalisation, etc.)
+- Le programme détermine les critères d'évaluation disponibles
+
+### Étape 1 — Informations dossier
+
+**Chargement depuis Jira**
+- Saisir la clé du ticket prestataire et cliquer "↓ Charger"
+- La hiérarchie complète (prestataire → intervenant → compétences) est résolue automatiquement
+- Les champs personnalisés Jira sont extraits : CNSS, ICE, coordonnées de contact
+
+**Champs manuels**
+- Intitulé de la solution ou de l'action, modules couverts, dates, notes libres
+
+**Génération du briefing pré-commission**
+- Disponible dès que les informations de base sont renseignées
+- Document IA généré affiché dans la vue et stocké dans l'évaluation
+
+### Étape 2 — Grille d'évaluation
+
+**Critères Solution (60 % du score final)**
+- Note de **0** (absent), **1** (partiel) ou **2** (satisfaisant) par critère
+- Possibilité de **désactiver** un critère non applicable (exclu du calcul)
+- Champ commentaire libre par critère
+- Score et mention calculés en temps réel
+
+**Critères Intégrateur (40 % du score final)**
+- 6 critères fixes : niveau d'études, expérience générale, expérience solution, composition équipe, formation initiale, formation continue
+- Même échelle 0–2 avec commentaires
+- Pré-remplissage possible depuis l'analyse IA du CV
+
+### Étape 3 — Documents et analyses IA
+
+**Sélection des fichiers**
+- Depuis **Jira** : pièces jointes des tickets intervenant et compétence (CV, diplômes, attestations)
+- Depuis **l'ordinateur** : upload par glisser-déposer (PDF, images, Word)
+- Combinaison possible des deux sources
+
+**Analyses IA disponibles**
+
+| Analyse | Description |
+|---------|-------------|
+| Analyse CV | Extraction compétences, diplômes, années d'expérience, adéquation au poste |
+| Analyse attestations | Vérification cohérence et validité des certifications et références |
+| Contrôle de cohérence | Croisement CV ↔ attestations ↔ critères fonctionnels |
+| Analyse fiche technique | Évaluation des spécifications fonctionnelles et techniques |
+| Certificat éditeur | Validation des accréditations et partenariats éditeur |
+| Scénario de démonstration | Proposition d'un parcours de démonstration adapté |
+| Recherche web | Analyse marché, positionnement de l'éditeur, maturité de la solution |
+
+**Suggestion automatique de scores**
+- Après une analyse CV, proposer des notes (0–2) pour chaque critère intégrateur
+- Accepter toutes les suggestions en un clic ou ajuster critère par critère
+
+### Étape 4 — Procès-verbal
+
+- Récapitulatif complet des scores, pourcentages et verdicts
+- Génération assistée du **PV officiel** par IA (structure formelle, conditions, décision motivée)
+- Éditeur libre pour personnaliser le PV généré
+
+### Étape 5 — Décision et soumission
+
+- Sélection de la **décision finale** : RÉFÉRENCÉ / CONDITIONNEL / REJETÉ
+- Saisie des conditions éventuelles
+- **Soumission définitive** : statut SUBMITTED + synchronisation vers Jira (commentaire + champs custom)
+
+---
+
+## Système de notation et décision
+
+### Critères Solution (poids 60 %)
+
+Chaque critère noté **0**, **1** ou **2** ; critères pondérés et désactivables individuellement.
+
+| Mention | Seuil |
+|---------|-------|
+| FAVORABLE | ≥ 60 % |
+| CONDITIONNEL | 45 % ≤ score < 60 % |
+| DÉFAVORABLE | < 45 % |
+
+### Critères Intégrateur (poids 40 %)
+
+6 critères fixes notés 0–2.
+
+| Mention | Seuil |
+|---------|-------|
+| FAVORABLE | ≥ 55 % |
+| CONDITIONNEL | 40 % ≤ score < 55 % |
+| DÉFAVORABLE | < 40 % |
+
+### Score global et décision
+
+```
+Score global = 60 % × Score Solution + 40 % × Score Intégrateur
+```
+
+| Décision | Conditions cumulatives |
+|----------|------------------------|
+| **RÉFÉRENCÉ** | Global ≥ 60 % ET Solution ≥ 60 % ET Intégrateur ≥ 55 % |
+| **CONDITIONNEL** | Global ≥ 48 % (sans satisfaire toutes les conditions RÉFÉRENCÉ) |
+| **REJETÉ** | Global < 48 % |
+
+La décision automatique est une suggestion — le gestionnaire peut la modifier avant soumission.
 
 ---
 

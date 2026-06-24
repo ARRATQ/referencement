@@ -78,17 +78,25 @@ router.get('/stats', async (req, res, next) => {
 // Audit log
 router.get('/audit-log', async (req, res, next) => {
   try {
-    const { userId, evaluationId, limit = 100 } = req.query;
+    const { userId, evaluationId, action, limit = 100, offset = 0 } = req.query;
     const where = {};
     if (userId) where.userId = userId;
     if (evaluationId) where.evaluationId = evaluationId;
-    const logs = await prisma.auditLog.findMany({
-      where,
-      take: Number(limit),
-      orderBy: { createdAt: 'desc' },
-      include: { user: { select: { name: true, email: true } } }
-    });
-    res.json(logs);
+    if (action) where.action = action;
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        take: Number(limit),
+        skip: Number(offset),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { name: true, email: true } },
+          evaluation: { select: { prestataire: true, status: true, program: { select: { code: true } } } }
+        }
+      }),
+      prisma.auditLog.count({ where })
+    ]);
+    res.json({ logs, total });
   } catch (err) { next(err); }
 });
 

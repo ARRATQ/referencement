@@ -72,6 +72,7 @@
                   <RouterLink :to="'/evaluations/' + ev.id" class="btn btn-ghost btn-sm">👁 Voir</RouterLink>
                   <button v-if="ev.pvText" class="btn btn-ghost btn-sm" @click="showPV(ev)">📄 PV</button>
                   <RouterLink v-if="auth.isGestionnaire && ev.status === 'DRAFT'" :to="'/evaluation/' + ev.id" class="btn btn-ghost btn-sm">↩ Reprendre</RouterLink>
+                  <button v-if="auth.isAdmin" class="btn btn-ghost btn-sm" style="color:var(--red, #ef4444);" @click="deleteEvaluation(ev)">🗑 Supprimer</button>
                 </td>
               </tr>
             </tbody>
@@ -145,6 +146,17 @@ function decisionBadge(d) {
 function decisionLabel(d) {
   return { REFERENCE: 'Référencé', CONDITIONNEL: 'Conditionnel', REJETE: 'Rejeté' }[d] || '—'
 }
+async function deleteEvaluation(ev) {
+  const label = ev.prestataire || ev.solution || ev.actionLabel || ev.id
+  if (!confirm(`Supprimer définitivement le référencement "${label}" ?\nCette action est irréversible.`)) return
+  try {
+    await api.delete(`/evaluations/${ev.id}`)
+    evaluations.value = evaluations.value.filter(e => e.id !== ev.id)
+  } catch (e) {
+    alert(e.response?.data?.error || e.message)
+  }
+}
+
 function showPV(ev) { pvModal.value = ev }
 async function copyPV() {
   if (pvModal.value?.pvText) {
