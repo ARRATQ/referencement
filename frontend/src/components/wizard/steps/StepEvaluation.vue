@@ -57,7 +57,11 @@
               <div class="edit-row">
                 <label class="edit-weight">
                   Poids
-                  <input type="number" class="weight-input" v-model.number="editingSolBuf.w" min="1" max="10" step="1" />
+                  <select class="weight-input" v-model.number="editingSolBuf.w">
+                    <option :value="1">1</option>
+                    <option :value="2">2</option>
+                    <option :value="3">3</option>
+                  </select>
                 </label>
                 <div class="edit-btns">
                   <button class="eb-cancel" @click="editingSolIdx = null">Annuler</button>
@@ -124,7 +128,11 @@
               <div class="edit-row">
                 <label class="edit-weight">
                   Poids
-                  <input type="number" class="weight-input" v-model.number="editingIntBuf.w" min="1" max="10" step="1" />
+                  <select class="weight-input" v-model.number="editingIntBuf.w">
+                    <option :value="1">1</option>
+                    <option :value="2">2</option>
+                    <option :value="3">3</option>
+                  </select>
                 </label>
                 <div class="edit-btns">
                   <button class="eb-cancel" @click="editingIntIdx = null">Annuler</button>
