@@ -94,22 +94,42 @@
           </div>
         </div>
 
+        <!-- Spécifications fonctionnelles -->
         <div class="wiz-section">
           <div class="wiz-section-label">Spécifications fonctionnelles <span class="opt-badge">optionnel</span></div>
-          <div class="upload-zone" @drop.prevent="e => addFiles(specsFiles, e.dataTransfer.files)" @dragover.prevent>
-            <label class="upload-area">
-              <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv" style="display:none" @change="e => addFiles(specsFiles, e.target.files)" />
-              <div class="upload-icon">📂</div>
-              <div class="upload-text">Glisser des fichiers ou <span class="upload-link">parcourir</span></div>
-              <div class="upload-sub">PDF, Excel, CSV</div>
-            </label>
+          <div class="source-tabs">
+            <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: specsSource === s.id }" @click="specsSource = s.id">
+              {{ s.icon }} {{ s.label }}
+            </button>
           </div>
-          <div v-if="specsFiles.length" class="files-list">
-            <div v-for="(f, i) in specsFiles" :key="i" class="file-item">
-              <span class="file-name">{{ f.name }}</span>
-              <button class="file-remove" @click="specsFiles.splice(i, 1)">✕</button>
+          <template v-if="specsSource !== 'upload'">
+            <div v-if="!getJiraAttachments(specsSource).length" class="info-hint mt12">{{ sourceHint(specsSource) }}</div>
+            <div v-else class="att-list mt12">
+              <label v-for="att in getJiraAttachments(specsSource)" :key="att.id" class="att-item">
+                <input type="checkbox" :value="att.id" v-model="specsAttIds" class="att-check" />
+                <span class="att-icon">{{ attIcon(att.filename) }}</span>
+                <span class="att-name">{{ att.filename }}</span>
+                <span class="att-size" v-if="att.size">{{ formatSize(att.size) }}</span>
+              </label>
             </div>
-          </div>
+          </template>
+          <template v-else>
+            <div class="upload-zone mt12" @drop.prevent="e => pushFiles(specsFiles, e.dataTransfer.files)" @dragover.prevent>
+              <label class="upload-area">
+                <input ref="specsInput" type="file" multiple accept=".pdf,.xlsx,.xls,.csv" style="display:none"
+                  @change="e => { pushFiles(specsFiles, e.target.files); e.target.value = '' }" />
+                <div class="upload-icon">📂</div>
+                <div class="upload-text">Cahier des charges, spécifications… <span class="upload-link" @click.prevent="$refs.specsInput.click()">parcourir</span></div>
+                <div class="upload-sub">PDF, Excel, CSV</div>
+              </label>
+            </div>
+            <div v-if="specsFiles.length" class="files-list mt8">
+              <div v-for="(f, i) in specsFiles" :key="i" class="file-item">
+                <span class="file-name">{{ f.name }}</span>
+                <button type="button" class="file-remove" @click="specsFiles.splice(i, 1)">✕</button>
+              </div>
+            </div>
+          </template>
         </div>
 
         <div class="wiz-ai-panel">
@@ -167,12 +187,9 @@
           <div class="wiz-section-label" style="margin-bottom:0;">
             {{ state.refType === 'SOLUTION' ? "Profil de l'intégrateur" : 'Profil du consultant' }}
           </div>
-          <button
-            class="wiz-btn-secondary"
-            :disabled="!state.extractedIntervenant"
+          <button class="wiz-btn-secondary" :disabled="!state.extractedIntervenant"
             :title="!state.extractedIntervenant ? 'Sélectionnez un intervenant à l\'étape Identification' : ''"
-            @click="fillProfilFromJira"
-          >↻ Pré-remplir depuis Jira</button>
+            @click="fillProfilFromJira">↻ Pré-remplir depuis Jira</button>
         </div>
         <div class="form-grid">
           <div class="wiz-field">
@@ -231,39 +248,40 @@
     <!-- ══════════════════════════════════════════ -->
     <template v-else-if="subStep === 'cv'">
       <div class="wiz-section">
-        <div class="wiz-section-label">Pièces jointes Jira — Intervenant</div>
-        <div v-if="!selectedIntervenant" class="info-hint">
-          Sélectionnez un intervenant dans l'étape "Identification" pour accéder à ses pièces jointes.
+        <div class="wiz-section-label">Documents CV & Diplômes</div>
+        <div class="source-tabs">
+          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: cvSource === s.id }" @click="cvSource = s.id">
+            {{ s.icon }} {{ s.label }}
+          </button>
         </div>
-        <div v-else-if="!selectedIntervenant.attachments?.length" class="info-hint">
-          Aucune pièce jointe sur ce ticket intervenant.
-        </div>
-        <div v-else class="att-list">
-          <label v-for="att in selectedIntervenant.attachments" :key="att.id" class="att-item">
-            <input type="checkbox" :value="att.id" v-model="cvAttIds" class="att-check" />
-            <span class="att-icon">{{ attIcon(att.filename) }}</span>
-            <span class="att-name">{{ att.filename }}</span>
-            <span class="att-size" v-if="att.size">{{ formatSize(att.size) }}</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="wiz-section">
-        <div class="wiz-section-label">Upload local <span class="opt-badge">optionnel</span></div>
-        <div class="upload-zone" @drop.prevent="e => addFiles(cvFiles, e.dataTransfer.files)" @dragover.prevent>
-          <label class="upload-area">
-            <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style="display:none" @change="e => addFiles(cvFiles, e.target.files)" />
-            <div class="upload-icon">📄</div>
-            <div class="upload-text">CV, diplômes… <span class="upload-link">parcourir</span></div>
-            <div class="upload-sub">PDF, Images, Word</div>
-          </label>
-        </div>
-        <div v-if="cvFiles.length" class="files-list">
-          <div v-for="(f, i) in cvFiles" :key="i" class="file-item">
-            <span class="file-name">{{ f.name }}</span>
-            <button class="file-remove" @click="cvFiles.splice(i, 1)">✕</button>
+        <template v-if="cvSource !== 'upload'">
+          <div v-if="!getJiraAttachments(cvSource).length" class="info-hint mt12">{{ sourceHint(cvSource) }}</div>
+          <div v-else class="att-list mt12">
+            <label v-for="att in getJiraAttachments(cvSource)" :key="att.id" class="att-item">
+              <input type="checkbox" :value="att.id" v-model="cvAttIds" class="att-check" />
+              <span class="att-icon">{{ attIcon(att.filename) }}</span>
+              <span class="att-name">{{ att.filename }}</span>
+              <span class="att-size" v-if="att.size">{{ formatSize(att.size) }}</span>
+            </label>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <div class="upload-zone mt12" @drop.prevent="e => pushFiles(cvFiles, e.dataTransfer.files)" @dragover.prevent>
+            <label class="upload-area">
+              <input ref="cvInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style="display:none"
+                @change="e => { pushFiles(cvFiles, e.target.files); e.target.value = '' }" />
+              <div class="upload-icon">📄</div>
+              <div class="upload-text">CV, diplômes, certificats… <span class="upload-link" @click.prevent="$refs.cvInput.click()">parcourir</span></div>
+              <div class="upload-sub">PDF, Images, Word</div>
+            </label>
+          </div>
+          <div v-if="cvFiles.length" class="files-list mt8">
+            <div v-for="(f, i) in cvFiles" :key="i" class="file-item">
+              <span class="file-name">{{ f.name }}</span>
+              <button type="button" class="file-remove" @click="cvFiles.splice(i, 1)">✕</button>
+            </div>
+          </div>
+        </template>
       </div>
 
       <div class="wiz-ai-panel">
@@ -287,20 +305,16 @@
     <!-- ══════════════════════════════════════════ -->
     <template v-else-if="subStep === 'attestations'">
       <div class="wiz-section">
+        <div class="wiz-section-label">Attestations de référence</div>
         <div class="source-tabs">
-          <button class="src-tab" :class="{ active: attSource === 'jira' }" @click="attSource = 'jira'">Depuis Jira</button>
-          <button class="src-tab" :class="{ active: attSource === 'upload' }" @click="attSource = 'upload'">Upload local</button>
+          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: attSource === s.id }" @click="attSource = s.id">
+            {{ s.icon }} {{ s.label }}
+          </button>
         </div>
-
-        <template v-if="attSource === 'jira'">
-          <div v-if="!selectedCompetence" class="info-hint mt12">
-            Sélectionnez une compétence dans l'étape "Identification" pour accéder aux attestations.
-          </div>
-          <div v-else-if="!selectedCompetence.attachments?.length" class="info-hint mt12">
-            Aucune pièce jointe sur ce ticket compétence.
-          </div>
+        <template v-if="attSource !== 'upload'">
+          <div v-if="!getJiraAttachments(attSource).length" class="info-hint mt12">{{ sourceHint(attSource) }}</div>
           <div v-else class="att-list mt12">
-            <label v-for="att in selectedCompetence.attachments" :key="att.id" class="att-item">
+            <label v-for="att in getJiraAttachments(attSource)" :key="att.id" class="att-item">
               <input type="checkbox" :value="att.id" v-model="attIds" class="att-check" />
               <span class="att-icon">{{ attIcon(att.filename) }}</span>
               <span class="att-name">{{ att.filename }}</span>
@@ -308,20 +322,20 @@
             </label>
           </div>
         </template>
-
         <template v-else>
-          <div class="upload-zone mt12" @drop.prevent="e => addFiles(attFiles, e.dataTransfer.files)" @dragover.prevent>
+          <div class="upload-zone mt12" @drop.prevent="e => pushFiles(attFiles, e.dataTransfer.files)" @dragover.prevent>
             <label class="upload-area">
-              <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none" @change="e => addFiles(attFiles, e.target.files)" />
+              <input ref="attInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none"
+                @change="e => { pushFiles(attFiles, e.target.files); e.target.value = '' }" />
               <div class="upload-icon">📎</div>
-              <div class="upload-text">Attestations, contrats… <span class="upload-link">parcourir</span></div>
+              <div class="upload-text">Attestations, contrats, lettres… <span class="upload-link" @click.prevent="$refs.attInput.click()">parcourir</span></div>
               <div class="upload-sub">PDF, Images</div>
             </label>
           </div>
           <div v-if="attFiles.length" class="files-list mt8">
             <div v-for="(f, i) in attFiles" :key="i" class="file-item">
               <span class="file-name">{{ f.name }}</span>
-              <button class="file-remove" @click="attFiles.splice(i, 1)">✕</button>
+              <button type="button" class="file-remove" @click="attFiles.splice(i, 1)">✕</button>
             </div>
           </div>
         </template>
@@ -336,7 +350,7 @@
         <div v-if="state.aiTexts.attestations" class="wiz-ai-content">{{ state.aiTexts.attestations }}</div>
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai"
-            :disabled="aiLoading.att || (attSource === 'jira' ? !attIds.length : !attFiles.length)"
+            :disabled="aiLoading.att || (attSource === 'upload' ? !attFiles.length : !attIds.length)"
             @click="analyzeAttestations">
             <span v-if="aiLoading.att" class="spinner-sm"></span>
             <span v-else>◈ Analyser les attestations</span>
@@ -350,28 +364,16 @@
     <!-- ══════════════════════════════════════════ -->
     <template v-else-if="subStep === 'certif'">
       <div class="wiz-section">
-        <div class="wiz-section-label">Source du certificat</div>
+        <div class="wiz-section-label">Certificat éditeur</div>
         <div class="source-tabs">
-          <button class="src-tab" :class="{ active: certifSource === 'competence' }" @click="certifSource = 'competence'">
-            Jira Compétence
-          </button>
-          <button class="src-tab" :class="{ active: certifSource === 'intervenant' }" @click="certifSource = 'intervenant'">
-            Jira Intervenant
-          </button>
-          <button class="src-tab" :class="{ active: certifSource === 'upload' }" @click="certifSource = 'upload'">
-            Upload local
+          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: certifSource === s.id }" @click="certifSource = s.id">
+            {{ s.icon }} {{ s.label }}
           </button>
         </div>
-      </div>
-
-      <div class="wiz-section">
         <template v-if="certifSource !== 'upload'">
-          <div class="wiz-section-label">Sélectionner les pièces jointes</div>
-          <div v-if="certifJiraPJ.length === 0" class="info-hint">
-            {{ certifSource === 'competence' ? 'Sélectionnez une compétence' : "Sélectionnez un intervenant" }} dans l'étape Identification.
-          </div>
-          <div v-else class="att-list">
-            <label v-for="att in certifJiraPJ" :key="att.id" class="att-item">
+          <div v-if="!getJiraAttachments(certifSource).length" class="info-hint mt12">{{ sourceHint(certifSource) }}</div>
+          <div v-else class="att-list mt12">
+            <label v-for="att in getJiraAttachments(certifSource)" :key="att.id" class="att-item">
               <input type="checkbox" :value="att.id" v-model="certifAttIds" class="att-check" />
               <span class="att-icon">{{ attIcon(att.filename) }}</span>
               <span class="att-name">{{ att.filename }}</span>
@@ -379,20 +381,20 @@
             </label>
           </div>
         </template>
-
         <template v-else>
-          <div class="upload-zone" @drop.prevent="e => addFiles(certifFiles, e.dataTransfer.files)" @dragover.prevent>
+          <div class="upload-zone mt12" @drop.prevent="e => pushFiles(certifFiles, e.dataTransfer.files)" @dragover.prevent>
             <label class="upload-area">
-              <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none" @change="e => addFiles(certifFiles, e.target.files)" />
+              <input ref="certifInput" type="file" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none"
+                @change="e => { pushFiles(certifFiles, e.target.files); e.target.value = '' }" />
               <div class="upload-icon">🏅</div>
-              <div class="upload-text">Certificat éditeur… <span class="upload-link">parcourir</span></div>
+              <div class="upload-text">Certificat éditeur, partenariat… <span class="upload-link" @click.prevent="$refs.certifInput.click()">parcourir</span></div>
               <div class="upload-sub">PDF, Images</div>
             </label>
           </div>
           <div v-if="certifFiles.length" class="files-list mt8">
             <div v-for="(f, i) in certifFiles" :key="i" class="file-item">
               <span class="file-name">{{ f.name }}</span>
-              <button class="file-remove" @click="certifFiles.splice(i, 1)">✕</button>
+              <button type="button" class="file-remove" @click="certifFiles.splice(i, 1)">✕</button>
             </div>
           </div>
         </template>
@@ -425,21 +427,28 @@ import api from '@/services/api'
 
 const { state, currentCriteria, selectedAction } = inject('wizard')
 
+// ── Sources disponibles ────────────────────────────────────────────────────────
+const DOC_SOURCES = [
+  { id: 'prestataire', icon: '🏢', label: 'Prestataire' },
+  { id: 'intervenant', icon: '👤', label: 'Intervenant' },
+  { id: 'competence',  icon: '📋', label: 'Compétence' },
+  { id: 'upload',      icon: '💻', label: 'Upload local' },
+]
+
 // ── Sub-step navigation ────────────────────────────────────────────────────────
 const subStep = ref('infos')
 
 const TABS_SOLUTION = [
-  { id: 'infos', num: 1, label: 'Informations', desc: 'Dossier, modules et briefing pré-commission.' },
-  { id: 'profil', num: 2, label: 'Profil intégrateur', desc: "Compétences et expérience de l'intégrateur." },
-  { id: 'cv', num: 3, label: 'CV & Diplômes', desc: "Documents CV de l'intervenant et analyse IA." },
-  { id: 'attestations', num: 4, label: 'Attestations', desc: 'Attestations de référence et analyse IA.' },
-  { id: 'certif', num: 5, label: 'Certif. éditeur', desc: 'Certification éditeur de la solution.' },
+  { id: 'infos',        num: 1, label: 'Informations',    desc: 'Dossier, modules et briefing pré-commission.' },
+  { id: 'profil',       num: 2, label: 'Profil intégrateur', desc: "Compétences et expérience de l'intégrateur." },
+  { id: 'cv',           num: 3, label: 'CV & Diplômes',   desc: "Documents CV de l'intervenant et analyse IA." },
+  { id: 'attestations', num: 4, label: 'Attestations',    desc: 'Attestations de référence et analyse IA.' },
+  { id: 'certif',       num: 5, label: 'Certif. éditeur', desc: 'Certification éditeur de la solution.' },
 ]
-
 const TABS_ACTION = [
-  { id: 'infos', num: 1, label: 'Informations', desc: "Action à évaluer et informations générales." },
-  { id: 'profil', num: 2, label: 'Profil consultant', desc: 'Compétences et expérience du consultant.' },
-  { id: 'attestations', num: 3, label: 'Attestations', desc: 'Documents de référence et analyse IA.' },
+  { id: 'infos',        num: 1, label: 'Informations',    desc: "Action à évaluer et informations générales." },
+  { id: 'profil',       num: 2, label: 'Profil consultant', desc: 'Compétences et expérience du consultant.' },
+  { id: 'attestations', num: 3, label: 'Attestations',    desc: 'Documents de référence et analyse IA.' },
 ]
 
 const subTabs = computed(() => state.refType === 'SOLUTION' ? TABS_SOLUTION : TABS_ACTION)
@@ -452,6 +461,15 @@ function prevSub() {
 function nextSub() {
   const i = subStepIndex.value
   if (i < subTabs.value.length - 1) subStep.value = subTabs.value[i + 1].id
+}
+
+function isDone(id) {
+  if (id === 'infos')        return !!(state.form.rapporteur)
+  if (id === 'profil')       return !!(state.cvFields.diplome || state.cvFields.exp > 0)
+  if (id === 'cv')           return !!(state.aiTexts.cv)
+  if (id === 'attestations') return !!(state.aiTexts.attestations)
+  if (id === 'certif')       return !!(state.aiTexts.certifEditeur)
+  return false
 }
 
 function fillProfilFromJira() {
@@ -467,15 +485,6 @@ function fillProfilFromJira() {
   if (p.references) state.cvFields.refs = p.references
 }
 
-function isDone(id) {
-  if (id === 'infos') return !!(state.form.rapporteur)
-  if (id === 'profil') return !!(state.cvFields.diplome || state.cvFields.exp > 0)
-  if (id === 'cv') return !!(state.aiTexts.cv)
-  if (id === 'attestations') return !!(state.aiTexts.attestations)
-  if (id === 'certif') return !!(state.aiTexts.certifEditeur)
-  return false
-}
-
 // ── Jira hierarchy helpers ─────────────────────────────────────────────────────
 const selectedIntervenant = computed(() =>
   state.jiraHierarchy?.intervenants?.find(i => i.key === state.form.jiraKeyIntervenant) || null
@@ -487,30 +496,45 @@ const selectedCompetence = computed(() => {
   }
   return null
 })
-const certifJiraPJ = computed(() => {
-  if (certifSource.value === 'competence') return selectedCompetence.value?.attachments || []
-  if (certifSource.value === 'intervenant') return selectedIntervenant.value?.attachments || []
+
+function getJiraAttachments(source) {
+  if (source === 'prestataire') return state.jiraHierarchy?.attachments || []
+  if (source === 'intervenant') return selectedIntervenant.value?.attachments || []
+  if (source === 'competence')  return selectedCompetence.value?.attachments || []
   return []
-})
+}
+
+function jiraKeyForSource(source) {
+  if (source === 'prestataire') return state.form.jiraKeyPrestataire || state.jiraHierarchy?.key
+  if (source === 'intervenant') return state.form.jiraKeyIntervenant
+  if (source === 'competence')  return state.form.jiraKeyCompetence
+  return null
+}
+
+function sourceHint(source) {
+  if (source === 'prestataire') return "Chargez le ticket prestataire dans l'étape Identification."
+  if (source === 'intervenant') return "Sélectionnez un intervenant dans l'étape Identification."
+  return "Sélectionnez une compétence dans l'étape Identification."
+}
 
 // ── Local state ────────────────────────────────────────────────────────────────
 const moduleInput = ref('')
-const specsFiles = ref([])
-const cvFiles = ref([])
-const cvAttIds = ref([])
-const attFiles = ref([])
-const attIds = ref([])
-const attSource = ref('jira')
-const certifFiles = ref([])
-const certifAttIds = ref([])
-const certifSource = ref('competence')
+
+const specsSource  = ref('upload');  const specsAttIds  = ref([]);  const specsFiles  = ref([])
+const cvSource     = ref('intervenant'); const cvAttIds = ref([]);  const cvFiles     = ref([])
+const attSource    = ref('competence');  const attIds   = ref([]);  const attFiles    = ref([])
+const certifSource = ref('competence');  const certifAttIds = ref([]); const certifFiles = ref([])
+
 const aiLoading = ref({ briefing: false, cv: false, att: false, certif: false, autoFill: false })
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function addFiles(list, fileList) {
-  list.value = [...(list.value || []), ...Array.from(fileList || [])]
+// ── pushFiles : fix bug upload — utilise push() sur l'array réactif plutôt que
+//    reassignment (en template Vue 3, le ref est unwrappé donc list.value = ...
+//    ne fonctionnerait pas). push() sur l'array réactif déclenche la réactivité.
+function pushFiles(reactiveArr, fileList) {
+  for (const f of Array.from(fileList || [])) reactiveArr.push(f)
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
 function attIcon(name = '') {
   const ext = name.split('.').pop().toLowerCase()
   if (ext === 'pdf') return '📄'
@@ -518,20 +542,17 @@ function attIcon(name = '') {
   if (['doc', 'docx'].includes(ext)) return '📝'
   return '📎'
 }
-
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + 'o'
   if (bytes < 1048576) return Math.round(bytes / 1024) + 'ko'
   return (bytes / 1048576).toFixed(1) + 'Mo'
 }
-
 function arrayBufferToBase64(buf) {
   const bytes = new Uint8Array(buf)
   let binary = ''
   for (const b of bytes) binary += String.fromCharCode(b)
   return btoa(binary)
 }
-
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -540,11 +561,23 @@ function fileToBase64(file) {
     reader.readAsDataURL(file)
   })
 }
-
 function guessMimeType(file) {
   if (file.type) return file.type
   const ext = file.name.split('.').pop().toLowerCase()
   return { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg' }[ext] || 'application/octet-stream'
+}
+
+async function jiraAttachmentsToFilesData(source, selectedIds) {
+  const key = jiraKeyForSource(source)
+  if (!key) return []
+  const list = getJiraAttachments(source)
+  const filesData = []
+  for (const id of selectedIds) {
+    const { data: buf } = await api.get(`/dossiers/${key}/attachment/${id}`, { responseType: 'arraybuffer' })
+    const att = list.find(a => a.id === id)
+    filesData.push({ base64: arrayBufferToBase64(buf), mimeType: att?.mimeType || 'application/pdf', filename: att?.filename || id })
+  }
+  return filesData
 }
 
 // ── Module management ─────────────────────────────────────────────────────────
@@ -580,20 +613,13 @@ async function generateBriefing() {
 async function analyzeCV() {
   aiLoading.value.cv = true
   try {
-    const filesData = []
-    for (const id of cvAttIds.value) {
-      const jiraKey = state.form.jiraKeyIntervenant
-      const { data: buf } = await api.get(`/dossiers/${jiraKey}/attachment/${id}`, { responseType: 'arraybuffer' })
-      const att = selectedIntervenant.value.attachments.find(a => a.id === id)
-      filesData.push({ base64: arrayBufferToBase64(buf), mimeType: att?.mimeType || 'application/pdf', filename: att?.filename || id })
+    let filesData = []
+    if (cvSource.value !== 'upload') {
+      filesData = await jiraAttachmentsToFilesData(cvSource.value, cvAttIds.value)
+    } else {
+      for (const f of cvFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
     }
-    for (const f of cvFiles.value) {
-      filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
-    }
-    const { data } = await api.post('/ai/analyze-cv', {
-      filesData, cvFields: state.cvFields,
-      solution: state.form.solution, programCode: state.programCode,
-    })
+    const { data } = await api.post('/ai/analyze-cv', { filesData, cvFields: state.cvFields, solution: state.form.solution, programCode: state.programCode })
     state.aiTexts.cv = data.text
   } catch (e) { state.aiTexts.cv = 'Erreur: ' + (e.response?.data?.error || e.message) }
   finally { aiLoading.value.cv = false }
@@ -602,9 +628,7 @@ async function analyzeCV() {
 async function autoFillFromCV() {
   aiLoading.value.autoFill = true
   try {
-    const { data } = await api.post('/ai/auto-fill', {
-      cvAnalysis: state.aiTexts.cv, programCode: state.programCode,
-    })
+    const { data } = await api.post('/ai/auto-fill', { cvAnalysis: state.aiTexts.cv, programCode: state.programCode })
     if (data.cvFields) Object.assign(state.cvFields, data.cvFields)
   } catch { /* silent */ }
   finally { aiLoading.value.autoFill = false }
@@ -613,18 +637,11 @@ async function autoFillFromCV() {
 async function analyzeAttestations() {
   aiLoading.value.att = true
   try {
-    const filesData = []
-    if (attSource.value === 'jira') {
-      const jiraKey = state.form.jiraKeyCompetence
-      for (const id of attIds.value) {
-        const { data: buf } = await api.get(`/dossiers/${jiraKey}/attachment/${id}`, { responseType: 'arraybuffer' })
-        const att = selectedCompetence.value.attachments.find(a => a.id === id)
-        filesData.push({ base64: arrayBufferToBase64(buf), mimeType: att?.mimeType || 'application/pdf', filename: att?.filename || id })
-      }
+    let filesData = []
+    if (attSource.value !== 'upload') {
+      filesData = await jiraAttachmentsToFilesData(attSource.value, attIds.value)
     } else {
-      for (const f of attFiles.value) {
-        filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
-      }
+      for (const f of attFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
     }
     const { data } = await api.post('/ai/analyze-attestations', {
       filesData, solution: state.form.solution, actionLabel: state.form.actionLabel,
@@ -638,22 +655,14 @@ async function analyzeAttestations() {
 async function analyzeCertif() {
   aiLoading.value.certif = true
   try {
-    const filesData = []
-    if (certifSource.value === 'upload') {
-      for (const f of certifFiles.value) {
-        filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
-      }
+    let filesData = []
+    if (certifSource.value !== 'upload') {
+      filesData = await jiraAttachmentsToFilesData(certifSource.value, certifAttIds.value)
     } else {
-      const jiraKey = certifSource.value === 'competence' ? state.form.jiraKeyCompetence : state.form.jiraKeyIntervenant
-      for (const id of certifAttIds.value) {
-        const { data: buf } = await api.get(`/dossiers/${jiraKey}/attachment/${id}`, { responseType: 'arraybuffer' })
-        const att = certifJiraPJ.value.find(a => a.id === id)
-        filesData.push({ base64: arrayBufferToBase64(buf), mimeType: att?.mimeType || 'application/pdf', filename: att?.filename || id })
-      }
+      for (const f of certifFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
     }
     const { data } = await api.post('/ai/analyze-certif-editeur', {
-      filesData, solution: state.form.solution,
-      prestataire: state.form.prestataire, programCode: state.programCode,
+      filesData, solution: state.form.solution, prestataire: state.form.prestataire, programCode: state.programCode,
     })
     state.aiTexts.certifEditeur = data.text
   } catch (e) { state.aiTexts.certifEditeur = 'Erreur: ' + (e.response?.data?.error || e.message) }
@@ -667,39 +676,19 @@ async function analyzeCertif() {
 .wiz-step-title { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
 .wiz-step-desc { color: var(--wiz-text2); font-size: 13px; }
 
-/* Sub-nav row */
-.sub-nav {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 28px;
-}
-.sub-arrow {
-  width: 30px; height: 30px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: transparent; border: 1px solid var(--wiz-border); border-radius: 7px;
-  font-size: 18px; line-height: 1; color: var(--wiz-text2); cursor: pointer;
-  transition: all 0.15s; font-family: var(--sans);
-}
+/* Sub-nav */
+.sub-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 28px; }
+.sub-arrow { width: 30px; height: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--wiz-border); border-radius: 7px; font-size: 18px; line-height: 1; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; font-family: var(--sans); }
 .sub-arrow:hover:not(:disabled) { border-color: var(--wiz-accent); color: var(--wiz-accent); }
 .sub-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
 
 /* Sub-tabs */
-.sub-tabs {
-  flex: 1; display: flex; gap: 4px;
-  padding: 4px; background: rgba(var(--wiz-overlay-rgb),0.04); border-radius: 10px;
-  border: 1px solid var(--wiz-border);
-}
-.sub-tab {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 10px 8px; background: transparent; border: none; border-radius: 7px;
-  cursor: pointer; transition: all 0.15s; color: var(--wiz-text3); font-family: var(--sans);
-}
+.sub-tabs { flex: 1; display: flex; gap: 4px; padding: 4px; background: rgba(var(--wiz-overlay-rgb),0.04); border-radius: 10px; border: 1px solid var(--wiz-border); }
+.sub-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; background: transparent; border: none; border-radius: 7px; cursor: pointer; transition: all 0.15s; color: var(--wiz-text3); font-family: var(--sans); }
 .sub-tab:hover { background: rgba(var(--wiz-overlay-rgb),0.05); color: var(--wiz-text2); }
 .sub-tab.active { background: var(--wiz-card); color: var(--wiz-text); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
 .sub-tab.done .sub-tab-num { color: #22c55e; }
-.sub-tab-num {
-  width: 20px; height: 20px; border-radius: 50%; border: 1px solid currentColor;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-family: var(--mono); font-weight: 600;
-}
+.sub-tab-num { width: 20px; height: 20px; border-radius: 50%; border: 1px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: var(--mono); font-weight: 600; }
 .sub-tab.active .sub-tab-num { background: var(--wiz-accent); border-color: var(--wiz-accent); color: #fff; }
 .sub-tab-label { font-size: 11px; font-weight: 500; text-align: center; line-height: 1.2; }
 
@@ -732,21 +721,27 @@ option { background: var(--wiz-option-bg); color: var(--wiz-option-text); }
 .module-tag button:hover { color: #f87171; }
 .wiz-empty-sm { font-size: 12px; color: var(--wiz-text3); font-family: var(--mono); }
 
+/* Source tabs */
+.source-tabs { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.src-tab { padding: 7px 14px; background: transparent; border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; font-family: var(--sans); transition: all 0.15s; }
+.src-tab:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); color: var(--wiz-text); }
+.src-tab.active { border-color: var(--wiz-accent); color: var(--wiz-accent); background: rgba(59,130,246,0.1); }
+
 /* Upload */
 .upload-zone { border: 2px dashed var(--wiz-border); border-radius: 8px; transition: border-color 0.15s; }
 .upload-zone:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); }
 .upload-area { display: flex; flex-direction: column; align-items: center; padding: 24px; cursor: pointer; gap: 6px; }
 .upload-icon { font-size: 26px; }
 .upload-text { font-size: 13px; color: var(--wiz-text2); }
-.upload-link { color: var(--wiz-accent); text-decoration: underline; }
+.upload-link { color: var(--wiz-accent); text-decoration: underline; cursor: pointer; }
 .upload-sub { font-size: 11px; color: var(--wiz-text3); font-family: var(--mono); }
-.files-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.files-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .file-item { display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(var(--wiz-overlay-rgb),0.04); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); font-family: var(--mono); }
 .file-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-remove { background: none; border: none; cursor: pointer; color: var(--wiz-text3); font-size: 11px; padding: 0; }
 .file-remove:hover { color: #f87171; }
 
-/* Jira attachments list */
+/* Jira att list */
 .att-list { display: flex; flex-direction: column; gap: 6px; }
 .att-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: rgba(var(--wiz-overlay-rgb),0.03); border: 1px solid var(--wiz-border); border-radius: 6px; cursor: pointer; transition: background 0.12s; }
 .att-item:hover { background: rgba(var(--wiz-overlay-rgb),0.06); }
@@ -755,15 +750,12 @@ option { background: var(--wiz-option-bg); color: var(--wiz-option-text); }
 .att-name { flex: 1; font-size: 12px; color: var(--wiz-text); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .att-size { font-size: 11px; color: var(--wiz-text3); font-family: var(--mono); white-space: nowrap; }
 
-/* Source tabs */
-.source-tabs { display: flex; gap: 6px; margin-bottom: 4px; }
-.src-tab { padding: 7px 16px; background: transparent; border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; font-family: var(--sans); transition: all 0.15s; }
-.src-tab:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); color: var(--wiz-text); }
-.src-tab.active { border-color: var(--wiz-accent); color: var(--wiz-accent); background: rgba(59,130,246,0.1); }
-
 /* Action blocks */
 .action-meta { padding: 10px 14px; background: rgba(var(--wiz-overlay-rgb),0.04); border-radius: 6px; border-left: 3px solid var(--wiz-border); font-size: 13px; color: var(--wiz-text2); }
 .action-consistance { padding: 10px 14px; background: rgba(59,130,246,0.08); border-radius: 6px; border-left: 3px solid var(--wiz-accent); font-size: 13px; color: var(--wiz-text); }
+
+/* Info hint */
+.info-hint { padding: 12px 16px; background: rgba(var(--wiz-overlay-rgb),0.03); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 13px; color: var(--wiz-text3); font-family: var(--mono); }
 
 /* AI panels */
 .wiz-ai-panel { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 18px 20px; }
@@ -776,9 +768,6 @@ option { background: var(--wiz-option-bg); color: var(--wiz-option-text); }
 .wiz-btn-ai { padding: 7px 14px; background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: var(--sans); }
 .wiz-btn-ai:hover { border-color: var(--wiz-accent); color: var(--wiz-accent); }
 .wiz-btn-ai:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* Info hint */
-.info-hint { padding: 12px 16px; background: rgba(var(--wiz-overlay-rgb),0.03); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 13px; color: var(--wiz-text3); font-family: var(--mono); }
 
 .mt8 { margin-top: 8px; }
 .mt12 { margin-top: 12px; }

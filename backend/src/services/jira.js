@@ -232,6 +232,10 @@ async function resolveHierarchy(prestataireKey) {
     key: prestataireKey,
     summary: prestataire.fields.summary,
     status: prestataire.fields.status?.name,
+    attachments: (prestataire.fields.attachment || []).map(a => ({
+      id: a.id, filename: a.filename, mimeType: a.mimeType,
+      size: a.size, contentUrl: a.content
+    })),
     intervenants
   };
 }
