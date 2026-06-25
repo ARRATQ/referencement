@@ -123,10 +123,10 @@ const state = reactive({
   extractedIntervenant: null,
   extractedCompetence: null,
   docPickers: {
-    specsSource: 'upload',   specsAttIds: [],
-    cvSource: 'intervenant', cvAttIds: [],
-    attSource: 'competence', attIds: [],
-    certifSource: 'competence', certifAttIds: [],
+    specsSource: 'upload',   specsAttIds: [],   specsNames: [],
+    cvSource: 'intervenant', cvAttIds: [],      cvNames: [],
+    attSource: 'competence', attIds: [],        attNames: [],
+    certifSource: 'competence', certifAttIds: [], certifNames: [],
   },
 })
 
@@ -233,10 +233,10 @@ function getDraftData() {
     customCriteria: [...state.customCriteria],
     customIntCriteria: [...state.customIntCriteria],
     docPickers: { ...state.docPickers,
-      specsAttIds: [...state.docPickers.specsAttIds],
-      cvAttIds: [...state.docPickers.cvAttIds],
-      attIds: [...state.docPickers.attIds],
-      certifAttIds: [...state.docPickers.certifAttIds],
+      specsAttIds: [...state.docPickers.specsAttIds], specsNames: [...state.docPickers.specsNames],
+      cvAttIds: [...state.docPickers.cvAttIds],       cvNames: [...state.docPickers.cvNames],
+      attIds: [...state.docPickers.attIds],           attNames: [...state.docPickers.attNames],
+      certifAttIds: [...state.docPickers.certifAttIds], certifNames: [...state.docPickers.certifNames],
     },
   }
 }
@@ -320,6 +320,12 @@ async function submitEval() {
     cvFields: state.cvFields,
     aiTexts: state.aiTexts,
     customCriteria: state.customCriteria,
+    docsMeta: {
+      specs: [...state.docPickers.specsNames],
+      cv: [...state.docPickers.cvNames],
+      attestations: [...state.docPickers.attNames],
+      certif: [...state.docPickers.certifNames],
+    },
   }
   try {
     let result

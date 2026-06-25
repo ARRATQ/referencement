@@ -64,6 +64,29 @@
           </div>
         </div>
 
+        <!-- Documents soumis -->
+        <div v-if="hasDocsMeta" class="card">
+          <div class="card-title">Documents soumis</div>
+          <div class="docs-grid">
+            <div v-if="ev.docsMeta.cv?.length" class="docs-group">
+              <div class="docs-group-label">CV &amp; Diplômes</div>
+              <div v-for="name in ev.docsMeta.cv" :key="name" class="doc-item">📄 {{ name }}</div>
+            </div>
+            <div v-if="ev.docsMeta.attestations?.length" class="docs-group">
+              <div class="docs-group-label">Attestations de référence</div>
+              <div v-for="name in ev.docsMeta.attestations" :key="name" class="doc-item">📎 {{ name }}</div>
+            </div>
+            <div v-if="ev.docsMeta.certif?.length" class="docs-group">
+              <div class="docs-group-label">Certificat éditeur</div>
+              <div v-for="name in ev.docsMeta.certif" :key="name" class="doc-item">🏅 {{ name }}</div>
+            </div>
+            <div v-if="ev.docsMeta.specs?.length" class="docs-group">
+              <div class="docs-group-label">Spécifications fonctionnelles</div>
+              <div v-for="name in ev.docsMeta.specs" :key="name" class="doc-item">📂 {{ name }}</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Analyses IA pré-commission -->
         <template v-if="ev.briefingText || ev.specsAnalysis || ev.demoScenario || ev.webInsights">
           <div class="ai-panel">
@@ -261,6 +284,10 @@ const solCriteria = computed(() => {
   return []
 })
 
+const hasDocsMeta = computed(() => {
+  const d = ev.value?.docsMeta
+  return d && (d.cv?.length || d.attestations?.length || d.certif?.length || d.specs?.length)
+})
 const intCriteria = computed(() => program.value?.intCriteria || [])
 const solScores = computed(() => ev.value?.solScores || {})
 const solObs = computed(() => ev.value?.solObservations || {})
@@ -347,4 +374,9 @@ async function copyPV() {
 .ai-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); }
 .ai-block:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 .ai-block-label { font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,0.4); margin-bottom: 6px; }
+
+.docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.docs-group { display: flex; flex-direction: column; gap: 6px; }
+.docs-group-label { font-size: 11px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.doc-item { font-size: 12px; color: var(--text2); font-family: var(--mono); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 5px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

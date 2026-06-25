@@ -616,8 +616,11 @@ async function analyzeCV() {
     let filesData = []
     if (state.docPickers.cvSource !== 'upload') {
       filesData = await jiraAttachmentsToFilesData(state.docPickers.cvSource, state.docPickers.cvAttIds)
+      state.docPickers.cvNames = getJiraAttachments(state.docPickers.cvSource)
+        .filter(a => state.docPickers.cvAttIds.includes(a.id)).map(a => a.filename)
     } else {
       for (const f of cvFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
+      state.docPickers.cvNames = cvFiles.value.map(f => f.name)
     }
     const { data } = await api.post('/ai/analyze-cv', { filesData, cvFields: state.cvFields, solution: state.form.solution, programCode: state.programCode })
     state.aiTexts.cv = data.text
@@ -640,8 +643,11 @@ async function analyzeAttestations() {
     let filesData = []
     if (state.docPickers.attSource !== 'upload') {
       filesData = await jiraAttachmentsToFilesData(state.docPickers.attSource, state.docPickers.attIds)
+      state.docPickers.attNames = getJiraAttachments(state.docPickers.attSource)
+        .filter(a => state.docPickers.attIds.includes(a.id)).map(a => a.filename)
     } else {
       for (const f of attFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
+      state.docPickers.attNames = attFiles.value.map(f => f.name)
     }
     const { data } = await api.post('/ai/analyze-attestations', {
       filesData, solution: state.form.solution, actionLabel: state.form.actionLabel,
@@ -658,8 +664,11 @@ async function analyzeCertif() {
     let filesData = []
     if (state.docPickers.certifSource !== 'upload') {
       filesData = await jiraAttachmentsToFilesData(state.docPickers.certifSource, state.docPickers.certifAttIds)
+      state.docPickers.certifNames = getJiraAttachments(state.docPickers.certifSource)
+        .filter(a => state.docPickers.certifAttIds.includes(a.id)).map(a => a.filename)
     } else {
       for (const f of certifFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
+      state.docPickers.certifNames = certifFiles.value.map(f => f.name)
     }
     const { data } = await api.post('/ai/analyze-certif-editeur', {
       filesData, solution: state.form.solution, prestataire: state.form.prestataire, programCode: state.programCode,

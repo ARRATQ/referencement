@@ -82,7 +82,7 @@ router.put('/:id', requireMinRole('GESTIONNAIRE'), async (req, res, next) => {
       'solScores','solObservations','solEnabled','intScores','intObservations','intEnabled',
       'finalDecision','decisionDate','decisionMotive','conditions','commissionComments','pvText',
       'cvAnalysis','attestationsAnalysis','briefingText','coherenceCheck',
-      'specsAnalysis','demoScenario','webInsights','certifEditeurAnalysis','customCriteria'];
+      'specsAnalysis','demoScenario','webInsights','certifEditeurAnalysis','customCriteria','docsMeta'];
 
     const data = cleanDates(pick(req.body, allowed), ['dateDemo', 'decisionDate']);
 

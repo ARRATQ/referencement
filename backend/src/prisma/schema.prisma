@@ -123,6 +123,7 @@ model Evaluation {
   webInsights           String? @db.Text
   certifEditeurAnalysis String? @db.Text
   customCriteria        Json?
+  docsMeta              Json?
 
   status      EvalStatus @default(DRAFT)
   createdAt   DateTime   @default(now())
