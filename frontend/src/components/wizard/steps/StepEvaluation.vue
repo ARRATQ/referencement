@@ -181,6 +181,7 @@
             <span v-if="aiLoading.coherence" class="spinner-sm"></span>
             <span v-else>◈ Analyser la cohérence</span>
           </button>
+          <span v-if="!state.aiTexts.coherence" class="coherence-required">⚠ Requis pour continuer</span>
         </div>
       </div>
     </div>
@@ -465,6 +466,7 @@ async function checkCoherence() {
 .wiz-btn-ai { padding: 7px 14px; background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border); border-radius: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; font-family: var(--sans); }
 .wiz-btn-ai:hover { border-color: var(--wiz-accent); color: var(--wiz-accent); }
 .wiz-btn-ai:disabled { opacity: 0.4; cursor: not-allowed; }
+.coherence-required { font-size: 11px; color: #fbbf24; font-family: var(--mono); align-self: center; }
 
 .spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(var(--wiz-overlay-rgb),0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

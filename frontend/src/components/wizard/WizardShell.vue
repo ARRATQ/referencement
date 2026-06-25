@@ -196,7 +196,7 @@ const isStepValid = computed(() => [
   !!(state.programCode && state.refType && state.selectedCategory),
   !!(state.form.prestataire),
   !!(state.form.rapporteur),
-  true,
+  !!(state.aiTexts.coherence),
   true,
 ][wizStep.value])
 
@@ -347,8 +347,52 @@ onMounted(async () => {
     if (urlCfg?.value) jiraBaseUrl.value = urlCfg.value
   } catch { /* ignore */ }
 
-  if (props.initialDraft) loadFromDraft(props.initialDraft)
+  if (props.initialDraft) {
+    loadFromDraft(props.initialDraft)
+    if (state.form.jiraKeyPrestataire) reloadJiraOnResume()
+  }
 })
+
+async function reloadJiraOnResume() {
+  try {
+    const { data } = await api.get(`/dossiers/${state.form.jiraKeyPrestataire}/intervenants`)
+    state.jiraHierarchy = data
+    if (data.reporter && !state.form.rapporteur) state.form.rapporteur = data.reporter
+  } catch { return }
+
+  if (state.form.jiraKeyIntervenant) {
+    try {
+      const { data } = await api.get(`/dossiers/${state.form.jiraKeyIntervenant}/extract-intervenant`)
+      const p = data.parsed || {}
+      state.extractedIntervenant = {
+        nom: p.nom || '', prenom: p.prenom || '', cin: p.cin || '',
+        gsm: p.gsm || '', email: p.email || '',
+        typeFormation: p.typeFormation || '', niveauFormation: p.niveauFormation || '',
+        etablissement: p.etablissement || '', experienceTotale: p.experienceTotale ?? null,
+        experienceSolution: p.experienceSolution ?? null, posteOccupe: p.posteOccupe || '',
+        tailleEquipe: p.tailleEquipe ?? null, certifications: p.certifications || '',
+        references: p.references || '', _raw: data.allCustomFields || {}
+      }
+    } catch { /* partial ok */ }
+  }
+
+  if (state.form.jiraKeyCompetence) {
+    try {
+      const { data } = await api.get(`/dossiers/${state.form.jiraKeyCompetence}/extract-competence`)
+      const p = data.parsed || {}
+      const toArr = v => Array.isArray(v) ? v : (v ? String(v).split(/[,;|]/).map(s => s.trim()).filter(Boolean) : [])
+      state.extractedCompetence = {
+        typeAction: p.typeAction || '', action: p.action || '', profil: p.profil || '',
+        secteurs: Array.isArray(p.secteurs) ? p.secteurs.join(', ') : (p.secteurs || ''),
+        domaine: p.domaine || '',
+        solutionsInformatiques: toArr(p.solutionsInformatiques),
+        autreSolution: p.autreSolution || '',
+        modulesInformatiques: toArr(p.modulesInformatiques),
+        _raw: data.allCustomFields || {}
+      }
+    } catch { /* partial ok */ }
+  }
+}
 
 onBeforeUnmount(() => {
   if (draftTimer) clearTimeout(draftTimer)

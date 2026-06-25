@@ -188,7 +188,7 @@ async function extractCompetenceData(key) {
 }
 
 async function resolveHierarchy(prestataireKey) {
-  const prestataire = await getIssue(prestataireKey);
+  const prestataire = await getIssue(prestataireKey, ['summary', 'status', 'attachment', 'issuelinks', 'description', 'reporter']);
   const links = prestataire.fields.issuelinks || [];
 
   const intervenantKeys = links
@@ -232,6 +232,7 @@ async function resolveHierarchy(prestataireKey) {
     key: prestataireKey,
     summary: prestataire.fields.summary,
     status: prestataire.fields.status?.name,
+    reporter: prestataire.fields.reporter?.displayName || '',
     attachments: (prestataire.fields.attachment || []).map(a => ({
       id: a.id, filename: a.filename, mimeType: a.mimeType,
       size: a.size, contentUrl: a.content

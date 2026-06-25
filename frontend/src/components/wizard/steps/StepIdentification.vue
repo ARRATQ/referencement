@@ -124,6 +124,7 @@ async function loadJiraHierarchy(force = false) {
     if (data.summary && (force || !state.form.prestataire)) {
       state.form.prestataire = data.summary.split(' — ')[0] || data.summary
     }
+    if (data.reporter && !state.form.rapporteur) state.form.rapporteur = data.reporter
   } catch (e) {
     jiraError.value = 'Erreur chargement: ' + (e.response?.data?.error || e.message)
   } finally {
