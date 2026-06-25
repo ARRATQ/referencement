@@ -508,7 +508,7 @@ const aiLoading = ref({ briefing: false, cv: false, att: false, certif: false, a
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function addFiles(list, fileList) {
-  list.value = [...list.value, ...Array.from(fileList)]
+  list.value = [...(list.value || []), ...Array.from(fileList || [])]
 }
 
 function attIcon(name = '') {
