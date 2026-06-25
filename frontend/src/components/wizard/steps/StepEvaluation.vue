@@ -38,6 +38,10 @@
             <span v-if="aiLoading.criteriaGen" class="spinner-sm"></span>
             <span v-else>◈ Générer depuis specs</span>
           </button>
+          <button class="ga-btn ai" :disabled="aiLoading.suggestSol || !evalCriteria.length" @click="suggestScoresSol">
+            <span v-if="aiLoading.suggestSol" class="spinner-sm"></span>
+            <span v-else>◈ Proposer notes IA</span>
+          </button>
         </div>
       </div>
 
@@ -51,9 +55,9 @@
               <input class="edit-input" v-model="editingSolBuf.n" placeholder="Nom du critère" @keyup.enter="saveSolEdit" @keyup.escape="editingSolIdx = null" />
               <textarea class="edit-textarea" v-model="editingSolBuf.d" placeholder="Description" rows="2"></textarea>
               <div class="edit-row">
-                <label class="edit-check">
-                  <input type="checkbox" :checked="editingSolBuf.w === 2" @change="editingSolBuf.w = $event.target.checked ? 2 : 1" />
-                  Prioritaire (×2)
+                <label class="edit-weight">
+                  Poids
+                  <input type="number" class="weight-input" v-model.number="editingSolBuf.w" min="1" max="10" step="1" />
                 </label>
                 <div class="edit-btns">
                   <button class="eb-cancel" @click="editingSolIdx = null">Annuler</button>
@@ -101,6 +105,10 @@
           <button v-if="!state.customIntCriteria.length" class="ga-btn ai" @click="customizeIntCriteria">
             ✎ Personnaliser
           </button>
+          <button class="ga-btn ai" :disabled="aiLoading.suggestInt || !consultantCriteria.length" @click="suggestScoresInt">
+            <span v-if="aiLoading.suggestInt" class="spinner-sm"></span>
+            <span v-else>◈ Proposer notes IA</span>
+          </button>
         </div>
       </div>
 
@@ -114,9 +122,9 @@
               <input class="edit-input" v-model="editingIntBuf.n" placeholder="Nom du critère" @keyup.enter="saveIntEdit" @keyup.escape="editingIntIdx = null" />
               <textarea class="edit-textarea" v-model="editingIntBuf.d" placeholder="Description" rows="2"></textarea>
               <div class="edit-row">
-                <label class="edit-check">
-                  <input type="checkbox" :checked="editingIntBuf.w === 2" @change="editingIntBuf.w = $event.target.checked ? 2 : 1" />
-                  Prioritaire (×2)
+                <label class="edit-weight">
+                  Poids
+                  <input type="number" class="weight-input" v-model.number="editingIntBuf.w" min="1" max="10" step="1" />
                 </label>
                 <div class="edit-btns">
                   <button class="eb-cancel" @click="editingIntIdx = null">Annuler</button>
@@ -177,7 +185,7 @@ import api from '@/services/api'
 
 const { state, evalCriteria, consultantCriteria, solScore, intScore, globalScore, finalDecision } = inject('wizard')
 
-const aiLoading = ref({ coherence: false, criteriaGen: false })
+const aiLoading = ref({ coherence: false, criteriaGen: false, suggestSol: false, suggestInt: false })
 
 // ── Edit state ─────────────────────────────────────────────────────────────────
 const editingSolIdx = ref(null)
@@ -289,6 +297,55 @@ function customizeIntCriteria() {
   state.customIntCriteria = (consultantCriteria.value || []).map(c => ({ ...c }))
 }
 
+// ── AI suggest scores ─────────────────────────────────────────────────────────
+function buildDossierContext() {
+  const parts = []
+  if (state.form.prestataire) parts.push(`Prestataire : ${state.form.prestataire}`)
+  if (state.form.solution) parts.push(`Solution : ${state.form.solution}`)
+  if (state.form.actionLabel) parts.push(`Action : ${state.form.actionLabel}`)
+  if (state.cvFields.diplome) parts.push(`Formation : ${state.cvFields.diplome} — ${state.cvFields.exp} ans exp.`)
+  if (state.aiTexts.briefing) parts.push(`Briefing :\n${state.aiTexts.briefing.slice(0, 600)}`)
+  if (state.aiTexts.cv) parts.push(`Analyse CV :\n${state.aiTexts.cv.slice(0, 800)}`)
+  if (state.aiTexts.attestations) parts.push(`Attestations :\n${state.aiTexts.attestations.slice(0, 600)}`)
+  return parts.join('\n\n')
+}
+
+async function suggestScoresSol() {
+  aiLoading.value.suggestSol = true
+  try {
+    const { data } = await api.post('/ai/suggest-scores', {
+      category: state.selectedCategory,
+      criteria: evalCriteria.value,
+      dossierContext: buildDossierContext(),
+    })
+    if (data.scores) {
+      for (const [k, v] of Object.entries(data.scores)) state.solScores[k] = v
+    }
+    if (data.observations) {
+      for (const [k, v] of Object.entries(data.observations)) state.solObs[k] = v
+    }
+  } catch (e) { alert('Erreur IA : ' + (e.response?.data?.error || e.message)) }
+  finally { aiLoading.value.suggestSol = false }
+}
+
+async function suggestScoresInt() {
+  aiLoading.value.suggestInt = true
+  try {
+    const { data } = await api.post('/ai/suggest-scores', {
+      category: 'consultant',
+      criteria: consultantCriteria.value,
+      dossierContext: buildDossierContext(),
+    })
+    if (data.scores) {
+      for (const [k, v] of Object.entries(data.scores)) state.intScores[k] = v
+    }
+    if (data.observations) {
+      for (const [k, v] of Object.entries(data.observations)) state.intObs[k] = v
+    }
+  } catch (e) { alert('Erreur IA : ' + (e.response?.data?.error || e.message)) }
+  finally { aiLoading.value.suggestInt = false }
+}
+
 // ── Coherence ─────────────────────────────────────────────────────────────────
 async function checkCoherence() {
   aiLoading.value.coherence = true
@@ -382,6 +439,9 @@ async function checkCoherence() {
 .edit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .edit-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; }
 .edit-check input { accent-color: var(--wiz-accent); cursor: pointer; }
+.edit-weight { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--wiz-text2); }
+.weight-input { width: 60px; padding: 4px 8px; background: rgba(var(--wiz-overlay-rgb),0.06); border: 1px solid var(--wiz-border); border-radius: 5px; font-size: 12px; color: var(--wiz-text); font-family: var(--mono); outline: none; text-align: center; }
+.weight-input:focus { border-color: var(--wiz-accent); }
 .edit-btns { display: flex; gap: 6px; }
 .eb-cancel { padding: 5px 12px; background: transparent; border: 1px solid var(--wiz-border); border-radius: 5px; font-size: 12px; color: var(--wiz-text2); cursor: pointer; font-family: var(--sans); }
 .eb-save { padding: 5px 12px; background: var(--wiz-accent); border: none; border-radius: 5px; font-size: 12px; color: #fff; cursor: pointer; font-family: var(--sans); font-weight: 500; }
