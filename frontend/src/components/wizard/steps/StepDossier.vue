@@ -98,15 +98,15 @@
         <div class="wiz-section">
           <div class="wiz-section-label">Spécifications fonctionnelles <span class="opt-badge">optionnel</span></div>
           <div class="source-tabs">
-            <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: specsSource === s.id }" @click="specsSource = s.id">
+            <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: state.docPickers.specsSource === s.id }" @click="state.docPickers.specsSource = s.id">
               {{ s.icon }} {{ s.label }}
             </button>
           </div>
-          <template v-if="specsSource !== 'upload'">
-            <div v-if="!getJiraAttachments(specsSource).length" class="info-hint mt12">{{ sourceHint(specsSource) }}</div>
+          <template v-if="state.docPickers.specsSource !== 'upload'">
+            <div v-if="!getJiraAttachments(state.docPickers.specsSource).length" class="info-hint mt12">{{ sourceHint(state.docPickers.specsSource) }}</div>
             <div v-else class="att-list mt12">
-              <label v-for="att in getJiraAttachments(specsSource)" :key="att.id" class="att-item">
-                <input type="checkbox" :value="att.id" v-model="specsAttIds" class="att-check" />
+              <label v-for="att in getJiraAttachments(state.docPickers.specsSource)" :key="att.id" class="att-item">
+                <input type="checkbox" :value="att.id" v-model="state.docPickers.specsAttIds" class="att-check" />
                 <span class="att-icon">{{ attIcon(att.filename) }}</span>
                 <span class="att-name">{{ att.filename }}</span>
                 <span class="att-size" v-if="att.size">{{ formatSize(att.size) }}</span>
@@ -250,15 +250,15 @@
       <div class="wiz-section">
         <div class="wiz-section-label">Documents CV & Diplômes</div>
         <div class="source-tabs">
-          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: cvSource === s.id }" @click="cvSource = s.id">
+          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: state.docPickers.cvSource === s.id }" @click="state.docPickers.cvSource = s.id">
             {{ s.icon }} {{ s.label }}
           </button>
         </div>
-        <template v-if="cvSource !== 'upload'">
-          <div v-if="!getJiraAttachments(cvSource).length" class="info-hint mt12">{{ sourceHint(cvSource) }}</div>
+        <template v-if="state.docPickers.cvSource !== 'upload'">
+          <div v-if="!getJiraAttachments(state.docPickers.cvSource).length" class="info-hint mt12">{{ sourceHint(state.docPickers.cvSource) }}</div>
           <div v-else class="att-list mt12">
-            <label v-for="att in getJiraAttachments(cvSource)" :key="att.id" class="att-item">
-              <input type="checkbox" :value="att.id" v-model="cvAttIds" class="att-check" />
+            <label v-for="att in getJiraAttachments(state.docPickers.cvSource)" :key="att.id" class="att-item">
+              <input type="checkbox" :value="att.id" v-model="state.docPickers.cvAttIds" class="att-check" />
               <span class="att-icon">{{ attIcon(att.filename) }}</span>
               <span class="att-name">{{ att.filename }}</span>
               <span class="att-size" v-if="att.size">{{ formatSize(att.size) }}</span>
@@ -292,7 +292,7 @@
         </div>
         <div v-if="state.aiTexts.cv" class="wiz-ai-content">{{ state.aiTexts.cv }}</div>
         <div class="wiz-ai-actions">
-          <button class="wiz-btn-ai" :disabled="aiLoading.cv || (!cvAttIds.length && !cvFiles.length)" @click="analyzeCV">
+          <button class="wiz-btn-ai" :disabled="aiLoading.cv || (!state.docPickers.cvAttIds.length && !cvFiles.length)" @click="analyzeCV">
             <span v-if="aiLoading.cv" class="spinner-sm"></span>
             <span v-else>◈ Analyser le CV</span>
           </button>
@@ -307,15 +307,15 @@
       <div class="wiz-section">
         <div class="wiz-section-label">Attestations de référence</div>
         <div class="source-tabs">
-          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: attSource === s.id }" @click="attSource = s.id">
+          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: state.docPickers.attSource === s.id }" @click="state.docPickers.attSource = s.id">
             {{ s.icon }} {{ s.label }}
           </button>
         </div>
-        <template v-if="attSource !== 'upload'">
-          <div v-if="!getJiraAttachments(attSource).length" class="info-hint mt12">{{ sourceHint(attSource) }}</div>
+        <template v-if="state.docPickers.attSource !== 'upload'">
+          <div v-if="!getJiraAttachments(state.docPickers.attSource).length" class="info-hint mt12">{{ sourceHint(state.docPickers.attSource) }}</div>
           <div v-else class="att-list mt12">
-            <label v-for="att in getJiraAttachments(attSource)" :key="att.id" class="att-item">
-              <input type="checkbox" :value="att.id" v-model="attIds" class="att-check" />
+            <label v-for="att in getJiraAttachments(state.docPickers.attSource)" :key="att.id" class="att-item">
+              <input type="checkbox" :value="att.id" v-model="state.docPickers.attIds" class="att-check" />
               <span class="att-icon">{{ attIcon(att.filename) }}</span>
               <span class="att-name">{{ att.filename }}</span>
               <span class="att-size" v-if="att.size">{{ formatSize(att.size) }}</span>
@@ -350,7 +350,7 @@
         <div v-if="state.aiTexts.attestations" class="wiz-ai-content">{{ state.aiTexts.attestations }}</div>
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai"
-            :disabled="aiLoading.att || (attSource === 'upload' ? !attFiles.length : !attIds.length)"
+            :disabled="aiLoading.att || (state.docPickers.attSource === 'upload' ? !attFiles.length : !state.docPickers.attIds.length)"
             @click="analyzeAttestations">
             <span v-if="aiLoading.att" class="spinner-sm"></span>
             <span v-else>◈ Analyser les attestations</span>
@@ -366,15 +366,15 @@
       <div class="wiz-section">
         <div class="wiz-section-label">Certificat éditeur</div>
         <div class="source-tabs">
-          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: certifSource === s.id }" @click="certifSource = s.id">
+          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: state.docPickers.certifSource === s.id }" @click="state.docPickers.certifSource = s.id">
             {{ s.icon }} {{ s.label }}
           </button>
         </div>
-        <template v-if="certifSource !== 'upload'">
-          <div v-if="!getJiraAttachments(certifSource).length" class="info-hint mt12">{{ sourceHint(certifSource) }}</div>
+        <template v-if="state.docPickers.certifSource !== 'upload'">
+          <div v-if="!getJiraAttachments(state.docPickers.certifSource).length" class="info-hint mt12">{{ sourceHint(state.docPickers.certifSource) }}</div>
           <div v-else class="att-list mt12">
-            <label v-for="att in getJiraAttachments(certifSource)" :key="att.id" class="att-item">
-              <input type="checkbox" :value="att.id" v-model="certifAttIds" class="att-check" />
+            <label v-for="att in getJiraAttachments(state.docPickers.certifSource)" :key="att.id" class="att-item">
+              <input type="checkbox" :value="att.id" v-model="state.docPickers.certifAttIds" class="att-check" />
               <span class="att-icon">{{ attIcon(att.filename) }}</span>
               <span class="att-name">{{ att.filename }}</span>
               <span class="att-size" v-if="att.size">{{ formatSize(att.size) }}</span>
@@ -409,7 +409,7 @@
         <div v-if="state.aiTexts.certifEditeur" class="wiz-ai-content">{{ state.aiTexts.certifEditeur }}</div>
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai"
-            :disabled="aiLoading.certif || (certifSource === 'upload' ? !certifFiles.length : !certifAttIds.length)"
+            :disabled="aiLoading.certif || (state.docPickers.certifSource === 'upload' ? !certifFiles.length : !state.docPickers.certifAttIds.length)"
             @click="analyzeCertif">
             <span v-if="aiLoading.certif" class="spinner-sm"></span>
             <span v-else>◈ Analyser le certificat</span>
@@ -520,10 +520,10 @@ function sourceHint(source) {
 // ── Local state ────────────────────────────────────────────────────────────────
 const moduleInput = ref('')
 
-const specsSource  = ref('upload');  const specsAttIds  = ref([]);  const specsFiles  = ref([])
-const cvSource     = ref('intervenant'); const cvAttIds = ref([]);  const cvFiles     = ref([])
-const attSource    = ref('competence');  const attIds   = ref([]);  const attFiles    = ref([])
-const certifSource = ref('competence');  const certifAttIds = ref([]); const certifFiles = ref([])
+const specsFiles  = ref([])
+const cvFiles     = ref([])
+const attFiles    = ref([])
+const certifFiles = ref([])
 
 const aiLoading = ref({ briefing: false, cv: false, att: false, certif: false, autoFill: false })
 
@@ -614,8 +614,8 @@ async function analyzeCV() {
   aiLoading.value.cv = true
   try {
     let filesData = []
-    if (cvSource.value !== 'upload') {
-      filesData = await jiraAttachmentsToFilesData(cvSource.value, cvAttIds.value)
+    if (state.docPickers.cvSource !== 'upload') {
+      filesData = await jiraAttachmentsToFilesData(state.docPickers.cvSource, state.docPickers.cvAttIds)
     } else {
       for (const f of cvFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
     }
@@ -638,8 +638,8 @@ async function analyzeAttestations() {
   aiLoading.value.att = true
   try {
     let filesData = []
-    if (attSource.value !== 'upload') {
-      filesData = await jiraAttachmentsToFilesData(attSource.value, attIds.value)
+    if (state.docPickers.attSource !== 'upload') {
+      filesData = await jiraAttachmentsToFilesData(state.docPickers.attSource, state.docPickers.attIds)
     } else {
       for (const f of attFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
     }
@@ -656,8 +656,8 @@ async function analyzeCertif() {
   aiLoading.value.certif = true
   try {
     let filesData = []
-    if (certifSource.value !== 'upload') {
-      filesData = await jiraAttachmentsToFilesData(certifSource.value, certifAttIds.value)
+    if (state.docPickers.certifSource !== 'upload') {
+      filesData = await jiraAttachmentsToFilesData(state.docPickers.certifSource, state.docPickers.certifAttIds)
     } else {
       for (const f of certifFiles.value) filesData.push({ base64: await fileToBase64(f), mimeType: guessMimeType(f), filename: f.name })
     }

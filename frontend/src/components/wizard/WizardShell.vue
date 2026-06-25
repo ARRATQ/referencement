@@ -122,6 +122,12 @@ const state = reactive({
   jiraHierarchy: null,
   extractedIntervenant: null,
   extractedCompetence: null,
+  docPickers: {
+    specsSource: 'upload',   specsAttIds: [],
+    cvSource: 'intervenant', cvAttIds: [],
+    attSource: 'competence', attIds: [],
+    certifSource: 'competence', certifAttIds: [],
+  },
 })
 
 // ── Computeds ─────────────────────────────────────────────────────────────────
@@ -226,6 +232,12 @@ function getDraftData() {
     aiTexts: { ...state.aiTexts },
     customCriteria: [...state.customCriteria],
     customIntCriteria: [...state.customIntCriteria],
+    docPickers: { ...state.docPickers,
+      specsAttIds: [...state.docPickers.specsAttIds],
+      cvAttIds: [...state.docPickers.cvAttIds],
+      attIds: [...state.docPickers.attIds],
+      certifAttIds: [...state.docPickers.certifAttIds],
+    },
   }
 }
 
@@ -256,6 +268,7 @@ function loadFromDraft(draft) {
   if (draft.aiTexts) Object.assign(state.aiTexts, draft.aiTexts)
   if (draft.customCriteria) state.customCriteria = draft.customCriteria
   if (draft.customIntCriteria) state.customIntCriteria = draft.customIntCriteria
+  if (draft.docPickers) Object.assign(state.docPickers, draft.docPickers)
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
