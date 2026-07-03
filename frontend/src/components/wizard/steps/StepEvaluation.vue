@@ -34,6 +34,7 @@
         <div class="grid-actions">
           <button v-if="state.customCriteria.length" class="ga-btn" @click="addSolCrit">+ Critère</button>
           <button v-if="state.customCriteria.length" class="ga-btn warn" @click="resetSolCriteria">↩ Standard</button>
+          <button v-if="!state.customCriteria.length" class="ga-btn" @click="customizeSolCriteria">✎ Personnaliser</button>
           <button v-if="!state.customCriteria.length" class="ga-btn ai" :disabled="aiLoading.criteriaGen" @click="generateSolCriteria">
             <span v-if="aiLoading.criteriaGen" class="spinner-sm"></span>
             <span v-else>◈ Générer depuis specs</span>
@@ -175,7 +176,7 @@
           <span class="wiz-ai-title">Analyse de cohérence</span>
           <span v-if="state.aiTexts.coherence" class="wiz-ai-done">✓ Analysé</span>
         </div>
-        <div v-if="state.aiTexts.coherence" class="wiz-ai-content">{{ state.aiTexts.coherence }}</div>
+        <AiText v-if="state.aiTexts.coherence" :text="state.aiTexts.coherence" />
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai" :disabled="aiLoading.coherence || !evalCriteria.length" @click="checkCoherence">
             <span v-if="aiLoading.coherence" class="spinner-sm"></span>
@@ -191,6 +192,7 @@
 <script setup>
 import { ref, inject } from 'vue'
 import api from '@/services/api'
+import AiText from '@/components/AiText.vue'
 
 const { state, evalCriteria, consultantCriteria, solScore, intScore, globalScore, finalDecision } = inject('wizard')
 
@@ -253,6 +255,10 @@ function resetSolCriteria() {
     state.customCriteria = []
     editingSolIdx.value = null
   }
+}
+
+function customizeSolCriteria() {
+  state.customCriteria = (evalCriteria.value || []).map(c => ({ ...c }))
 }
 
 async function generateSolCriteria() {

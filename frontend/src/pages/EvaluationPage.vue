@@ -15,10 +15,12 @@
     </div>
 
     <div class="content">
-      <!-- Brouillon en cours -->
-      <div v-if="draft" class="section">
+      <!-- Brouillons en cours -->
+      <div v-if="draft || dbDrafts.length" class="section">
         <div class="section-label">En cours</div>
-        <div class="draft-card" @click="resumeWizard">
+
+        <!-- Brouillon local (non encore persisté en DB) -->
+        <div v-if="draft" class="draft-card" @click="resumeWizard">
           <div class="draft-info">
             <div class="draft-title">{{ draft.form?.prestataire || 'Brouillon sans nom' }}</div>
             <div class="draft-meta">
@@ -35,6 +37,21 @@
             <button class="btn btn-secondary btn-sm" @click.stop="discardDraft">Supprimer</button>
           </div>
         </div>
+
+        <!-- Brouillons persistés en DB (visibles par tous les profils autorisés) -->
+        <div v-for="ev in dbDrafts" :key="ev.id" class="draft-card" style="margin-top:10px;" @click="resumeFromServer(ev.id)">
+          <div class="draft-info">
+            <div class="draft-title">{{ ev.prestataire || 'Brouillon sans nom' }}</div>
+            <div class="draft-meta">
+              <span v-if="ev.program?.code">{{ ev.program.code }}</span>
+              <span v-if="ev.evaluator?.name"> · {{ ev.evaluator.name }}</span>
+              <span> · Créé le {{ formatDate(ev.createdAt) }}</span>
+            </div>
+          </div>
+          <div class="draft-actions">
+            <button class="btn btn-primary btn-sm" @click.stop="resumeFromServer(ev.id)">Reprendre →</button>
+          </div>
+        </div>
       </div>
 
       <!-- Soumises -->
@@ -49,11 +66,10 @@
         <div v-else class="eval-list">
           <div v-for="ev in evaluations" :key="ev.id" class="eval-card" @click="router.push(`/evaluations/${ev.id}`)" style="cursor:pointer;">
             <div class="eval-main">
-              <div class="eval-name">{{ ev.prestataire || ev.form?.prestataire || '—' }}</div>
+              <div class="eval-name">{{ ev.prestataire || '—' }}</div>
               <div class="eval-meta">
-                <span class="badge-status" :class="ev.status?.toLowerCase()">{{ ev.status }}</span>
-                <span>{{ ev.programCode }}</span>
-                <span>{{ ev.refType }}</span>
+                <span>{{ ev.program?.code }}</span>
+                <span>{{ ev.referenceType }}</span>
                 <span>{{ formatDate(ev.createdAt) }}</span>
               </div>
             </div>
@@ -87,6 +103,7 @@ const wizardActive = ref(false)
 const resumeDraft = ref(null)
 const resumeEvaluationId = ref(null)
 const draft = ref(null)
+const dbDrafts = ref([])
 const evaluations = ref([])
 const loading = ref(false)
 
@@ -174,13 +191,14 @@ function discardDraft() {
   }
 }
 
-function onWizardClose() {
+async function onWizardClose() {
   wizardActive.value = false
   resumeDraft.value = null
   const wasResumingById = !!resumeEvaluationId.value
   resumeEvaluationId.value = null
   draft.value = evalStore.loadDraft()
   if (wasResumingById) router.replace('/evaluation')
+  await loadEvaluations()
 }
 
 async function onWizardSubmitted() {
@@ -195,8 +213,11 @@ async function onWizardSubmitted() {
 async function loadEvaluations() {
   loading.value = true
   try {
-    evaluations.value = await evalStore.list()
+    const all = await evalStore.list()
+    dbDrafts.value = all.filter(ev => ev.status === 'DRAFT')
+    evaluations.value = all.filter(ev => ev.status === 'SUBMITTED')
   } catch {
+    dbDrafts.value = []
     evaluations.value = []
   } finally {
     loading.value = false

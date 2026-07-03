@@ -162,16 +162,24 @@ async function buildFileParts(filesData, maxPdfChars = 8000) {
 }
 
 const DEFAULT_PROMPTS = {
-  prompt_briefing: `Tu es expert en référencement de solutions informatiques.
+  prompt_briefing: `Tu es expert technique en référencement de solutions informatiques.
 {{lang}}
 {{ami}}
-Génère un briefing pré-commission pour :
+Génère un briefing pré-commission centré sur les aspects TECHNIQUES et FONCTIONNELS pour :
 - Prestataire : {{prestataire}}
 - Solution : {{solution}}
 - Catégorie : {{category}}
 - Modules : {{modules}}
 
-Format : 5 à 7 points concis (questions prioritaires à poser, points techniques à vérifier, contexte marché).`,
+Concentre-toi exclusivement sur :
+• Les fonctionnalités clés de la solution et leur niveau de maturité
+• Les points techniques à vérifier lors de la démo (intégrations, architecture, performances)
+• La couverture fonctionnelle des modules déclarés vs exigences du programme
+• Les capacités d'interfaçage et d'interopérabilité (API, connecteurs, formats)
+• Les prérequis techniques et contraintes d'infrastructure
+
+Évite tout élément d'ordre stratégique, commercial ou de positionnement marché.
+Format : 5 à 7 points concis et actionnables pour la commission technique.`,
 
   prompt_pv: `Tu es secrétaire officiel de la commission de référencement.
 {{lang}}

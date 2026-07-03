@@ -212,6 +212,73 @@ const completedSteps = computed(() => {
   return result
 })
 
+// ── Persistance DB ────────────────────────────────────────────────────────────
+
+function buildDbPayload() {
+  return {
+    programId: currentProgram.value?.id,
+    referenceType: state.refType,
+    category: state.selectedCategory,
+    prestataire: state.form.prestataire || '',
+    solution: state.form.solution,
+    actionLabel: state.form.actionLabel,
+    actionDescription: state.form.actionDescription,
+    dateDemo: state.form.dateDemo,
+    rapporteur: state.form.rapporteur,
+    origine: state.form.origine,
+    nature: state.form.nature,
+    modeAcquisition: state.form.modeAcquisition,
+    secteur: state.form.secteur,
+    typeIntervenant: state.form.typeIntervenant,
+    modules: state.form.modules,
+    jiraKeyPrestataire: state.form.jiraKeyPrestataire,
+    jiraKeyIntervenant: state.form.jiraKeyIntervenant,
+    jiraKeyCompetence: state.form.jiraKeyCompetence,
+    finalDecision: state.form.finalDecision,
+    conditions: state.form.conditions,
+    commissionComments: state.form.commissionComments,
+    decisionDate: state.form.decisionDate,
+    solScores: state.solScores,
+    solObservations: state.solObs,
+    solEnabled: state.solEnabled,
+    intScores: state.intScores,
+    intObservations: state.intObs,
+    intEnabled: state.intEnabled,
+    briefingText: state.aiTexts.briefing,
+    cvAnalysis: state.aiTexts.cv,
+    attestationsAnalysis: state.aiTexts.attestations,
+    certifEditeurAnalysis: state.aiTexts.certifEditeur,
+    coherenceCheck: state.aiTexts.coherence,
+    pvText: state.aiTexts.pv,
+    specsAnalysis: state.aiTexts.specsAnalysis,
+    demoScenario: state.aiTexts.demoScenario,
+    webInsights: state.aiTexts.webInsights,
+    customCriteria: state.customCriteria,
+    docsMeta: {
+      specs: [...state.docPickers.specsNames],
+      cv: [...state.docPickers.cvNames],
+      attestations: [...state.docPickers.attNames],
+      certif: [...state.docPickers.certifNames],
+    },
+  }
+}
+
+async function persistToDB() {
+  if (!currentProgram.value?.id || !state.form.prestataire) return
+  try {
+    const payload = buildDbPayload()
+    if (currentEvalId.value) {
+      await api.put(`/evaluations/${currentEvalId.value}`, payload)
+    } else {
+      const { data } = await api.post('/evaluations', payload)
+      currentEvalId.value = data.id
+      evalStore.clearDraft()
+    }
+  } catch (e) {
+    console.error('[Wizard] Auto-save DB failed:', e.message)
+  }
+}
+
 // ── Draft ─────────────────────────────────────────────────────────────────────
 
 let draftTimer = null
@@ -273,9 +340,10 @@ function loadFromDraft(draft) {
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 
-function nextStep() {
+async function nextStep() {
   if (!isStepValid.value) return
   doSaveDraft()
+  if (wizStep.value >= 1) await persistToDB()
   wizStep.value++
 }
 
@@ -296,8 +364,9 @@ function onClose() {
   else { emit('close') }
 }
 
-function doClose() {
+async function doClose() {
   doSaveDraft()
+  await persistToDB()
   showExitConfirm.value = false
   emit('close')
 }
@@ -306,40 +375,23 @@ function doClose() {
 
 async function submitEval() {
   submitError.value = ''
-  const payload = {
-    programId: currentProgram.value?.id,
-    referenceType: state.refType,
-    category: state.selectedCategory,
-    ...state.form,
-    solScores: state.solScores,
-    solObs: state.solObs,
-    solEnabled: state.solEnabled,
-    intScores: state.intScores,
-    intObs: state.intObs,
-    intEnabled: state.intEnabled,
-    cvFields: state.cvFields,
-    aiTexts: state.aiTexts,
-    customCriteria: state.customCriteria,
-    docsMeta: {
-      specs: [...state.docPickers.specsNames],
-      cv: [...state.docPickers.cvNames],
-      attestations: [...state.docPickers.attNames],
-      certif: [...state.docPickers.certifNames],
-    },
-  }
+  const payload = buildDbPayload()
   try {
-    let result
-    if (currentEvalId.value) {
-      // Reprise d'un dossier existant : on met à jour le même enregistrement au lieu d'en créer un nouveau
-      await api.put(`/evaluations/${currentEvalId.value}`, payload)
-      const { data: submitted } = await api.post(`/evaluations/${currentEvalId.value}/submit`)
-      result = submitted
-    } else {
-      const created = await evalStore.create(payload)
-      result = await evalStore.submit()
+    let evalId = currentEvalId.value
+    if (!evalId) {
+      // Pas encore de DRAFT en DB (wizard terminé sans auto-save) : créer puis mettre à jour
+      const { data: created } = await api.post('/evaluations', {
+        programId: payload.programId,
+        referenceType: payload.referenceType,
+        category: payload.category,
+        prestataire: payload.prestataire,
+      })
+      evalId = created.id
     }
+    await api.put(`/evaluations/${evalId}`, payload)
+    const { data: submitted } = await api.post(`/evaluations/${evalId}/submit`)
     evalStore.clearDraft()
-    emit('submitted', result)
+    emit('submitted', submitted)
   } catch (e) {
     submitError.value = e.response?.data?.error || e.message
     throw e

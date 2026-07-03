@@ -73,7 +73,7 @@
           <span class="wiz-ai-title">Procès-verbal de commission</span>
           <span v-if="state.aiTexts.pv" class="wiz-ai-done">✓ Généré</span>
         </div>
-        <div v-if="state.aiTexts.pv" class="wiz-ai-content">{{ state.aiTexts.pv }}</div>
+        <AiText v-if="state.aiTexts.pv" :text="state.aiTexts.pv" />
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai" :disabled="pvLoading || !state.form.prestataire" @click="generatePV">
             <span v-if="pvLoading" class="spinner-sm"></span>
@@ -118,6 +118,7 @@
 <script setup>
 import { computed, inject, ref } from 'vue'
 import api from '@/services/api'
+import AiText from '@/components/AiText.vue'
 
 defineEmits(['submit', 'save-draft'])
 const { state, currentProgram, currentCriteria, solScore, intScore, globalScore, finalDecision, submitEval } = inject('wizard')

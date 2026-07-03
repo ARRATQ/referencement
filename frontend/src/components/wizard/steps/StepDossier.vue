@@ -138,7 +138,7 @@
             <span class="wiz-ai-title">Briefing pré-commission</span>
             <span v-if="state.aiTexts.briefing" class="wiz-ai-done">✓ Généré</span>
           </div>
-          <div v-if="state.aiTexts.briefing" class="wiz-ai-content">{{ state.aiTexts.briefing }}</div>
+          <AiText v-if="state.aiTexts.briefing" :text="state.aiTexts.briefing" />
           <div class="wiz-ai-actions">
             <button class="wiz-btn-ai" :disabled="aiLoading.briefing || !state.form.prestataire" @click="generateBriefing">
               <span v-if="aiLoading.briefing" class="spinner-sm"></span>
@@ -227,27 +227,8 @@
         </div>
       </div>
 
-      <div v-if="state.aiTexts.cv" class="wiz-ai-panel">
-        <div class="wiz-ai-header">
-          <span class="wiz-ai-badge">IA</span>
-          <span class="wiz-ai-title">Synthèse CV (issue de l'analyse)</span>
-        </div>
-        <div class="wiz-ai-content">{{ state.aiTexts.cv }}</div>
-        <div class="wiz-ai-actions">
-          <button class="wiz-btn-ai" @click="autoFillFromCV" :disabled="aiLoading.autoFill">
-            <span v-if="aiLoading.autoFill" class="spinner-sm"></span>
-            <span v-else>↙ Pré-remplir depuis l'analyse IA</span>
-          </button>
-        </div>
-      </div>
-      <div v-else class="info-hint">Analysez le CV dans l'onglet "CV & Diplômes" pour obtenir une synthèse automatique.</div>
-    </template>
-
-    <!-- ══════════════════════════════════════════ -->
-    <!-- SUB-STEP: CV & Diplômes                   -->
-    <!-- ══════════════════════════════════════════ -->
-    <template v-else-if="subStep === 'cv'">
-      <div class="wiz-section">
+      <!-- CV & Diplômes (fusionné) -->
+      <div class="wiz-section" style="border-top: 1px solid var(--wiz-border); padding-top: 24px; margin-top: 8px;">
         <div class="wiz-section-label">Documents CV & Diplômes</div>
         <div class="source-tabs">
           <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab" :class="{ active: state.docPickers.cvSource === s.id }" @click="state.docPickers.cvSource = s.id">
@@ -290,11 +271,15 @@
           <span class="wiz-ai-title">Analyse CV & Diplômes</span>
           <span v-if="state.aiTexts.cv" class="wiz-ai-done">✓ Analysé</span>
         </div>
-        <div v-if="state.aiTexts.cv" class="wiz-ai-content">{{ state.aiTexts.cv }}</div>
+        <AiText v-if="state.aiTexts.cv" :text="state.aiTexts.cv" />
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai" :disabled="aiLoading.cv || (!state.docPickers.cvAttIds.length && !cvFiles.length)" @click="analyzeCV">
             <span v-if="aiLoading.cv" class="spinner-sm"></span>
             <span v-else>◈ Analyser le CV</span>
+          </button>
+          <button v-if="state.aiTexts.cv" class="wiz-btn-ai" @click="autoFillFromCV" :disabled="aiLoading.autoFill">
+            <span v-if="aiLoading.autoFill" class="spinner-sm"></span>
+            <span v-else>↙ Pré-remplir le profil</span>
           </button>
         </div>
       </div>
@@ -347,7 +332,7 @@
           <span class="wiz-ai-title">Analyse des attestations de référence</span>
           <span v-if="state.aiTexts.attestations" class="wiz-ai-done">✓ Analysé</span>
         </div>
-        <div v-if="state.aiTexts.attestations" class="wiz-ai-content">{{ state.aiTexts.attestations }}</div>
+        <AiText v-if="state.aiTexts.attestations" :text="state.aiTexts.attestations" />
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai"
             :disabled="aiLoading.att || (state.docPickers.attSource === 'upload' ? !attFiles.length : !state.docPickers.attIds.length)"
@@ -406,7 +391,7 @@
           <span class="wiz-ai-title">Analyse certification éditeur</span>
           <span v-if="state.aiTexts.certifEditeur" class="wiz-ai-done">✓ Analysé</span>
         </div>
-        <div v-if="state.aiTexts.certifEditeur" class="wiz-ai-content">{{ state.aiTexts.certifEditeur }}</div>
+        <AiText v-if="state.aiTexts.certifEditeur" :text="state.aiTexts.certifEditeur" />
         <div class="wiz-ai-actions">
           <button class="wiz-btn-ai"
             :disabled="aiLoading.certif || (state.docPickers.certifSource === 'upload' ? !certifFiles.length : !state.docPickers.certifAttIds.length)"
@@ -424,6 +409,7 @@
 <script setup>
 import { ref, computed, inject } from 'vue'
 import api from '@/services/api'
+import AiText from '@/components/AiText.vue'
 
 const { state, currentCriteria, selectedAction } = inject('wizard')
 
@@ -440,10 +426,9 @@ const subStep = ref('infos')
 
 const TABS_SOLUTION = [
   { id: 'infos',        num: 1, label: 'Informations',    desc: 'Dossier, modules et briefing pré-commission.' },
-  { id: 'profil',       num: 2, label: 'Profil intégrateur', desc: "Compétences et expérience de l'intégrateur." },
-  { id: 'cv',           num: 3, label: 'CV & Diplômes',   desc: "Documents CV de l'intervenant et analyse IA." },
-  { id: 'attestations', num: 4, label: 'Attestations',    desc: 'Attestations de référence et analyse IA.' },
-  { id: 'certif',       num: 5, label: 'Certif. éditeur', desc: 'Certification éditeur de la solution.' },
+  { id: 'profil',       num: 2, label: 'Profil & CV',     desc: "Compétences de l'intégrateur et documents CV." },
+  { id: 'attestations', num: 3, label: 'Attestations',    desc: 'Attestations de référence et analyse IA.' },
+  { id: 'certif',       num: 4, label: 'Certif. éditeur', desc: 'Certification éditeur de la solution.' },
 ]
 const TABS_ACTION = [
   { id: 'infos',        num: 1, label: 'Informations',    desc: "Action à évaluer et informations générales." },
@@ -465,8 +450,7 @@ function nextSub() {
 
 function isDone(id) {
   if (id === 'infos')        return !!(state.form.rapporteur)
-  if (id === 'profil')       return !!(state.cvFields.diplome || state.cvFields.exp > 0)
-  if (id === 'cv')           return !!(state.aiTexts.cv)
+  if (id === 'profil')       return !!(state.cvFields.diplome || state.cvFields.exp > 0 || state.aiTexts.cv)
   if (id === 'attestations') return !!(state.aiTexts.attestations)
   if (id === 'certif')       return !!(state.aiTexts.certifEditeur)
   return false

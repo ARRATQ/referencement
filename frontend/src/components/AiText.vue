@@ -86,46 +86,60 @@ function toBlocks(text) {
 </script>
 
 <style scoped>
+/* --wiz-* pris en priorité (contexte wizard), fallback sur --* (consultation/dark) */
 .ai-text-empty {
-  color: var(--text3, rgba(255,255,255,0.4));
+  color: var(--wiz-text3, var(--text3, rgba(255,255,255,0.4)));
+  font-size: 12px;
+  font-family: var(--mono);
 }
 
 .ai-synth {
-  border-left: 3px solid var(--accent, #6c8cff);
-  padding-left: 10px;
+  background: rgba(59, 130, 246, 0.07);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-left: 3px solid var(--wiz-accent, var(--accent, #3b82f6));
+  border-radius: 6px;
+  padding: 12px 14px;
 }
 
 .ai-synth-label {
-  font-size: 10px;
+  font-size: 9px;
   font-family: var(--mono);
-  color: var(--accent, #6c8cff);
+  color: var(--wiz-accent, var(--accent, #3b82f6));
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .ai-detail-toggle {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-top: 8px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   background: none;
-  border: 1px solid var(--border, rgba(255,255,255,0.15));
+  border: 1px solid var(--wiz-border, var(--border, rgba(255,255,255,0.15)));
   border-radius: var(--radius, 6px);
   font-size: 11px;
   font-family: var(--mono);
-  color: var(--text2, rgba(255,255,255,0.7));
+  color: var(--wiz-text3, var(--text3, rgba(255,255,255,0.4)));
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
 
 .ai-detail-toggle:hover {
-  color: var(--accent, #6c8cff);
-  border-color: var(--accent, #6c8cff);
+  color: var(--wiz-accent, var(--accent, #3b82f6));
+  border-color: var(--wiz-accent, var(--accent, #3b82f6));
 }
 
 .ai-detail {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--border, rgba(255,255,255,0.15));
+  margin-top: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--wiz-border, var(--border, rgba(255,255,255,0.15)));
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.03);
+  max-height: 460px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 </style>
