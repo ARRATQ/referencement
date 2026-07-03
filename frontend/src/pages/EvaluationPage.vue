@@ -180,7 +180,7 @@ function startNew() {
 
 function resumeWizard() {
   resumeDraft.value = draft.value
-  resumeEvaluationId.value = null
+  resumeEvaluationId.value = draft.value?.evalId || null
   wizardActive.value = true
 }
 

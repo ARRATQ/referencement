@@ -286,6 +286,7 @@ let draftTimer = null
 function getDraftData() {
   return {
     step: wizStep.value,
+    evalId: currentEvalId.value || null,
     programCode: state.programCode,
     refType: state.refType,
     selectedCategory: state.selectedCategory,
