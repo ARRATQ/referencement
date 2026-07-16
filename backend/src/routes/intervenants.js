@@ -121,6 +121,10 @@ router.post('/:key/push', async (req, res, next) => {
     for (const [cle, value] of Object.entries(values)) {
       const f = resolved[cle];
       if (!f || value === '' || value === null || value === undefined) { skipped.push(cle); continue; }
+      // Validation serveur des radios
+      if (f.type === 'radio' && !f.options.includes(value)) {
+        return res.status(400).json({ error: `Valeur invalide pour "${f.jiraName}" : "${value}". Options : ${f.options.join(', ')}` });
+      }
       // Radio Jira = objet option { value }, texte = chaîne.
       jiraFields[f.fieldId] = f.type === 'radio' ? { value } : String(value);
       pushedFields.push(cle);
@@ -131,9 +135,13 @@ router.post('/:key/push', async (req, res, next) => {
 
     await jira.updateIssueFields(key, jiraFields);
 
-    const existing = evaluationId
+    let existing = evaluationId
       ? await prisma.evaluationIntervenant.findUnique({ where: { id: evaluationId } })
-      : await prisma.evaluationIntervenant.findFirst({ where: { jiraKey: key }, orderBy: { updatedAt: 'desc' } });
+      : null;
+    if (existing && existing.jiraKey !== key) existing = null;
+    if (!existing) {
+      existing = await prisma.evaluationIntervenant.findFirst({ where: { jiraKey: key }, orderBy: { updatedAt: 'desc' } });
+    }
     const data = {
       jiraKey: key,
       evaluatorId: req.user.id,
