@@ -42,20 +42,43 @@
           Champs Jira non résolus (ils seront exclus de l'envoi) : {{ ticket.unresolved.join(', ') }}
         </div>
 
-        <div class="att-list mb8">
-          <label v-for="a in ticket.attachments" :key="a.id" class="att-item" :class="{ sel: selectedAttachment === a.id }">
-            <input type="radio" v-model="selectedAttachment" :value="a.id" />
-            <span class="att-name">{{ a.filename }}</span>
-            <span class="att-meta">{{ Math.round(a.size / 1024) }} Ko</span>
-          </label>
-          <div v-if="!ticket.attachments.length" class="text-sm">Aucune pièce jointe sur ce ticket.</div>
-          <label class="att-item" :class="{ sel: selectedAttachment === '__upload__' }">
-            <input type="radio" v-model="selectedAttachment" value="__upload__" />
-            <span class="att-name">Uploader un fichier local</span>
-            <input v-if="selectedAttachment === '__upload__'" type="file"
-                   accept=".pdf,.png,.jpg,.jpeg" style="width:auto;" @change="onFileChange" @click.stop />
-          </label>
+        <div class="source-tabs">
+          <button v-for="s in DOC_SOURCES" :key="s.id" class="src-tab"
+                  :class="{ active: docSource === s.id }" @click="docSource = s.id">
+            {{ s.icon }} {{ s.label }}
+          </button>
         </div>
+
+        <template v-if="docSource === 'jira'">
+          <div v-if="!ticket.attachments.length" class="info-hint mt12 mb8">
+            Aucune pièce jointe sur ce ticket — utilisez l'upload local.
+          </div>
+          <div v-else class="att-list mt12 mb8">
+            <label v-for="a in ticket.attachments" :key="a.id" class="att-item" :class="{ sel: selectedAttachment === a.id }">
+              <input type="radio" class="att-check" v-model="selectedAttachment" :value="a.id" />
+              <span class="att-icon">{{ attIcon(a.filename) }}</span>
+              <span class="att-name">{{ a.filename }}</span>
+              <span class="att-size" v-if="a.size">{{ formatSize(a.size) }}</span>
+            </label>
+          </div>
+        </template>
+        <template v-else>
+          <div class="upload-zone mt12 mb8" @drop.prevent="onFileDrop" @dragover.prevent>
+            <label class="upload-area">
+              <input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none" @change="onFileChange" />
+              <div class="upload-icon">📂</div>
+              <div class="upload-text">Glissez le CV de l'intervenant ici, ou <span class="upload-link">parcourir</span></div>
+              <div class="upload-sub">PDF, DOCX, PNG, JPG</div>
+            </label>
+          </div>
+          <div v-if="uploadedFile" class="files-list mb8">
+            <div class="file-item">
+              <span class="att-icon">{{ attIcon(uploadedFile.filename) }}</span>
+              <span class="file-name">{{ uploadedFile.filename }}</span>
+              <button type="button" class="file-remove" @click="uploadedFile = null">✕</button>
+            </div>
+          </div>
+        </template>
 
         <button class="btn btn-primary" @click="extract" :disabled="loading.extract || !canExtract">
           <span v-if="loading.extract" class="spinner spinner-dark"></span>
@@ -75,7 +98,12 @@
             <option value="">— non renseigné —</option>
             <option v-for="o in f.options" :key="o" :value="o">{{ o }}</option>
           </select>
-          <textarea v-else v-model="form[f.key]" rows="2"></textarea>
+          <template v-else>
+            <textarea v-model="form[f.key]" rows="2" :maxlength="TEXT_MAX"></textarea>
+            <div class="char-count" :class="{ warn: (form[f.key] || '').length >= TEXT_MAX }">
+              {{ (form[f.key] || '').length }}/{{ TEXT_MAX }}
+            </div>
+          </template>
           <div v-if="justifications[f.key]" class="text-sm">IA : {{ justifications[f.key] }}</div>
         </div>
 
@@ -101,10 +129,19 @@ import api from '@/services/api'
 const showNotif = inject('showNotif')
 const route = useRoute()
 
+// Limite Jira des champs « Text Field (single line) » : 255 caractères.
+const TEXT_MAX = 255
+
+const DOC_SOURCES = [
+  { id: 'jira',   icon: '📎', label: 'Pièces jointes Jira' },
+  { id: 'upload', icon: '💻', label: 'Upload local' },
+]
+
 const query = ref('')
 const results = ref([])
 const searched = ref(false)
 const ticket = ref(null)
+const docSource = ref('jira')
 const selectedAttachment = ref(null)
 const uploadedFile = ref(null)
 const extracted = ref(false)
@@ -120,7 +157,7 @@ const fieldList = computed(() => {
   return Object.entries(ticket.value.fields).map(([key, f]) => ({ key, ...f }))
 })
 const canExtract = computed(() =>
-  selectedAttachment.value && (selectedAttachment.value !== '__upload__' || uploadedFile.value))
+  docSource.value === 'jira' ? !!selectedAttachment.value : !!uploadedFile.value)
 const hasValues = computed(() => Object.values(form.value).some(v => v && String(v).trim()))
 
 // Ouverture depuis Jira : /intervenants?key=PTC-123 charge directement le ticket.
@@ -158,10 +195,12 @@ async function selectTicket(key) {
   form.value = {}
   justifications.value = {}
   selectedAttachment.value = null
+  uploadedFile.value = null
   evaluationId.value = null
   try {
     const { data } = await api.get(`/intervenants/${key}`)
     ticket.value = data
+    docSource.value = data.attachments.length ? 'jira' : 'upload'
     // Reprise : pré-remplir depuis une évaluation existante déjà validée.
     const prev = data.existing?.validated && Object.keys(data.existing.validated).length
       ? data.existing.validated
@@ -178,8 +217,21 @@ async function selectTicket(key) {
   }
 }
 
-function onFileChange(ev) {
-  const file = ev.target.files[0]
+function attIcon(name = '') {
+  const ext = name.split('.').pop().toLowerCase()
+  if (ext === 'pdf') return '📄'
+  if (['png', 'jpg', 'jpeg'].includes(ext)) return '🖼'
+  if (['doc', 'docx'].includes(ext)) return '📝'
+  return '📎'
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + 'o'
+  if (bytes < 1048576) return Math.round(bytes / 1024) + 'ko'
+  return (bytes / 1048576).toFixed(1) + 'Mo'
+}
+
+function readUpload(file) {
   if (!file) { uploadedFile.value = null; return }
   const reader = new FileReader()
   reader.onload = () => {
@@ -192,11 +244,20 @@ function onFileChange(ev) {
   reader.readAsDataURL(file)
 }
 
+function onFileChange(ev) {
+  readUpload(ev.target.files[0])
+  ev.target.value = ''
+}
+
+function onFileDrop(ev) {
+  readUpload(ev.dataTransfer.files[0])
+}
+
 async function extract() {
   loading.value.extract = true
   errors.value.extract = ''
   try {
-    const body = selectedAttachment.value === '__upload__'
+    const body = docSource.value === 'upload'
       ? { fileData: uploadedFile.value }
       : { attachmentId: selectedAttachment.value }
     const { data } = await api.post(`/intervenants/${ticket.value.key}/extract`, body)
@@ -242,5 +303,39 @@ async function confirmPush() {
 </script>
 
 <style scoped>
+/* Sélecteur de document — même design que le picker du wizard (StepDossier) */
+.source-tabs { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.src-tab { padding: 7px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text2); cursor: pointer; font-family: var(--sans); transition: all 0.15s; width: auto; }
+.src-tab:hover { border-color: var(--text3); color: var(--text); }
+.src-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(37,99,235,0.08); }
+
 .att-list { display: flex; flex-direction: column; gap: 6px; }
+.att-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.att-item:hover { background: rgba(37,99,235,0.04); }
+.att-item.sel { border-color: var(--accent); background: rgba(37,99,235,0.06); }
+.att-check { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+.att-icon { font-size: 16px; flex-shrink: 0; }
+.att-name { flex: 1; font-size: 12px; color: var(--text); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att-size { font-size: 11px; color: var(--text3); font-family: var(--mono); white-space: nowrap; }
+
+.upload-zone { border: 2px dashed var(--border); border-radius: 8px; transition: border-color 0.15s; }
+.upload-zone:hover { border-color: var(--text3); }
+.upload-area { display: flex; flex-direction: column; align-items: center; padding: 24px; cursor: pointer; gap: 6px; }
+.upload-icon { font-size: 26px; }
+.upload-text { font-size: 13px; color: var(--text2); }
+.upload-link { color: var(--accent); text-decoration: underline; cursor: pointer; }
+.upload-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+.files-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.file-item { display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text2); font-family: var(--mono); }
+.file-name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-remove { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 11px; padding: 0; width: auto; }
+.file-remove:hover { color: #f87171; }
+
+.info-hint { padding: 12px 16px; background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 6px; font-size: 13px; color: var(--text3); font-family: var(--mono); }
+
+/* Compteur — limite Jira Text Field (single line) */
+.char-count { font-size: 11px; color: var(--text3); font-family: var(--mono); text-align: right; }
+.char-count.warn { color: #f87171; }
+
+.mt12 { margin-top: 12px; }
 </style>
