@@ -42,7 +42,9 @@ async function jiraFetch(path, options = {}) {
     const text = await res.text();
     throw new Error(`Jira ${res.status}: ${text.slice(0, 200)}`);
   }
-  return res.json();
+  // Les mises à jour (PUT issue) répondent 204 No Content : pas de JSON à parser.
+  const body = await res.text();
+  return body ? JSON.parse(body) : null;
 }
 
 async function searchIssues(jql, fields = [], maxResults = 50) {
