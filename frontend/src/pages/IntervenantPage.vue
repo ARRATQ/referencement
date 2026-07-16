@@ -94,10 +94,12 @@
 </template>
 
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '@/services/api'
 
 const showNotif = inject('showNotif')
+const route = useRoute()
 
 const query = ref('')
 const results = ref([])
@@ -120,6 +122,14 @@ const fieldList = computed(() => {
 const canExtract = computed(() =>
   selectedAttachment.value && (selectedAttachment.value !== '__upload__' || uploadedFile.value))
 const hasValues = computed(() => Object.values(form.value).some(v => v && String(v).trim()))
+
+// Ouverture depuis Jira : /intervenants?key=PTC-123 charge directement le ticket.
+onMounted(() => {
+  const key = String(route.query.key || '').trim().toUpperCase()
+  if (!/^[A-Z][A-Z0-9]*-\d+$/.test(key)) return
+  query.value = key
+  selectTicket(key)
+})
 
 function formatDate(d) {
   return d ? new Date(d).toLocaleDateString('fr-FR') : '—'
