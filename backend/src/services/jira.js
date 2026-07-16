@@ -187,6 +187,67 @@ async function extractCompetenceData(key) {
   };
 }
 
+async function getEditMeta(key) {
+  return jiraFetch(`/rest/api/2/issue/${key}/editmeta`);
+}
+
+// Les 11 champs du ticket intervenant à renseigner depuis le CV.
+const INTERVENANT_FIELDS = [
+  { key: 'formation',               jiraName: 'Formation',                             type: 'text' },
+  { key: 'evaluationFormation',     jiraName: 'Évaluation formation',                  type: 'radio' },
+  { key: 'diplome',                 jiraName: 'Diplôme',                               type: 'text' },
+  { key: 'evaluationDiplome',       jiraName: 'Évaluation diplôme',                    type: 'radio' },
+  { key: 'experiencePro',           jiraName: 'Expérience professionnelle',            type: 'text' },
+  { key: 'evaluationExperiencePro', jiraName: 'Évaluation expérience professionnelle', type: 'radio' },
+  { key: 'principalPoste',          jiraName: 'Principal poste occupé',                type: 'text' },
+  { key: 'secteurPoste',            jiraName: 'Secteur poste',                         type: 'text' },
+  { key: 'experienceConseil',       jiraName: 'Expérience conseil',                    type: 'radio' },
+  { key: 'secteurConseil',          jiraName: 'Secteur conseil',                       type: 'text' },
+  { key: 'evaluationCv',            jiraName: 'Évaluation CV',                         type: 'radio' },
+];
+
+// Résout les 11 champs contre l'editmeta du ticket.
+// Égalité exacte du nom normalisé d'abord (« Formation » ≠ « Évaluation formation »),
+// inclusion en secours, et un customfield n'est jamais attribué deux fois.
+async function resolveIntervenantFields(key) {
+  const meta = await getEditMeta(key);
+  const metaFields = Object.entries(meta.fields || {})
+    .filter(([id]) => id.startsWith('customfield_'))
+    .map(([id, f]) => ({ id, name: f.name || '', norm: normalizeKey(f.name), allowedValues: f.allowedValues || [] }));
+
+  const resolved = {};
+  const usedIds = new Set();
+
+  const assign = (fieldDef, mf) => {
+    resolved[fieldDef.key] = {
+      fieldId: mf.id,
+      jiraName: mf.name,
+      type: fieldDef.type,
+      options: (mf.allowedValues || []).map(v => v.value ?? v.name).filter(Boolean)
+    };
+    usedIds.add(mf.id);
+  };
+
+  // Passe 1 : égalité exacte
+  for (const fd of INTERVENANT_FIELDS) {
+    const norm = normalizeKey(fd.jiraName);
+    const mf = metaFields.find(m => !usedIds.has(m.id) && m.norm === norm);
+    if (mf) assign(fd, mf);
+  }
+  // Passe 2 : inclusion (noms les plus longs d'abord pour limiter les faux positifs)
+  const remaining = INTERVENANT_FIELDS
+    .filter(fd => !resolved[fd.key])
+    .sort((a, b) => b.jiraName.length - a.jiraName.length);
+  for (const fd of remaining) {
+    const norm = normalizeKey(fd.jiraName);
+    const mf = metaFields.find(m => !usedIds.has(m.id) && (m.norm.includes(norm) || norm.includes(m.norm)));
+    if (mf) assign(fd, mf);
+  }
+
+  const unresolved = INTERVENANT_FIELDS.filter(fd => !resolved[fd.key]).map(fd => fd.key);
+  return { resolved, unresolved };
+}
+
 async function resolveHierarchy(prestataireKey) {
   const prestataire = await getIssue(prestataireKey, ['summary', 'status', 'attachment', 'issuelinks', 'description', 'reporter']);
   const links = prestataire.fields.issuelinks || [];
@@ -272,5 +333,6 @@ async function testConnection() {
 module.exports = {
   searchIssues, getIssue, resolveHierarchy,
   fetchAttachmentBuffer, updateIssueFields, addComment, testConnection,
-  extractIntervenantData, extractCompetenceData
+  extractIntervenantData, extractCompetenceData,
+  getEditMeta, resolveIntervenantFields, INTERVENANT_FIELDS
 };
