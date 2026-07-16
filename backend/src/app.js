@@ -10,6 +10,7 @@ const dossierRoutes = require('./routes/dossiers');
 const evaluationRoutes = require('./routes/evaluations');
 const aiRoutes = require('./routes/ai');
 const adminRoutes = require('./routes/admin');
+const intervenantRoutes = require('./routes/intervenants');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -47,6 +48,7 @@ app.use('/api/dossiers', dossierRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/intervenants', intervenantRoutes);
 
 app.use((err, req, res, next) => {
   console.error(`[${new Date().toISOString()}] ERROR:`, err.message);
