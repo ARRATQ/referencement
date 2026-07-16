@@ -46,6 +46,7 @@ model User {
   active       Boolean      @default(true)
   evaluations  Evaluation[]
   auditLogs    AuditLog[]
+  evaluationsIntervenant EvaluationIntervenant[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -150,4 +151,21 @@ model AppConfig {
   value     String   @db.Text
   encrypted Boolean  @default(false)
   updatedAt DateTime @updatedAt
+}
+
+model EvaluationIntervenant {
+  id          String    @id @default(uuid())
+  jiraKey     String
+  evaluatorId String
+  evaluator   User      @relation(fields: [evaluatorId], references: [id])
+  cvSource    String    @default("jira")
+  cvFilename  String?
+  proposed    Json      @default("{}")
+  validated   Json      @default("{}")
+  status      String    @default("DRAFT")
+  pushedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([jiraKey])
 }
