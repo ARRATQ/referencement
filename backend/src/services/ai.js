@@ -122,30 +122,93 @@ function isImage(f) {
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext);
 }
 
+function isDocx(f) {
+  if (f.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return true;
+  const ext = (f.filename || '').split('.').pop()?.toLowerCase();
+  return ext === 'docx';
+}
+
+// Texte extrait d'un PDF scanné avec couche OCR corrompue : majorité de
+// caractères illisibles → inutilisable comme contexte IA.
+function looksGarbled(text) {
+  const t = (text || '').replace(/\s+/g, '');
+  if (!t.length) return true;
+  const readable = t.match(/[a-zA-Z0-9À-ÿ.,;:()\/'’%€-]/g) || [];
+  return readable.length / t.length < 0.7;
+}
+
+// Convertit les pages d'un PDF en images JPEG via poppler (pdftoppm).
+// Utilisé pour les PDF scannés : les modèles vision lisent les scans en image,
+// alors que l'envoi du PDF inline est souvent rejeté ("The document has no pages").
+async function pdfToImages(base64, maxPages = 8) {
+  const { execFile } = require('child_process');
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdfimg-'));
+  try {
+    const pdfPath = path.join(dir, 'doc.pdf');
+    fs.writeFileSync(pdfPath, Buffer.from(base64, 'base64'));
+    await new Promise((resolve, reject) =>
+      execFile('pdftoppm', ['-jpeg', '-r', '150', '-l', String(maxPages), pdfPath, path.join(dir, 'p')],
+        err => err ? reject(err) : resolve()));
+    return fs.readdirSync(dir)
+      .filter(f => f.endsWith('.jpg'))
+      .sort()
+      .map(f => fs.readFileSync(path.join(dir, f)).toString('base64'));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 // Construit la liste de parts multimodales à partir d'un tableau de fichiers.
-// PDFs avec texte → pdfTexts (extrait), PDFs scannés → part inline PDF, images → part image_url.
+// PDFs avec texte propre → pdfTexts (extrait) ; PDFs scannés ou au texte corrompu →
+// pages converties en images (pdftoppm), avec repli inline application/pdf ; images → part image_url.
 async function buildFileParts(filesData, maxPdfChars = 8000) {
   const imagesParts = [];
   const pdfTexts = [];
+  const pushScannedPdf = async (f, reason) => {
+    try {
+      const pages = await pdfToImages(f.base64);
+      if (!pages.length) throw new Error('aucune page convertie');
+      console.warn(`[buildFileParts] PDF ${reason}, converti en ${pages.length} image(s):`, f.filename);
+      for (const img of pages) {
+        imagesParts.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${img}` } });
+      }
+    } catch (e) {
+      console.warn(`[buildFileParts] PDF ${reason}, conversion image échouée (${e.message}), envoyé en application/pdf:`, f.filename);
+      imagesParts.push({ type: 'image_url', image_url: { url: `data:application/pdf;base64,${f.base64}` } });
+    }
+  };
   for (const f of filesData) {
     if (isPdf(f)) {
       try {
         const buf = Buffer.from(f.base64, 'base64');
         const parsed = await pdfParse(buf);
-        if (parsed.text?.trim()) {
+        if (parsed.text?.trim() && !looksGarbled(parsed.text)) {
           pdfTexts.push(`--- ${f.filename} ---\n${parsed.text.slice(0, maxPdfChars)}`);
         } else {
-          // PDF scanné : envoyer en natif application/pdf (supporté par Gemini)
-          console.warn('[buildFileParts] PDF scanné, envoyé en application/pdf:', f.filename);
-          imagesParts.push({ type: 'image_url', image_url: { url: `data:application/pdf;base64,${f.base64}` } });
+          await pushScannedPdf(f, parsed.text?.trim() ? 'au texte corrompu (OCR)' : 'scanné');
         }
       } catch (e) {
-        console.warn('[buildFileParts] PDF illisible, envoyé en application/pdf:', f.filename, e.message);
-        imagesParts.push({ type: 'image_url', image_url: { url: `data:application/pdf;base64,${f.base64}` } });
+        await pushScannedPdf(f, 'illisible');
       }
     } else if (isImage(f)) {
       const mime = f.mimeType?.startsWith('image/') ? f.mimeType : 'image/jpeg';
       imagesParts.push({ type: 'image_url', image_url: { url: `data:${mime};base64,${f.base64}` } });
+    } else if (isDocx(f)) {
+      // Document Word : extraire le texte (mammoth) — l'envoi binaire est rejeté par les modèles.
+      try {
+        const mammoth = require('mammoth');
+        const { value } = await mammoth.extractRawText({ buffer: Buffer.from(f.base64, 'base64') });
+        if (value?.trim()) {
+          pdfTexts.push(`--- ${f.filename} ---\n${value.slice(0, maxPdfChars)}`);
+        } else {
+          console.warn('[buildFileParts] DOCX sans texte extractible, ignoré:', f.filename);
+        }
+      } catch (e) {
+        console.warn('[buildFileParts] DOCX illisible, ignoré:', f.filename, e.message);
+      }
     } else {
       // Type inconnu : tenter parse PDF, sinon envoyer en application/pdf
       try {

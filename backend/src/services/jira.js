@@ -42,7 +42,9 @@ async function jiraFetch(path, options = {}) {
     const text = await res.text();
     throw new Error(`Jira ${res.status}: ${text.slice(0, 200)}`);
   }
-  return res.json();
+  // Les mises à jour (PUT issue) répondent 204 No Content : pas de JSON à parser.
+  const body = await res.text();
+  return body ? JSON.parse(body) : null;
 }
 
 async function searchIssues(jql, fields = [], maxResults = 50) {
@@ -206,9 +208,14 @@ const INTERVENANT_FIELDS = [
   { key: 'evaluationCv',            jiraName: 'Évaluation CV',                         type: 'radio' },
 ];
 
-// Résout les 11 champs contre l'editmeta du ticket.
-// Égalité exacte du nom normalisé d'abord (« Formation » ≠ « Évaluation formation »),
-// inclusion en secours, et un customfield n'est jamais attribué deux fois.
+// Options par défaut des champs radio intervenant : l'editmeta/createmeta de cette
+// instance Jira n'expose pas ces champs (écrans), donc leurs options ne sont pas
+// découvrables par l'API.
+const DEFAULT_RADIO_OPTIONS = ['Valide', 'Non Valide'];
+
+// Résout les 11 champs : editmeta du ticket d'abord (options radios incluses),
+// puis liste globale /rest/api/2/field en secours pour les champs que les écrans
+// Jira n'exposent pas. Un customfield n'est jamais attribué deux fois.
 async function resolveIntervenantFields(key) {
   const meta = await getEditMeta(key);
   const metaFields = Object.entries(meta.fields || {})
@@ -219,29 +226,39 @@ async function resolveIntervenantFields(key) {
   const usedIds = new Set();
 
   const assign = (fieldDef, mf) => {
+    const options = (mf.allowedValues || []).map(v => v.value ?? v.name).filter(Boolean);
     resolved[fieldDef.key] = {
       fieldId: mf.id,
       jiraName: mf.name,
       type: fieldDef.type,
-      options: (mf.allowedValues || []).map(v => v.value ?? v.name).filter(Boolean)
+      options: options.length ? options : (fieldDef.type === 'radio' ? DEFAULT_RADIO_OPTIONS : [])
     };
     usedIds.add(mf.id);
   };
 
-  // Passe 1 : égalité exacte
+  // Égalité exacte du nom normalisé uniquement : les 11 champs existent sous leur
+  // nom exact dans l'instance, et le matching par inclusion produit des faux
+  // positifs (« formation » ⊂ « MF : Informations Intervenant »).
   for (const fd of INTERVENANT_FIELDS) {
     const norm = normalizeKey(fd.jiraName);
     const mf = metaFields.find(m => !usedIds.has(m.id) && m.norm === norm);
     if (mf) assign(fd, mf);
   }
-  // Passe 2 : inclusion (noms les plus longs d'abord pour limiter les faux positifs)
-  const remaining = INTERVENANT_FIELDS
-    .filter(fd => !resolved[fd.key])
-    .sort((a, b) => b.jiraName.length - a.jiraName.length);
-  for (const fd of remaining) {
-    const norm = normalizeKey(fd.jiraName);
-    const mf = metaFields.find(m => !usedIds.has(m.id) && (m.norm.includes(norm) || norm.includes(m.norm)));
-    if (mf) assign(fd, mf);
+
+  // Secours : champs absents de l'editmeta → liste globale des champs
+  // (égalité exacte seulement : l'inclusion sur tous les champs de l'instance
+  // produirait des faux positifs).
+  if (INTERVENANT_FIELDS.some(fd => !resolved[fd.key])) {
+    const all = await jiraFetch('/rest/api/2/field');
+    const globalFields = (Array.isArray(all) ? all : [])
+      .filter(f => f.id?.startsWith('customfield_'))
+      .map(f => ({ id: f.id, name: f.name || '', norm: normalizeKey(f.name), allowedValues: [] }));
+    for (const fd of INTERVENANT_FIELDS) {
+      if (resolved[fd.key]) continue;
+      const norm = normalizeKey(fd.jiraName);
+      const mf = globalFields.find(m => !usedIds.has(m.id) && m.norm === norm);
+      if (mf) assign(fd, mf);
+    }
   }
 
   const unresolved = INTERVENANT_FIELDS.filter(fd => !resolved[fd.key]).map(fd => fd.key);
