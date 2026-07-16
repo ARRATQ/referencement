@@ -338,6 +338,23 @@ Réponds UNIQUEMENT en JSON valide avec cette structure exacte (rien d'autre) :
 {
   "scores": { "0": 0, "1": 1, "2": 2, ... },
   "observations": { "0": "...", "1": "...", "2": "...", ... }
+}`,
+
+  prompt_intervenant_fields: `Tu es expert RH pour une commission de référencement.
+{{lang}}
+Le CV complet de l'intervenant est fourni ci-dessus (PDF/images). Base-toi EXCLUSIVEMENT sur son contenu.
+
+Renseigne les champs suivants du ticket intervenant :
+{{fieldsList}}
+
+Règles :
+- Champs texte : synthèse factuelle courte (1-3 phrases max) citant les éléments du CV.
+- Champs à choix : choisis STRICTEMENT une des options listées pour ce champ, à l'identique.
+- Si le CV ne permet pas de renseigner un champ, mets "" en value et explique en justification.
+
+Réponds UNIQUEMENT en JSON valide (sans markdown, sans texte autour) :
+{
+{{jsonShape}}
 }`
 };
 
@@ -601,6 +618,66 @@ ${hasSol ? 'Pour solScores : note chaque critère d\'après le contenu du CV (0=
   }
 }
 
+// fields: { <clé>: { jiraName, type, options } } — issu de resolveIntervenantFields (jira.js)
+async function extractIntervenantFieldsFromCV({ filesData, fields }) {
+  const prompts = await getPrompts();
+  const cfg = await getAIConfig();
+
+  const entries = Object.entries(fields);
+  if (!entries.length) throw new Error('Aucun champ Jira résolu pour ce ticket.');
+
+  const fieldsList = entries.map(([key, f]) =>
+    f.type === 'radio'
+      ? `- ${key} ("${f.jiraName}") — choix parmi : ${f.options.map(o => `"${o}"`).join(' | ')}`
+      : `- ${key} ("${f.jiraName}") — texte libre`
+  ).join('\n');
+
+  const jsonShape = entries.map(([key]) =>
+    `  "${key}": { "value": "...", "justification": "..." }`
+  ).join(',\n');
+
+  const tpl = prompts.prompt_intervenant_fields || DEFAULT_PROMPTS.prompt_intervenant_fields;
+  const textPrompt = fillTemplate(tpl, {
+    lang: langInstruction(cfg.lang),
+    fieldsList,
+    jsonShape
+  });
+
+  const { imagesParts, pdfTexts } = await buildFileParts(filesData, 8000);
+  console.log(`[extractIntervenantFields] ${filesData.length} fichier(s) — ${pdfTexts.length} PDF(s), ${imagesParts.length} part(s) inline`);
+  if (pdfTexts.length === 0 && imagesParts.length === 0) {
+    throw new Error(`Aucun fichier lisible parmi les ${filesData.length} fichier(s) fourni(s).`);
+  }
+  const fullText = pdfTexts.length > 0
+    ? `Contenu du CV :\n\n${pdfTexts.join('\n\n')}\n\n---\n\n${textPrompt}`
+    : textPrompt;
+  const content = [...imagesParts, { type: 'text', text: fullText }];
+
+  const parse = raw => {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try { return JSON.parse(match[0]); } catch { return null; }
+  };
+
+  // Un réessai en cas de JSON invalide, puis erreur explicite (spec : saisie manuelle possible).
+  let data = parse(await callAI([{ role: 'user', content }], { temp: 0.1, maxTokens: 2000 }));
+  if (!data) data = parse(await callAI([{ role: 'user', content }], { temp: 0.1, maxTokens: 2000 }));
+  if (!data) throw new Error("Réponse IA invalide après réessai — renseignez les champs manuellement.");
+
+  // Normalisation : chaque clé attendue présente, radios contraintes aux options.
+  const result = {};
+  for (const [key, f] of entries) {
+    const item = data[key] || {};
+    let value = typeof item.value === 'string' ? item.value.trim() : (item.value != null ? String(item.value) : '');
+    if (f.type === 'radio' && value && !f.options.includes(value)) {
+      const found = f.options.find(o => o.toLowerCase() === value.toLowerCase());
+      value = found || '';
+    }
+    result[key] = { value, justification: typeof item.justification === 'string' ? item.justification : '' };
+  }
+  return result;
+}
+
 // Extrait le texte d'un fichier Excel (xlsx/xls/csv) en base64
 function extractExcelText(base64, filename) {
   try {
@@ -719,4 +796,4 @@ Sois factuel et cite tes sources si possible.${SYNTH_INSTRUCTION}`;
   return { specsAnalysis, demoScenario, webInsights, suggestedCriteria };
 }
 
-module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, analyzeCertifEditeur, autoFillFromCV, analyzeSpecs, DEFAULT_PROMPTS };
+module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, analyzeCertifEditeur, autoFillFromCV, analyzeSpecs, extractIntervenantFieldsFromCV, DEFAULT_PROMPTS };
