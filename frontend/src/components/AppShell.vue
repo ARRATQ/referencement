@@ -16,6 +16,9 @@
         <RouterLink v-if="auth.isGestionnaire" class="nav-item" to="/evaluation" active-class="active">
           <span class="icon">◉</span> Nouvelle évaluation
         </RouterLink>
+        <RouterLink v-if="auth.isGestionnaire" class="nav-item" to="/intervenants" active-class="active">
+          <span class="icon">👤</span> Évaluation intervenant
+        </RouterLink>
         <RouterLink class="nav-item" to="/consultation" active-class="active">
           <span class="icon">📋</span> Consultation
         </RouterLink>
