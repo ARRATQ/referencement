@@ -411,7 +411,7 @@ Renseigne les champs suivants du ticket intervenant :
 {{fieldsList}}
 
 Règles :
-- Champs texte : synthèse factuelle courte (1-3 phrases max) citant les éléments du CV.
+- Champs texte : synthèse factuelle courte (1-2 phrases, 200 caractères MAXIMUM — champ Jira monoligne limité) citant les éléments du CV.
 - Champs à choix : choisis STRICTEMENT une des options listées pour ce champ, à l'identique.
 - Si le CV ne permet pas de renseigner un champ, mets "" en value et explique en justification.
 
@@ -682,6 +682,9 @@ ${hasSol ? 'Pour solScores : note chaque critère d\'après le contenu du CV (0=
 }
 
 // fields: { <clé>: { jiraName, type, options } } — issu de resolveIntervenantFields (jira.js)
+// Limite Jira des champs « Text Field (single line) »
+const JIRA_TEXT_MAX = 255;
+
 async function extractIntervenantFieldsFromCV({ filesData, fields }) {
   const prompts = await getPrompts();
   const cfg = await getAIConfig();
@@ -735,6 +738,10 @@ async function extractIntervenantFieldsFromCV({ filesData, fields }) {
     if (f.type === 'radio' && value && !f.options.includes(value)) {
       const found = f.options.find(o => o.toLowerCase() === value.toLowerCase());
       value = found || '';
+    }
+    // Champs Jira « Text Field (single line) » : 255 caractères max.
+    if (f.type !== 'radio' && value.length > JIRA_TEXT_MAX) {
+      value = value.slice(0, JIRA_TEXT_MAX - 1) + '…';
     }
     result[key] = { value, justification: typeof item.justification === 'string' ? item.justification : '' };
   }
