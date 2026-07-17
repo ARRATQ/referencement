@@ -10,6 +10,33 @@ const prisma = new PrismaClient();
 
 router.use(authMiddleware, requireMinRole('GESTIONNAIRE'));
 
+// Échappe les pipes Jira wiki markup dans une cellule de tableau.
+const escapeCell = v => String(v ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+
+// Commentaire interne (note, invisible côté portail) posté à chaque push :
+// trace la proposition IA (valeur + justification) et l'utilisateur ayant
+// validé l'envoi vers Jira, pour audit terrain.
+function buildPushComment({ pushedFields, resolved, values, proposed, cvFilename, userName }) {
+  const date = new Date().toLocaleString('fr-FR', { timeZone: 'Africa/Casablanca', dateStyle: 'short', timeStyle: 'short' });
+  const rows = pushedFields.map(cle => {
+    const justification = proposed?.[cle]?.justification || '—';
+    return `|${escapeCell(resolved[cle].jiraName)}|${escapeCell(values[cle])}|${escapeCell(justification)}|`;
+  }).join('\n');
+  const source = cvFilename ? `CV analysé automatiquement (${cvFilename})` : 'CV analysé automatiquement';
+  return [
+    '🤖 *Champs intervenant renseignés via extraction IA*',
+    '',
+    `*Demandé par :* ${userName}`,
+    `*Date :* ${date}`,
+    `*Source :* ${source}, valeurs relues et validées avant envoi`,
+    '',
+    '||Champ||Valeur envoyée||Justification IA||',
+    rows,
+    '',
+    '_Commentaire interne — non visible sur le portail client._'
+  ].join('\n');
+}
+
 // Recherche de tickets intervenant : par clé exacte ou texte du summary.
 router.get('/search', async (req, res, next) => {
   try {
@@ -138,8 +165,6 @@ router.post('/:key/push', async (req, res, next) => {
       return res.status(400).json({ error: 'Aucun champ résolu à envoyer' });
     }
 
-    await jira.updateIssueFields(key, jiraFields);
-
     let existing = evaluationId
       ? await prisma.evaluationIntervenant.findUnique({ where: { id: evaluationId } })
       : null;
@@ -147,6 +172,20 @@ router.post('/:key/push', async (req, res, next) => {
     if (!existing) {
       existing = await prisma.evaluationIntervenant.findFirst({ where: { jiraKey: key }, orderBy: { updatedAt: 'desc' } });
     }
+
+    await jira.updateIssueFields(key, jiraFields);
+
+    // Note interne (invisible côté portail) : traçabilité de la proposition IA
+    // (valeur + justification issues de l'extraction) et de l'utilisateur
+    // ayant validé/envoyé les valeurs.
+    let commentPosted = true;
+    try {
+      await jira.addComment(key, buildPushComment({ pushedFields, resolved, values, proposed: existing?.proposed, cvFilename: existing?.cvFilename, userName: req.user.name }), { internal: true });
+    } catch (err) {
+      commentPosted = false;
+      console.error(`[intervenants push] échec commentaire interne ${key}:`, err.message);
+    }
+
     const data = {
       jiraKey: key,
       evaluatorId: req.user.id,
@@ -167,7 +206,7 @@ router.post('/:key/push', async (req, res, next) => {
       }
     });
 
-    res.json({ ok: true, pushedFields, skipped, evaluationId: saved.id });
+    res.json({ ok: true, pushedFields, skipped, evaluationId: saved.id, commentPosted });
   } catch (err) { next(err); }
 });
 

@@ -374,10 +374,17 @@ async function updateIssueFields(key, fields) {
   });
 }
 
-async function addComment(key, body) {
+// internal = true → note interne JSM (bascule « Commentaire interne » côté agent),
+// invisible sur le portail client. Propriété standard de l'API JSM sur les
+// commentaires classiques /rest/api/2/issue/{key}/comment.
+async function addComment(key, body, { internal = false } = {}) {
+  const payload = { body };
+  if (internal) {
+    payload.properties = [{ key: 'sd.public.comment', value: { internal: true } }];
+  }
   return jiraFetch(`/rest/api/2/issue/${key}/comment`, {
     method: 'POST',
-    body: JSON.stringify({ body })
+    body: JSON.stringify(payload)
   });
 }
 
