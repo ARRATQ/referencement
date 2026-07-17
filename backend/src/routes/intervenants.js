@@ -130,7 +130,8 @@ router.post('/:key/push', async (req, res, next) => {
         return res.status(400).json({ error: `"${f.jiraName}" dépasse 255 caractères (${String(value).length}) — champ Jira monoligne.` });
       }
       // Radio Jira = objet option { value }, texte = chaîne.
-      jiraFields[f.fieldId] = f.type === 'radio' ? { value } : String(value);
+      // valueMap : option canonique (« Valide ») → option réelle du champ Jira (« Ok »).
+      jiraFields[f.fieldId] = f.type === 'radio' ? { value: f.valueMap?.[value] ?? value } : String(value);
       pushedFields.push(cle);
     }
     if (!pushedFields.length) {

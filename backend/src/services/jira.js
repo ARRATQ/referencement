@@ -213,6 +213,40 @@ const INTERVENANT_FIELDS = [
 // découvrables par l'API.
 const DEFAULT_RADIO_OPTIONS = ['Valide', 'Non Valide'];
 
+// Certains contextes Jira exposent ces radios avec des options en plus ou à la
+// place de « Valide »/« Non Valide » (ex. « Ok »/« Ko » historiques, ou les trois
+// à la fois : Valide / Non Valide / Ok). Convention validée avec la commission :
+// l'application ne propose et n'envoie jamais que « Valide »/« Non Valide ».
+const NEGATIVE_OPTION_RE = /non|\bko\b|nok|invalide/i;
+
+// Retourne { options, valueMap } : options canoniques pour l'UI/IA, et
+// correspondance canonique → option Jira réelle pour l'écriture.
+// Si la paire réelle n'est pas identifiable sans ambiguïté, on garde les
+// options Jira telles quelles (pas de traduction hasardeuse).
+function canonicalizeRadioOptions(jiraOptions) {
+  if (!jiraOptions.length) return { options: DEFAULT_RADIO_OPTIONS, valueMap: null };
+
+  // « Valide » et « Non Valide » existent déjà tels quels côté Jira (même si
+  // d'autres options obsolètes comme « Ok » sont aussi présentes) : on les
+  // restreint à ces deux-là, sans traduction nécessaire.
+  if (DEFAULT_RADIO_OPTIONS.every(o => jiraOptions.includes(o))) {
+    return { options: DEFAULT_RADIO_OPTIONS, valueMap: null };
+  }
+
+  // Paire à deux options sans « Valide »/« Non Valide » exacts : on tente de
+  // reconnaître une paire positive/négative (« Ok »/« Ko », « Oui »/« Non »…)
+  // et on la traduit au moment du push.
+  if (jiraOptions.length === 2) {
+    const negatives = jiraOptions.filter(o => NEGATIVE_OPTION_RE.test(o));
+    if (negatives.length === 1) {
+      const negative = negatives[0];
+      const positive = jiraOptions.find(o => o !== negative);
+      return { options: DEFAULT_RADIO_OPTIONS, valueMap: { 'Valide': positive, 'Non Valide': negative } };
+    }
+  }
+  return { options: jiraOptions, valueMap: null };
+}
+
 // Résout les 11 champs : editmeta du ticket d'abord (options radios incluses),
 // puis liste globale /rest/api/2/field en secours pour les champs que les écrans
 // Jira n'exposent pas. Un customfield n'est jamais attribué deux fois.
@@ -226,12 +260,16 @@ async function resolveIntervenantFields(key) {
   const usedIds = new Set();
 
   const assign = (fieldDef, mf) => {
-    const options = (mf.allowedValues || []).map(v => v.value ?? v.name).filter(Boolean);
+    const jiraOptions = (mf.allowedValues || []).map(v => v.value ?? v.name).filter(Boolean);
+    const { options, valueMap } = fieldDef.type === 'radio'
+      ? canonicalizeRadioOptions(jiraOptions)
+      : { options: jiraOptions, valueMap: null };
     resolved[fieldDef.key] = {
       fieldId: mf.id,
       jiraName: mf.name,
       type: fieldDef.type,
-      options: options.length ? options : (fieldDef.type === 'radio' ? DEFAULT_RADIO_OPTIONS : [])
+      options,
+      valueMap
     };
     usedIds.add(mf.id);
   };
