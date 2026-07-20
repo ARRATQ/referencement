@@ -165,4 +165,29 @@ router.put('/:key/demo', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.post('/:key/briefing', async (req, res, next) => {
+  try {
+    const key = req.params.key.toUpperCase();
+    const { evaluationId } = req.body;
+    const evaln = await prisma.evaluationCompetence.findUnique({ where: { id: evaluationId } });
+    if (!evaln || evaln.jiraKeyCompetence !== key) return res.status(404).json({ error: 'Évaluation introuvable' });
+    const program = evaln.programCode ? await prisma.program.findUnique({ where: { code: evaln.programCode } }) : null;
+    const cat = comp.getCategoryCriteria(program, evaln.categoryKey);
+    const context = await jira.resolveCompetenceContext(key);
+
+    const briefingText = await ai.generateBriefing({
+      prestataire: context.prestataire?.summary || '—',
+      solution: evaln.solutionReferencee || context.competence?.summary || '—',
+      category: cat?.label || evaln.categoryKey || '—',
+      modules: Array.isArray(evaln.modules) ? evaln.modules : [],
+      amiText: program?.amiText || '', amiContext: ''
+    });
+
+    const saved = await prisma.evaluationCompetence.update({
+      where: { id: evaluationId }, data: { briefingText, briefingById: req.user.id, briefingAt: new Date() }
+    });
+    res.json({ briefingText: saved.briefingText });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
