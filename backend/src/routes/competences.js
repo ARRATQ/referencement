@@ -190,4 +190,44 @@ router.post('/:key/briefing', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.post('/:key/push', async (req, res, next) => {
+  try {
+    const key = req.params.key.toUpperCase();
+    const { evaluationId } = req.body;
+    const evaln = await prisma.evaluationCompetence.findUnique({ where: { id: evaluationId } });
+    if (!evaln || evaln.jiraKeyCompetence !== key) return res.status(404).json({ error: 'Évaluation introuvable' });
+    // Règle métier : le push se fait UNIQUEMENT après la démo.
+    if (evaln.status !== 'DEMO_DONE') return res.status(409).json({ error: 'Le push n\'est possible qu\'après la validation de la démo' });
+    if (evaln.demoScorePct === null || evaln.demoScorePct === undefined) return res.status(400).json({ error: 'Note de démo non calculée' });
+
+    const program = await prisma.program.findUnique({ where: { code: evaln.programCode } });
+    const cat = comp.getCategoryCriteria(program, evaln.categoryKey);
+
+    const body = comp.buildPushComment({
+      criteria: cat?.criteria || [], scores: evaln.demoScores, justifs: evaln.demoJustifs,
+      scorePct: evaln.demoScorePct, verdict: evaln.demoVerdict,
+      category: cat?.label || evaln.categoryKey, solution: evaln.solutionReferencee,
+      phase: 'DEMO', userName: req.user.name, sources: (evaln.sources || []).map(s => s.filename)
+    });
+
+    let commentPosted = true;
+    try { await jira.addComment(key, body, { internal: true }); }
+    catch (e) { commentPosted = false; console.error(`[competences push] commentaire ${key}:`, e.message); }
+
+    try {
+      const cfg = await prisma.appConfig.findUnique({ where: { key: 'jira_cf_score_sol' } });
+      if (cfg?.value) await jira.updateIssueFields(key, { [cfg.value]: String(evaln.demoScorePct) });
+    } catch (e) { console.error(`[competences push] customfield ${key}:`, e.message); }
+
+    const saved = await prisma.evaluationCompetence.update({ where: { id: evaluationId }, data: { status: 'PUSHED', pushedAt: new Date() } });
+
+    await prisma.auditLog.create({
+      data: { userId: req.user.id, action: 'COMPETENCE_JIRA_PUSH',
+        details: { jiraKey: key, phase: 'DEMO', scorePct: evaln.demoScorePct, verdict: evaln.demoVerdict, evaluationId }, ipAddress: req.ip }
+    });
+
+    res.json({ ok: true, commentPosted, status: saved.status });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
