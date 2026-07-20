@@ -124,4 +124,45 @@ router.post('/:key/score', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+async function computePhase({ evaluationId, key, scores, enabled }) {
+  const evaln = await prisma.evaluationCompetence.findUnique({ where: { id: evaluationId } });
+  if (!evaln || evaln.jiraKeyCompetence !== key) { const e = new Error('Évaluation introuvable'); e.status = 404; throw e; }
+  if (evaln.status === 'PUSHED') { const e = new Error('Évaluation déjà envoyée'); e.status = 409; throw e; }
+  for (const v of Object.values(scores || {})) {
+    if (![0, 1, 2].includes(Number(v))) { const e = new Error('Note invalide (0, 1 ou 2 attendu)'); e.status = 400; throw e; }
+  }
+  const program = await prisma.program.findUnique({ where: { code: evaln.programCode } });
+  const cat = comp.getCategoryCriteria(program, evaln.categoryKey);
+  if (!cat) { const e = new Error('Catégorie introuvable'); e.status = 400; throw e; }
+  const { pct, verdict } = scoring.computeSolutionScore(scores || {}, cat.criteria, enabled || {});
+  return { evaln, pct, verdict };
+}
+
+router.put('/:key/theorique', async (req, res, next) => {
+  try {
+    const key = req.params.key.toUpperCase();
+    const { evaluationId, scores, justifs, enabled } = req.body;
+    const { pct, verdict } = await computePhase({ evaluationId, key, scores, enabled });
+    const saved = await prisma.evaluationCompetence.update({
+      where: { id: evaluationId },
+      data: { theoScores: scores || {}, theoJustifs: justifs || {}, theoEnabled: enabled || {}, theoScorePct: pct, theoVerdict: verdict, theoById: req.user.id, theoAt: new Date(), status: 'THEORIQUE_DONE' }
+    });
+    res.json({ evaluationId: saved.id, scorePct: pct, verdict, status: saved.status });
+  } catch (err) { next(err); }
+});
+
+router.put('/:key/demo', async (req, res, next) => {
+  try {
+    const key = req.params.key.toUpperCase();
+    const { evaluationId, scores, justifs, enabled } = req.body;
+    const { evaln, pct, verdict } = await computePhase({ evaluationId, key, scores, enabled });
+    if (evaln.status === 'DRAFT') return res.status(409).json({ error: 'Valider d\'abord la phase théorique' });
+    const saved = await prisma.evaluationCompetence.update({
+      where: { id: evaluationId },
+      data: { demoScores: scores || {}, demoJustifs: justifs || {}, demoScorePct: pct, demoVerdict: verdict, demoById: req.user.id, demoAt: new Date(), status: 'DEMO_DONE' }
+    });
+    res.json({ evaluationId: saved.id, scorePct: pct, verdict, status: saved.status });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
