@@ -47,6 +47,7 @@ model User {
   evaluations  Evaluation[]
   auditLogs    AuditLog[]
   evaluationsIntervenant EvaluationIntervenant[]
+  evaluationsCompetence  EvaluationCompetence[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -168,4 +169,58 @@ model EvaluationIntervenant {
   updatedAt   DateTime  @updatedAt
 
   @@index([jiraKey])
+}
+
+model EvaluationCompetence {
+  id                 String    @id @default(uuid())
+
+  jiraKeyCompetence  String
+  jiraKeyIntervenant String?
+  jiraKeyPrestataire String?
+
+  programCode        String?
+  actionAReferencer  String?
+  categoryKey        String?
+  categorySuggested  Json?
+  solutionReferencee String?
+  modules            Json      @default("[]")
+  secteur            String?
+  modeAcquisition    String?
+  origine            String?
+  natureParticipant  String?
+  typeIntervenant    String?
+
+  sources            Json      @default("[]")
+  webInsights        String?   @db.Text
+  webConsulted       Boolean   @default(false)
+
+  theoScores         Json      @default("{}")
+  theoJustifs        Json      @default("{}")
+  theoEnabled        Json      @default("{}")
+  theoScorePct       Int?
+  theoVerdict        Verdict?
+  theoById           String?
+  theoAt             DateTime?
+
+  demoScores         Json      @default("{}")
+  demoJustifs        Json      @default("{}")
+  demoScorePct       Int?
+  demoVerdict        Verdict?
+  demoById           String?
+  demoAt             DateTime?
+
+  briefingText       String?   @db.Text
+  briefingById       String?
+  briefingAt         DateTime?
+
+  linkedEvaluationIntervenantId String?
+
+  status             String    @default("DRAFT")
+  pushedAt           DateTime?
+  evaluatorId        String
+  evaluator          User      @relation(fields: [evaluatorId], references: [id])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([jiraKeyCompetence])
 }
