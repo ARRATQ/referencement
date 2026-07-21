@@ -866,4 +866,61 @@ Sois factuel et cite tes sources si possible.${SYNTH_INSTRUCTION}`;
   return { specsAnalysis, demoScenario, webInsights, suggestedCriteria };
 }
 
-module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, analyzeCertifEditeur, autoFillFromCV, analyzeSpecs, extractIntervenantFieldsFromCV, DEFAULT_PROMPTS };
+// Suggère la catégorie de solution la plus probable. categories = { key:{label,ex} }.
+async function suggestCompetenceCategory({ categories, fieldsContext, ticketContext, webInsights }) {
+  const cfg = await getAIConfig();
+  const list = Object.entries(categories || {})
+    .map(([k, c]) => `- ${k} : ${c.label}${c.ex ? ` (ex. ${c.ex})` : ''}`).join('\n');
+  const prompt = `${langInstruction(cfg.lang)}\n`
+    + `Voici les catégories de solution informatique disponibles :\n${list}\n\n`
+    + `Caractéristiques de la solution à référencer (SOURCE PRIORITAIRE — fonde ta décision sur ces champs, notamment le secteur, la solution et les modules) :\n${(fieldsContext || '(non renseignées)').slice(0, 2000)}\n\n`
+    + `Contexte du ticket (SECONDAIRE — n'utilise PAS l'intitulé générique du ticket, type « Enregistrement compétence » / « Inscription intervenant », pour choisir la catégorie) :\n${(ticketContext || '').slice(0, 2500)}\n`
+    + (webInsights ? `\nInfos web :\n${webInsights.slice(0, 2000)}\n` : '')
+    + `\nChoisis la catégorie dont le domaine fonctionnel correspond au secteur/métier de la solution (ex. hôtellerie → hotel, ressources humaines → rh, e-commerce → ecom, comptabilité → compta).`
+    + `\nRéponds en JSON strict : {"key":"<clé exacte>","confidence":<0..1>,"rationale":"<1 phrase citant le secteur/la solution>"}.`;
+  const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.1, maxTokens: 400 });
+  try {
+    const m = raw.match(/\{[\s\S]*\}/);
+    const parsed = m ? JSON.parse(m[0]) : null;
+    return parsed && categories[parsed.key] ? parsed : null;
+  } catch { return null; }
+}
+
+// Notation théorique des critères d'une catégorie à partir des sources + contexte.
+async function suggestCompetenceScores({ category, criteria, filesData, ticketContext, webInsights }) {
+  const cfg = await getAIConfig();
+  const criteriaList = (criteria || []).map((c, i) =>
+    `${i}. ${c.n} [poids ${c.w}]${c.d ? ` — ${c.d}` : ''}`).join('\n');
+
+  let docText = '';
+  if (filesData?.length) {
+    const { pdfTexts } = await buildFileParts(filesData, 8000);
+    docText = pdfTexts.join('\n\n').slice(0, 12000);
+  }
+
+  const prompt = `${langInstruction(cfg.lang)}\n`
+    + `Évalue la solution pour la catégorie « ${category} ». Pour CHAQUE critère, `
+    + `attribue une note 0, 1 ou 2 (0 = absent, 1 = partiel, 2 = pleinement couvert) `
+    + `et une justification d'une phrase, UNIQUEMENT à partir des éléments fournis. `
+    + `Si l'information manque, note 0 et dis-le.\n\n`
+    + `Critères :\n${criteriaList}\n\n`
+    + (ticketContext ? `Contexte ticket :\n${ticketContext.slice(0, 3000)}\n\n` : '')
+    + (docText ? `Documents-sources :\n${docText}\n\n` : '')
+    + (webInsights ? `Infos web :\n${webInsights.slice(0, 2000)}\n\n` : '')
+    + `Réponds en JSON strict : {"scores":{"0":<0|1|2>,…},"justifs":{"0":"<phrase>",…}}.`;
+
+  const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.2, maxTokens: 2000 });
+  try {
+    const m = raw.match(/\{[\s\S]*\}/);
+    const parsed = m ? JSON.parse(m[0]) : {};
+    const clamp = v => { const n = Number(v); return n === 0 || n === 1 || n === 2 ? n : 0; };
+    const scores = {}, justifs = {};
+    (criteria || []).forEach((_, i) => {
+      scores[i] = clamp(parsed.scores?.[i] ?? parsed.scores?.[String(i)]);
+      justifs[i] = String(parsed.justifs?.[i] ?? parsed.justifs?.[String(i)] ?? '');
+    });
+    return { scores, justifs };
+  } catch { return { scores: {}, justifs: {} }; }
+}
+
+module.exports = { generateBriefing, generatePV, checkCoherence, suggestScores, analyzeCV, analyzeAttestations, analyzeCertifEditeur, autoFillFromCV, analyzeSpecs, extractIntervenantFieldsFromCV, suggestCompetenceCategory, suggestCompetenceScores, DEFAULT_PROMPTS };

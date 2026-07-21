@@ -208,6 +208,17 @@ const INTERVENANT_FIELDS = [
   { key: 'evaluationCv',            jiraName: 'Évaluation CV',                         type: 'radio' },
 ];
 
+// Les 7 champs de contexte portés par le TICKET COMPÉTENCE (confirmé terrain).
+const COMPETENCE_FIELDS = [
+  { key: 'solutionReferencee', jiraName: 'Solution Référencée' },
+  { key: 'modules',            jiraName: 'Modules référencés' },
+  { key: 'secteur',            jiraName: 'Secteur de la solution' },
+  { key: 'modeAcquisition',    jiraName: 'Mode acquisition' },
+  { key: 'origine',            jiraName: 'Origine de la solution' },
+  { key: 'natureParticipant',  jiraName: 'Nature du prestataire' },
+  { key: 'typeIntervenant',    jiraName: 'Type intervenant' },
+];
+
 // Options par défaut des champs radio intervenant : l'editmeta/createmeta de cette
 // instance Jira n'expose pas ces champs (écrans), donc leurs options ne sont pas
 // découvrables par l'API.
@@ -303,6 +314,38 @@ async function resolveIntervenantFields(key) {
   return { resolved, unresolved };
 }
 
+// Résout les 7 champs sur le ticket compétence, par nom exact normalisé.
+// Un seul appel /rest/api/2/field (catalogue) + un getIssue ciblé.
+async function resolveCompetenceFields(competenceKey) {
+  const all = await jiraFetch('/rest/api/2/field');
+  const catalog = (Array.isArray(all) ? all : [])
+    .filter(f => f.id?.startsWith('customfield_'))
+    .map(f => ({ id: f.id, name: f.name || '', norm: normalizeKey(f.name) }));
+
+  const ids = {};
+  for (const fd of COMPETENCE_FIELDS) {
+    const norm = normalizeKey(fd.jiraName);
+    const match = catalog.find(c => c.norm === norm);
+    if (match) ids[fd.key] = { id: match.id, jiraName: match.name };
+  }
+
+  const wanted = Object.values(ids).map(v => v.id);
+  const issue = wanted.length ? await getIssue(competenceKey, wanted) : { fields: {} };
+
+  const resolved = {};
+  const unresolved = [];
+  for (const fd of COMPETENCE_FIELDS) {
+    const meta = ids[fd.key];
+    const raw = meta ? issue.fields?.[meta.id] : undefined;
+    if (!meta || raw === undefined || raw === null || raw === '') { unresolved.push(fd.key); continue; }
+    const value = Array.isArray(raw)
+      ? raw.map(v => v?.value ?? v?.name ?? v).join(', ')
+      : (raw?.value ?? raw?.name ?? raw);
+    resolved[fd.key] = { value: String(value), jiraName: meta.jiraName };
+  }
+  return { resolved, unresolved };
+}
+
 async function resolveHierarchy(prestataireKey) {
   const prestataire = await getIssue(prestataireKey, ['summary', 'status', 'attachment', 'issuelinks', 'description', 'reporter']);
   const links = prestataire.fields.issuelinks || [];
@@ -357,6 +400,35 @@ async function resolveHierarchy(prestataireKey) {
   };
 }
 
+// Depuis un ticket compétence, remonte au ticket intervenant lié puis au
+// prestataire lié, pour le contexte affiché et les pièces jointes-sources.
+async function resolveCompetenceContext(competenceKey) {
+  const mapIssue = i => ({
+    key: i.key,
+    summary: i.fields.summary,
+    status: i.fields.status?.name,
+    description: i.fields.description,
+    attachments: (i.fields.attachment || []).map(a => ({
+      id: a.id, filename: a.filename, mimeType: a.mimeType, size: a.size, contentUrl: a.content
+    }))
+  });
+  const linkedKeyByType = (issue, re) => ((issue.fields.issuelinks || [])
+    .map(l => l.inwardIssue || l.outwardIssue).filter(Boolean)
+    .find(iss => re.test(iss.fields?.issuetype?.name || '')) || {}).key;
+
+  const competence = await getIssue(competenceKey, ['summary', 'status', 'attachment', 'issuelinks', 'description']);
+  let intervenant = null, prestataire = null;
+
+  const intKey = linkedKeyByType(competence, /intervenant/i);
+  if (intKey) {
+    const intIssue = await getIssue(intKey, ['summary', 'status', 'attachment', 'issuelinks', 'description', 'issuetype']);
+    intervenant = mapIssue(intIssue);
+    const prestKey = linkedKeyByType(intIssue, /prestataire|fournisseur/i);
+    if (prestKey) prestataire = mapIssue(await getIssue(prestKey, ['summary', 'status', 'attachment', 'description', 'issuetype']));
+  }
+  return { competence: mapIssue(competence), intervenant, prestataire };
+}
+
 async function fetchAttachmentBuffer(contentUrl) {
   const cfg = await getConfig();
   const res = await fetch(contentUrl, {
@@ -396,5 +468,6 @@ module.exports = {
   searchIssues, getIssue, resolveHierarchy,
   fetchAttachmentBuffer, updateIssueFields, addComment, testConnection,
   extractIntervenantData, extractCompetenceData,
-  getEditMeta, resolveIntervenantFields, INTERVENANT_FIELDS
+  getEditMeta, resolveIntervenantFields, INTERVENANT_FIELDS,
+  resolveCompetenceContext, resolveCompetenceFields, COMPETENCE_FIELDS
 };
