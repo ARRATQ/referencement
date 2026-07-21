@@ -107,6 +107,8 @@ router.post('/:key/score', async (req, res, next) => {
 
     const { scores, justifs } = await ai.suggestCompetenceScores({ category: cat.label, criteria: cat.criteria, filesData, ticketContext: buildTicketContext(context), webInsights });
 
+    const { resolved: contextFields } = await jira.resolveCompetenceFields(key);
+
     const existing = await prisma.evaluationCompetence.findFirst({ where: { jiraKeyCompetence: key }, orderBy: { updatedAt: 'desc' } });
     const data = {
       jiraKeyCompetence: key,
@@ -116,6 +118,13 @@ router.post('/:key/score', async (req, res, next) => {
       sources: sources || [], webInsights, webConsulted: !!webConsulted,
       theoScores: scores, theoJustifs: justifs, status: 'DRAFT'
     };
+    if (contextFields.solutionReferencee?.value) data.solutionReferencee = contextFields.solutionReferencee.value;
+    if (contextFields.modules?.value) data.modules = contextFields.modules.value.split(', ');
+    if (contextFields.secteur?.value) data.secteur = contextFields.secteur.value;
+    if (contextFields.modeAcquisition?.value) data.modeAcquisition = contextFields.modeAcquisition.value;
+    if (contextFields.origine?.value) data.origine = contextFields.origine.value;
+    if (contextFields.natureParticipant?.value) data.natureParticipant = contextFields.natureParticipant.value;
+    if (contextFields.typeIntervenant?.value) data.typeIntervenant = contextFields.typeIntervenant.value;
     const saved = existing && existing.status !== 'PUSHED'
       ? await prisma.evaluationCompetence.update({ where: { id: existing.id }, data })
       : await prisma.evaluationCompetence.create({ data });
@@ -210,9 +219,16 @@ router.post('/:key/push', async (req, res, next) => {
       phase: 'DEMO', userName: req.user.name, sources: (evaln.sources || []).map(s => s.filename)
     });
 
-    let commentPosted = true;
-    try { await jira.addComment(key, body, { internal: true }); }
-    catch (e) { commentPosted = false; console.error(`[competences push] commentaire ${key}:`, e.message); }
+    try {
+      await jira.addComment(key, body, { internal: true });
+    } catch (e) {
+      console.error(`[competences push] commentaire ${key}:`, e.message);
+      await prisma.auditLog.create({
+        data: { userId: req.user.id, action: 'COMPETENCE_JIRA_PUSH',
+          details: { jiraKey: key, phase: 'DEMO', scorePct: evaln.demoScorePct, verdict: evaln.demoVerdict, evaluationId, commentPosted: false }, ipAddress: req.ip }
+      });
+      return res.status(502).json({ ok: false, commentPosted: false, status: evaln.status, error: 'Échec de l\'envoi du commentaire Jira — réessayez.' });
+    }
 
     try {
       const cfg = await prisma.appConfig.findUnique({ where: { key: 'jira_cf_score_sol' } });
@@ -223,10 +239,10 @@ router.post('/:key/push', async (req, res, next) => {
 
     await prisma.auditLog.create({
       data: { userId: req.user.id, action: 'COMPETENCE_JIRA_PUSH',
-        details: { jiraKey: key, phase: 'DEMO', scorePct: evaln.demoScorePct, verdict: evaln.demoVerdict, evaluationId }, ipAddress: req.ip }
+        details: { jiraKey: key, phase: 'DEMO', scorePct: evaln.demoScorePct, verdict: evaln.demoVerdict, evaluationId, commentPosted: true }, ipAddress: req.ip }
     });
 
-    res.json({ ok: true, commentPosted, status: saved.status });
+    res.json({ ok: true, commentPosted: true, status: saved.status });
   } catch (err) { next(err); }
 });
 

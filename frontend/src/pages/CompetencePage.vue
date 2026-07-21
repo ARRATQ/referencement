@@ -401,9 +401,16 @@ async function pushJira() {
   errors.value.push = ''
   try {
     const { data } = await api.post(`/competences/${ticket.value.key}/push`, { evaluationId: evaluationId.value })
-    status.value = data.status
-    showNotif('Notation envoyée vers Jira', 'ok')
+    if (data.ok === false || data.commentPosted === false) {
+      showNotif('Échec de l\'envoi vers Jira — le commentaire n\'a pas été publié, réessayez.', 'error')
+    } else {
+      status.value = data.status
+      showNotif('Notation envoyée vers Jira', 'ok')
+    }
   } catch (e) {
+    if (e.response?.status === 502 || e.response?.data?.commentPosted === false || e.response?.data?.ok === false) {
+      showNotif('Échec de l\'envoi vers Jira — le commentaire n\'a pas été publié, réessayez.', 'error')
+    }
     errors.value.push = e.response?.data?.error || 'Échec de l\'envoi vers Jira'
   } finally {
     loading.value.push = false
