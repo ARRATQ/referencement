@@ -118,22 +118,61 @@
       <div v-if="evaluationId && criteria.length" class="card">
         <div class="card-title">5. Notation théorique</div>
 
+        <div class="crit-actions mb8">
+          <button v-if="!isCustom" type="button" class="btn btn-secondary btn-sm" @click="customizeCriteria">✎ Personnaliser la grille</button>
+          <template v-else>
+            <span class="crit-custom-badge">Grille personnalisée</span>
+            <button type="button" class="btn btn-secondary btn-sm" @click="addCriterion">+ Critère</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="resetCriteria">↩ Standard</button>
+          </template>
+        </div>
+
         <div v-for="(c, i) in criteria" :key="i" class="crit-row" :class="{ disabled: theoEnabled[i] === false }">
-          <button type="button" class="crit-toggle" :title="theoEnabled[i] === false ? 'Activer le critère' : 'Désactiver le critère'" @click="toggleEnabled(theoEnabled, i)">
-            {{ theoEnabled[i] === false ? '○' : '●' }}
-          </button>
-          <div class="crit-body">
-            <div class="crit-name">
-              {{ c.n }}
-              <span v-if="c.w && c.w > 1" class="crit-weight">×{{ c.w }}</span>
+          <!-- Édition inline (grille personnalisée uniquement) -->
+          <template v-if="isCustom && editingIdx === i">
+            <div class="crit-edit">
+              <input class="crit-edit-input" v-model="editingBuf.n" placeholder="Titre du critère" @keyup.enter="saveEdit" @keyup.escape="editingIdx = null" />
+              <textarea class="crit-edit-area" v-model="editingBuf.d" rows="2" placeholder="Description"></textarea>
+              <textarea class="crit-edit-area" v-model="editingBuf.consistance" rows="2" placeholder="Consistance attendue (élément de preuve)"></textarea>
+              <div class="crit-edit-foot">
+                <label class="crit-edit-w">Poids
+                  <select v-model.number="editingBuf.w">
+                    <option :value="1">1</option>
+                    <option :value="2">2</option>
+                    <option :value="3">3</option>
+                  </select>
+                </label>
+                <div class="crit-edit-btns">
+                  <button type="button" class="btn btn-secondary btn-sm" @click="editingIdx = null">Annuler</button>
+                  <button type="button" class="btn btn-primary btn-sm" @click="saveEdit">Enregistrer</button>
+                </div>
+              </div>
             </div>
-            <div v-if="c.d" class="crit-desc">{{ c.d }}</div>
-            <div v-if="c.consistance" class="crit-consist"><span class="crit-consist-lbl">Consistance</span>{{ c.consistance }}</div>
-            <textarea class="crit-obs" v-model="theoJustifs[i]" rows="2" placeholder="Justification / observation…"></textarea>
-          </div>
-          <div class="crit-scores">
-            <button v-for="n in [0, 1, 2]" :key="n" type="button" class="sbtn" :class="[`s${n}`, { sel: theoScores[i] === n }]" @click="theoScores[i] = n">{{ n }}</button>
-          </div>
+          </template>
+
+          <template v-else>
+            <button type="button" class="crit-toggle" :title="theoEnabled[i] === false ? 'Activer le critère' : 'Désactiver le critère'" @click="toggleEnabled(theoEnabled, i)">
+              {{ theoEnabled[i] === false ? '○' : '●' }}
+            </button>
+            <div class="crit-body">
+              <div class="crit-name">
+                {{ c.n }}
+                <span v-if="c.w && c.w > 1" class="crit-weight">×{{ c.w }}</span>
+              </div>
+              <div v-if="c.d" class="crit-desc">{{ c.d }}</div>
+              <div v-if="c.consistance" class="crit-consist"><span class="crit-consist-lbl">Consistance</span>{{ c.consistance }}</div>
+              <textarea class="crit-obs" v-model="theoJustifs[i]" rows="2" placeholder="Justification / observation…"></textarea>
+            </div>
+            <div class="crit-scores-wrap">
+              <div class="crit-scores">
+                <button v-for="n in [0, 1, 2]" :key="n" type="button" class="sbtn" :class="[`s${n}`, { sel: theoScores[i] === n }]" @click="theoScores[i] = n">{{ n }}</button>
+              </div>
+              <div v-if="isCustom" class="crit-manage">
+                <button type="button" class="crit-mng" title="Modifier" @click="startEdit(i)">✎</button>
+                <button type="button" class="crit-mng del" title="Supprimer" @click="removeCriterion(i)">✕</button>
+              </div>
+            </div>
+          </template>
         </div>
 
         <div class="info-hint mb12">
@@ -242,10 +281,79 @@ const categories = computed(() => {
   return p?.categories || ticket.value?.program?.categories || {}
 })
 
-const criteria = computed(() => {
+// Grille standard de la catégorie choisie (dérivée du programme).
+const categoryCriteria = computed(() => {
   const cat = categories.value[categoryKey.value]
   return cat && Array.isArray(cat.criteria) ? cat.criteria : []
 })
+
+// Grille personnalisée (fork mutable). Tant qu'elle est vide, on affiche la
+// grille standard ; dès que l'utilisateur personnalise, elle prime — et c'est
+// elle qui est envoyée au backend pour scoring (persistée dans customCriteria).
+const customCriteria = ref([])
+const isCustom = computed(() => customCriteria.value.length > 0)
+const criteria = computed(() => (isCustom.value ? customCriteria.value : categoryCriteria.value))
+
+// ── Édition inline des critères (calquée sur StepEvaluation) ─────────────────
+const editingIdx = ref(null)
+const editingBuf = ref({ n: '', d: '', w: 1, consistance: '' })
+
+// Fork : copie la grille standard courante dans customCriteria pour la rendre éditable.
+function customizeCriteria() {
+  customCriteria.value = criteria.value.map(c => ({
+    n: c.n || '', d: c.d || '', w: c.w || 1, consistance: c.consistance || ''
+  }))
+}
+
+function resetCriteria() {
+  if (!window.confirm('Revenir à la grille standard du programme ? Les critères personnalisés seront perdus.')) return
+  customCriteria.value = []
+  editingIdx.value = null
+}
+
+function addCriterion() {
+  customCriteria.value = [...customCriteria.value, { n: '', d: '', w: 1, consistance: '' }]
+  editingIdx.value = customCriteria.value.length - 1
+  editingBuf.value = { n: '', d: '', w: 1, consistance: '' }
+}
+
+function startEdit(i) {
+  editingIdx.value = i
+  editingBuf.value = { ...customCriteria.value[i] }
+}
+
+function saveEdit() {
+  if (!editingBuf.value.n.trim()) return
+  const updated = [...customCriteria.value]
+  updated[editingIdx.value] = { ...editingBuf.value, w: Number(editingBuf.value.w) || 1 }
+  customCriteria.value = updated
+  editingIdx.value = null
+}
+
+// Décale les clés d'une map indexée par position après suppression du critère i
+// (retourne une nouvelle map — pas de mutation en place).
+function reindexAfterRemove(map, removedIdx) {
+  const out = {}
+  for (const [k, v] of Object.entries(map || {})) {
+    const idx = Number(k)
+    if (idx < removedIdx) out[idx] = v
+    else if (idx > removedIdx) out[idx - 1] = v
+  }
+  return out
+}
+
+function removeCriterion(i) {
+  if (!window.confirm('Supprimer ce critère ?')) return
+  customCriteria.value = customCriteria.value.filter((_, idx) => idx !== i)
+  // Réindexation : les notes/justifs/activation sont indexées par position.
+  theoScores.value = reindexAfterRemove(theoScores.value, i)
+  theoJustifs.value = reindexAfterRemove(theoJustifs.value, i)
+  theoEnabled.value = reindexAfterRemove(theoEnabled.value, i)
+  demoScores.value = reindexAfterRemove(demoScores.value, i)
+  demoJustifs.value = reindexAfterRemove(demoJustifs.value, i)
+  if (editingIdx.value === i) editingIdx.value = null
+  else if (editingIdx.value !== null && editingIdx.value > i) editingIdx.value -= 1
+}
 
 const sourceTab = ref('')
 const roleLabels = { competence: 'Compétence', intervenant: 'Intervenant', prestataire: 'Prestataire' }
@@ -318,6 +426,8 @@ async function loadTicket(key) {
   suggestion.value = null
   selectedSources.value = []
   webConsulted.value = false
+  customCriteria.value = []
+  editingIdx.value = null
   theoScores.value = {}
   theoJustifs.value = {}
   theoEnabled.value = {}
@@ -337,6 +447,7 @@ async function loadTicket(key) {
       evaluationId.value = data.existing.id
       status.value = data.existing.status
       categoryKey.value = data.existing.categoryKey || ''
+      customCriteria.value = Array.isArray(data.existing.customCriteria) ? data.existing.customCriteria : []
       selectedSources.value = (data.existing.sources || []).map(s => s.attachmentId)
       webConsulted.value = !!data.existing.webConsulted
       theoScores.value = data.existing.theoScores || {}
@@ -398,7 +509,8 @@ async function saveTheorique() {
   errors.value.theorique = ''
   try {
     const { data } = await api.put(`/competences/${ticket.value.key}/theorique`, {
-      evaluationId: evaluationId.value, scores: theoScores.value, justifs: theoJustifs.value, enabled: theoEnabled.value
+      evaluationId: evaluationId.value, scores: theoScores.value, justifs: theoJustifs.value, enabled: theoEnabled.value,
+      criteria: customCriteria.value
     })
     status.value = data.status
     demoScores.value = { ...theoScores.value }
@@ -428,7 +540,8 @@ async function saveDemo() {
   errors.value.demo = ''
   try {
     const { data } = await api.put(`/competences/${ticket.value.key}/demo`, {
-      evaluationId: evaluationId.value, scores: demoScores.value, justifs: demoJustifs.value, enabled: theoEnabled.value
+      evaluationId: evaluationId.value, scores: demoScores.value, justifs: demoJustifs.value, enabled: theoEnabled.value,
+      criteria: customCriteria.value
     })
     status.value = data.status
     showNotif('Notation démo validée', 'ok')
@@ -491,7 +604,25 @@ async function pushJira() {
 .crit-consist { font-size: 12px; color: var(--text3); line-height: 1.45; background: var(--surface2, rgba(0,0,0,0.02)); border-left: 2px solid var(--accent); padding: 5px 9px; border-radius: 0 4px 4px 0; }
 .crit-consist-lbl { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; color: var(--accent); margin-right: 6px; }
 .crit-obs { width: 100%; font-size: 12.5px; margin-top: 2px; }
-.crit-scores { flex-shrink: 0; display: flex; gap: 6px; }
+.crit-scores-wrap { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.crit-scores { display: flex; gap: 6px; }
+.crit-manage { display: flex; gap: 6px; }
+.crit-mng { width: 28px; height: 28px; border: 1px solid var(--border); background: var(--surface, #fff); border-radius: 6px; font-size: 12px; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.12s, color 0.12s; }
+.crit-mng:hover { border-color: var(--accent); color: var(--accent); }
+.crit-mng.del:hover { border-color: var(--danger, #b91c1c); color: var(--danger, #b91c1c); }
+
+/* Barre d'actions grille (personnaliser / ajouter / réinitialiser) */
+.crit-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.crit-custom-badge { font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.25); border-radius: 10px; padding: 2px 10px; }
+
+/* Formulaire d'édition inline d'un critère */
+.crit-edit { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.crit-edit-input { width: 100%; font-size: 13px; font-weight: 600; border: 1px solid var(--accent); border-radius: 6px; padding: 7px 10px; }
+.crit-edit-area { width: 100%; font-size: 12.5px; resize: vertical; }
+.crit-edit-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.crit-edit-w { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text3); }
+.crit-edit-w select { width: 64px; text-align: center; }
+.crit-edit-btns { display: flex; gap: 6px; }
 .sbtn { width: 34px; height: 34px; border: 1px solid var(--border); background: var(--surface, #fff); border-radius: 6px; font-weight: 700; font-size: 14px; color: var(--text3); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; }
 .sbtn:hover { border-color: var(--accent); }
 .sbtn.sel.s0 { background: var(--danger, #b91c1c); border-color: var(--danger, #b91c1c); color: #fff; }
