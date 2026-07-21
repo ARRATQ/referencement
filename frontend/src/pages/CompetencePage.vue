@@ -118,18 +118,22 @@
       <div v-if="evaluationId && criteria.length" class="card">
         <div class="card-title">5. Notation théorique</div>
 
-        <div v-for="(c, i) in criteria" :key="i" class="mb12" style="border-bottom:1px solid var(--border); padding-bottom:12px;">
-          <label class="row gap8" style="align-items:center;">
-            <input type="checkbox" v-model="theoEnabled[i]" style="width:auto;" />
-            <strong>{{ c.label }}</strong>
-          </label>
-          <div class="row gap8 mb8">
-            <label v-for="n in [0, 1, 2]" :key="n" class="row gap8" style="align-items:center; width:auto;">
-              <input type="radio" :name="`theo-${i}`" :value="n" v-model.number="theoScores[i]" style="width:auto;" />
-              {{ n }}
-            </label>
+        <div v-for="(c, i) in criteria" :key="i" class="crit-row" :class="{ disabled: theoEnabled[i] === false }">
+          <button type="button" class="crit-toggle" :title="theoEnabled[i] === false ? 'Activer le critère' : 'Désactiver le critère'" @click="toggleEnabled(theoEnabled, i)">
+            {{ theoEnabled[i] === false ? '○' : '●' }}
+          </button>
+          <div class="crit-body">
+            <div class="crit-name">
+              {{ c.n }}
+              <span v-if="c.w && c.w > 1" class="crit-weight">×{{ c.w }}</span>
+            </div>
+            <div v-if="c.d" class="crit-desc">{{ c.d }}</div>
+            <div v-if="c.consistance" class="crit-consist"><span class="crit-consist-lbl">Consistance</span>{{ c.consistance }}</div>
+            <textarea class="crit-obs" v-model="theoJustifs[i]" rows="2" placeholder="Justification / observation…"></textarea>
           </div>
-          <textarea v-model="theoJustifs[i]" rows="2" placeholder="Justification"></textarea>
+          <div class="crit-scores">
+            <button v-for="n in [0, 1, 2]" :key="n" type="button" class="sbtn" :class="[`s${n}`, { sel: theoScores[i] === n }]" @click="theoScores[i] = n">{{ n }}</button>
+          </div>
         </div>
 
         <div class="info-hint mb12">
@@ -158,17 +162,22 @@
       <div v-if="status === 'THEORIQUE_DONE' || status === 'DEMO_DONE'" class="card">
         <div class="card-title">7. Phase démo</div>
 
-        <div v-for="(c, i) in criteria" :key="i" class="mb12" style="border-bottom:1px solid var(--border); padding-bottom:12px;">
-          <label class="row gap8" style="align-items:center;">
-            <strong>{{ c.label }}</strong>
-          </label>
-          <div class="row gap8 mb8">
-            <label v-for="n in [0, 1, 2]" :key="n" class="row gap8" style="align-items:center; width:auto;">
-              <input type="radio" :name="`demo-${i}`" :value="n" v-model.number="demoScores[i]" style="width:auto;" />
-              {{ n }}
-            </label>
+        <div v-for="(c, i) in criteria" :key="i" class="crit-row" :class="{ disabled: theoEnabled[i] === false }">
+          <button type="button" class="crit-toggle" :title="theoEnabled[i] === false ? 'Activer le critère' : 'Désactiver le critère'" @click="toggleEnabled(theoEnabled, i)">
+            {{ theoEnabled[i] === false ? '○' : '●' }}
+          </button>
+          <div class="crit-body">
+            <div class="crit-name">
+              {{ c.n }}
+              <span v-if="c.w && c.w > 1" class="crit-weight">×{{ c.w }}</span>
+            </div>
+            <div v-if="c.d" class="crit-desc">{{ c.d }}</div>
+            <div v-if="c.consistance" class="crit-consist"><span class="crit-consist-lbl">Consistance</span>{{ c.consistance }}</div>
+            <textarea class="crit-obs" v-model="demoJustifs[i]" rows="2" placeholder="Justification / observation…"></textarea>
           </div>
-          <textarea v-model="demoJustifs[i]" rows="2" placeholder="Justification"></textarea>
+          <div class="crit-scores">
+            <button v-for="n in [0, 1, 2]" :key="n" type="button" class="sbtn" :class="[`s${n}`, { sel: demoScores[i] === n }]" @click="demoScores[i] = n">{{ n }}</button>
+          </div>
         </div>
 
         <div class="info-hint mb12">
@@ -277,6 +286,9 @@ function computeLive(scores, crit, enabled) {
   const verdict = pct >= 60 ? 'FAVORABLE' : pct >= 45 ? 'CONDITIONNEL' : 'DEFAVORABLE'
   return { pct, verdict }
 }
+
+// Active/désactive un critère (le critère désactivé est exclu du score, cf. computeLive).
+function toggleEnabled(map, i) { map[i] = map[i] === false ? true : false }
 
 const theoLive = computed(() => computeLive(theoScores.value, criteria.value, theoEnabled.value))
 const demoLive = computed(() => computeLive(demoScores.value, criteria.value, theoEnabled.value))
@@ -465,4 +477,24 @@ async function pushJira() {
 .mt12 { margin-top: 12px; }
 .mb4 { margin-bottom: 4px; }
 .mb12 { margin-bottom: 12px; }
+
+/* Grille de notation par critère (calquée sur l'ancienne grille fonctionnelle) */
+.crit-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.crit-row:last-of-type { border-bottom: none; }
+.crit-row.disabled { opacity: 0.5; }
+.crit-toggle { flex-shrink: 0; width: 26px; height: 26px; margin-top: 2px; border: none; background: none; color: var(--accent); font-size: 15px; line-height: 1; cursor: pointer; padding: 0; }
+.crit-row.disabled .crit-toggle { color: var(--text3); }
+.crit-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.crit-name { font-weight: 600; font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.crit-weight { font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(37,99,235,0.1); border-radius: 4px; padding: 1px 6px; }
+.crit-desc { font-size: 12.5px; color: var(--text2, var(--text3)); line-height: 1.45; }
+.crit-consist { font-size: 12px; color: var(--text3); line-height: 1.45; background: var(--surface2, rgba(0,0,0,0.02)); border-left: 2px solid var(--accent); padding: 5px 9px; border-radius: 0 4px 4px 0; }
+.crit-consist-lbl { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; color: var(--accent); margin-right: 6px; }
+.crit-obs { width: 100%; font-size: 12.5px; margin-top: 2px; }
+.crit-scores { flex-shrink: 0; display: flex; gap: 6px; }
+.sbtn { width: 34px; height: 34px; border: 1px solid var(--border); background: var(--surface, #fff); border-radius: 6px; font-weight: 700; font-size: 14px; color: var(--text3); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; }
+.sbtn:hover { border-color: var(--accent); }
+.sbtn.sel.s0 { background: var(--danger, #b91c1c); border-color: var(--danger, #b91c1c); color: #fff; }
+.sbtn.sel.s1 { background: #d97706; border-color: #d97706; color: #fff; }
+.sbtn.sel.s2 { background: #059669; border-color: #059669; color: #fff; }
 </style>
