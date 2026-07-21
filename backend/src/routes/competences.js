@@ -101,6 +101,10 @@ router.post('/:key/score', async (req, res, next) => {
     const cat = comp.getCategoryCriteria(program, categoryKey);
     if (!cat) return res.status(400).json({ error: 'Catégorie introuvable dans le programme' });
 
+    // Grille effective : personnalisée si l'éval en cours en possède une, sinon standard.
+    const existing = await prisma.evaluationCompetence.findFirst({ where: { jiraKeyCompetence: key }, orderBy: { updatedAt: 'desc' } });
+    const criteria = comp.resolveCriteria(existing, program, categoryKey);
+
     const context = await jira.resolveCompetenceContext(key);
     const filesData = await fetchSourceFiles(context, sources);
 
@@ -110,11 +114,9 @@ router.post('/:key/score', async (req, res, next) => {
       catch { webInsights = ''; }
     }
 
-    const { scores, justifs } = await ai.suggestCompetenceScores({ category: cat.label, criteria: cat.criteria, filesData, ticketContext: buildTicketContext(context), webInsights });
+    const { scores, justifs } = await ai.suggestCompetenceScores({ category: cat.label, criteria, filesData, ticketContext: buildTicketContext(context), webInsights });
 
     const { resolved: contextFields } = await jira.resolveCompetenceFields(key);
-
-    const existing = await prisma.evaluationCompetence.findFirst({ where: { jiraKeyCompetence: key }, orderBy: { updatedAt: 'desc' } });
     const data = {
       jiraKeyCompetence: key,
       jiraKeyIntervenant: context.intervenant?.key || null,
@@ -138,7 +140,7 @@ router.post('/:key/score', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-async function computePhase({ evaluationId, key, scores, enabled }) {
+async function computePhase({ evaluationId, key, scores, enabled, criteria }) {
   const evaln = await prisma.evaluationCompetence.findUnique({ where: { id: evaluationId } });
   if (!evaln || evaln.jiraKeyCompetence !== key) { const e = new Error('Évaluation introuvable'); e.status = 404; throw e; }
   if (evaln.status === 'PUSHED') { const e = new Error('Évaluation déjà envoyée'); e.status = 409; throw e; }
@@ -146,20 +148,27 @@ async function computePhase({ evaluationId, key, scores, enabled }) {
     if (![0, 1, 2].includes(Number(v))) { const e = new Error('Note invalide (0, 1 ou 2 attendu)'); e.status = 400; throw e; }
   }
   const program = await prisma.program.findUnique({ where: { code: evaln.programCode } });
-  const cat = comp.getCategoryCriteria(program, evaln.categoryKey);
-  if (!cat) { const e = new Error('Catégorie introuvable'); e.status = 400; throw e; }
-  const { pct, verdict } = scoring.computeSolutionScore(scores || {}, cat.criteria, enabled || {});
-  return { evaln, pct, verdict };
+  // Grille personnalisée fournie par l'UI → on score dessus et on la persiste ;
+  // sinon on retombe sur la grille effective de l'éval (custom déjà stockée ou standard).
+  const hasCustom = Array.isArray(criteria) && criteria.length > 0;
+  const resolved = hasCustom ? criteria : comp.resolveCriteria(evaln, program);
+  if (!resolved.length) { const e = new Error('Catégorie introuvable'); e.status = 400; throw e; }
+  const { pct, verdict } = scoring.computeSolutionScore(scores || {}, resolved, enabled || {});
+  return { evaln, pct, verdict, hasCustom, criteria: resolved };
 }
 
 router.put('/:key/theorique', async (req, res, next) => {
   try {
     const key = req.params.key.toUpperCase();
-    const { evaluationId, scores, justifs, enabled } = req.body;
-    const { pct, verdict } = await computePhase({ evaluationId, key, scores, enabled });
+    const { evaluationId, scores, justifs, enabled, criteria } = req.body;
+    const { pct, verdict, hasCustom, criteria: resolved } = await computePhase({ evaluationId, key, scores, enabled, criteria });
     const saved = await prisma.evaluationCompetence.update({
       where: { id: evaluationId },
-      data: { theoScores: scores || {}, theoJustifs: justifs || {}, theoEnabled: enabled || {}, theoScorePct: pct, theoVerdict: verdict, theoById: req.user.id, theoAt: new Date(), status: 'THEORIQUE_DONE' }
+      data: {
+        theoScores: scores || {}, theoJustifs: justifs || {}, theoEnabled: enabled || {},
+        theoScorePct: pct, theoVerdict: verdict, theoById: req.user.id, theoAt: new Date(), status: 'THEORIQUE_DONE',
+        ...(hasCustom ? { customCriteria: resolved } : {})
+      }
     });
     res.json({ evaluationId: saved.id, scorePct: pct, verdict, status: saved.status });
   } catch (err) { next(err); }
@@ -168,12 +177,16 @@ router.put('/:key/theorique', async (req, res, next) => {
 router.put('/:key/demo', async (req, res, next) => {
   try {
     const key = req.params.key.toUpperCase();
-    const { evaluationId, scores, justifs, enabled } = req.body;
-    const { evaln, pct, verdict } = await computePhase({ evaluationId, key, scores, enabled });
+    const { evaluationId, scores, justifs, enabled, criteria } = req.body;
+    const { evaln, pct, verdict, hasCustom, criteria: resolved } = await computePhase({ evaluationId, key, scores, enabled, criteria });
     if (evaln.status === 'DRAFT') return res.status(409).json({ error: 'Valider d\'abord la phase théorique' });
     const saved = await prisma.evaluationCompetence.update({
       where: { id: evaluationId },
-      data: { demoScores: scores || {}, demoJustifs: justifs || {}, demoScorePct: pct, demoVerdict: verdict, demoById: req.user.id, demoAt: new Date(), status: 'DEMO_DONE' }
+      data: {
+        demoScores: scores || {}, demoJustifs: justifs || {},
+        demoScorePct: pct, demoVerdict: verdict, demoById: req.user.id, demoAt: new Date(), status: 'DEMO_DONE',
+        ...(hasCustom ? { customCriteria: resolved } : {})
+      }
     });
     res.json({ evaluationId: saved.id, scorePct: pct, verdict, status: saved.status });
   } catch (err) { next(err); }
@@ -216,9 +229,10 @@ router.post('/:key/push', async (req, res, next) => {
 
     const program = await prisma.program.findUnique({ where: { code: evaln.programCode } });
     const cat = comp.getCategoryCriteria(program, evaln.categoryKey);
+    const criteria = comp.resolveCriteria(evaln, program);
 
     const body = comp.buildPushComment({
-      criteria: cat?.criteria || [], scores: evaln.demoScores, justifs: evaln.demoJustifs,
+      criteria, scores: evaln.demoScores, justifs: evaln.demoJustifs,
       scorePct: evaln.demoScorePct, verdict: evaln.demoVerdict,
       category: cat?.label || evaln.categoryKey, solution: evaln.solutionReferencee,
       phase: 'DEMO', userName: req.user.name, sources: (evaln.sources || []).map(s => s.filename)

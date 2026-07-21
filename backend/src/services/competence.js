@@ -26,6 +26,16 @@ function getCategoryCriteria(program, categoryKey) {
   return { label: cat.label || categoryKey, criteria: Array.isArray(cat.criteria) ? cat.criteria : [] };
 }
 
+// Critères effectifs d'une évaluation : la grille personnalisée (customCriteria)
+// si elle existe, sinon la grille standard de la catégorie du programme.
+// Employé au scoring IA, aux phases théorique/démo et au commentaire de push,
+// pour que les critères édités/supprimés côté UI soient réellement honorés.
+function resolveCriteria(evaln, program, categoryKey) {
+  const custom = evaln?.customCriteria;
+  if (Array.isArray(custom) && custom.length > 0) return custom;
+  return getCategoryCriteria(program, categoryKey || evaln?.categoryKey)?.criteria || [];
+}
+
 function classifySource(filename = '') {
   const f = filename.toLowerCase();
   if (/grille|fonctionnel/.test(f)) return 'grille_fonctionnelle';
@@ -62,4 +72,4 @@ function buildPushComment({ criteria, scores, justifs, scorePct, verdict, catego
   ].join('\n');
 }
 
-module.exports = { deduceProgramCode, getCategoryCriteria, classifySource, buildPushComment, VERDICT_LABEL, ACTION_PREFIX_TO_PROGRAM };
+module.exports = { deduceProgramCode, getCategoryCriteria, resolveCriteria, classifySource, buildPushComment, VERDICT_LABEL, ACTION_PREFIX_TO_PROGRAM };

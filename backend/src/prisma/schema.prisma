@@ -182,6 +182,7 @@ model EvaluationCompetence {
   actionAReferencer  String?
   categoryKey        String?
   categorySuggested  Json?
+  customCriteria     Json      @default("[]")
   solutionReferencee String?
   modules            Json      @default("[]")
   secteur            String?
