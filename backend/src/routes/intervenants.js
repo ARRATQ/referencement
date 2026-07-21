@@ -3,12 +3,25 @@ const authMiddleware = require('../middleware/auth');
 const { requireMinRole } = require('../middleware/roles');
 const jira = require('../services/jira');
 const ai = require('../services/ai');
+const { mapIntervenantRow } = require('../services/historique');
 const { PrismaClient } = require('@prisma/client');
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 router.use(authMiddleware, requireMinRole('GESTIONNAIRE'));
+
+// Historique : liste des évaluations intervenant réalisées (toutes, plus récentes d'abord).
+router.get('/', async (req, res, next) => {
+  try {
+    const rows = await prisma.evaluationIntervenant.findMany({
+      take: 200,
+      orderBy: { createdAt: 'desc' },
+      include: { evaluator: { select: { name: true } } }
+    });
+    res.json(rows.map(mapIntervenantRow));
+  } catch (err) { next(err); }
+});
 
 // Échappe les pipes Jira wiki markup dans une cellule de tableau.
 const escapeCell = v => String(v ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');

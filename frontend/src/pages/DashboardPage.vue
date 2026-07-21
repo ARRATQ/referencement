@@ -5,9 +5,7 @@
         <div class="topbar-title">Tableau de bord</div>
         <div class="topbar-sub">Vue d'ensemble des dossiers</div>
       </div>
-      <div class="topbar-actions">
-        <RouterLink v-if="auth.isGestionnaire" to="/evaluation" class="btn btn-primary btn-sm">+ Nouvelle évaluation</RouterLink>
-      </div>
+      <div class="topbar-actions"></div>
     </div>
     <div class="content">
       <div class="metrics-row">
@@ -33,7 +31,6 @@
         <div class="card-title">Accès rapide</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <RouterLink v-if="auth.isGestionnaire" to="/dossiers" class="btn btn-secondary" style="justify-content:flex-start;">⊞ &nbsp;Parcourir les dossiers Jira</RouterLink>
-          <RouterLink v-if="auth.isGestionnaire" to="/evaluation" class="btn btn-secondary" style="justify-content:flex-start;">◉ &nbsp;Démarrer une évaluation</RouterLink>
           <RouterLink to="/consultation" class="btn btn-secondary" style="justify-content:flex-start;">📋 &nbsp;Consulter les évaluations</RouterLink>
           <RouterLink v-if="auth.isAdmin" to="/admin" class="btn btn-secondary" style="justify-content:flex-start;">⚙ &nbsp;Administration</RouterLink>
         </div>

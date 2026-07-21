@@ -7,6 +7,13 @@
       </div>
     </div>
     <div class="content">
+      <div class="tabs-bar">
+        <button class="tab-btn" :class="{ active: activeTab === 'ancienne' }" @click="setTab('ancienne')">Ancienne évaluation</button>
+        <button v-if="auth.isGestionnaire" class="tab-btn" :class="{ active: activeTab === 'intervenant' }" @click="setTab('intervenant')">Intervenant</button>
+        <button v-if="auth.isGestionnaire" class="tab-btn" :class="{ active: activeTab === 'competence' }" @click="setTab('competence')">Compétence</button>
+      </div>
+
+      <div v-if="activeTab === 'ancienne'">
       <div class="row gap8 mb8">
         <input v-model="search" placeholder="Rechercher prestataire, solution..." style="width:280px;" />
         <select v-model="filterStatus" style="width:180px;">
@@ -92,18 +99,35 @@
           </div>
         </div>
       </div>
+      </div><!-- /onglet ancienne -->
+
+      <HistoriqueIntervenant v-if="auth.isGestionnaire && activeTab === 'intervenant'" />
+      <HistoriqueCompetence v-if="auth.isGestionnaire && activeTab === 'competence'" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import HistoriqueIntervenant from '@/components/historique/HistoriqueIntervenant.vue'
+import HistoriqueCompetence from '@/components/historique/HistoriqueCompetence.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
+const router = useRouter()
+
+const VALID_TABS = ['ancienne', 'intervenant', 'competence']
+const initialTab = VALID_TABS.includes(route.query.tab) ? route.query.tab : 'ancienne'
+// Les onglets historique sont réservés gestionnaire/admin : repli sur « ancienne » sinon.
+const activeTab = ref(initialTab !== 'ancienne' && !auth.isGestionnaire ? 'ancienne' : initialTab)
+
+function setTab(tab) {
+  activeTab.value = tab
+  router.replace({ query: { ...route.query, tab } })
+}
 
 const evaluations = ref([])
 const programs = ref([])
@@ -164,3 +188,28 @@ async function copyPV() {
   }
 }
 </script>
+
+<style scoped>
+.tabs-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.tab-btn {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text3);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active {
+  color: var(--primary, #2563eb);
+  border-bottom-color: var(--primary, #2563eb);
+}
+</style>

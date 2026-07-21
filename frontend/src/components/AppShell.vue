@@ -13,9 +13,6 @@
         <RouterLink v-if="auth.isGestionnaire" class="nav-item" to="/dossiers" active-class="active">
           <span class="icon">⊞</span> Dossiers Jira
         </RouterLink>
-        <RouterLink v-if="auth.isGestionnaire" class="nav-item" to="/evaluation" active-class="active">
-          <span class="icon">◉</span> Nouvelle évaluation
-        </RouterLink>
         <RouterLink v-if="auth.isGestionnaire" class="nav-item" to="/intervenants" active-class="active">
           <span class="icon">👤</span> Évaluation intervenant
         </RouterLink>
