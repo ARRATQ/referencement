@@ -1,7 +1,7 @@
 // Mapping préfixe d'action → code programme. Seul SYH → GO_SIYAHA est confirmé ;
 // les autres sont des hypothèses à valider terrain (§11).
 const ACTION_PREFIX_TO_PROGRAM = {
-  SYH: 'GO_SIYAHA',
+  SYH: 'GO_SIYAHA_V04',
   PWE: 'POWER_EXPORT_V01',
   SCH: 'SUPPLY_CHAIN_V01',
   PTM: 'PACTE_TPME_V01',

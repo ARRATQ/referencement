@@ -85,13 +85,19 @@
       <!-- Bloc 4 : sources -->
       <div v-if="ticket && categoryKey" class="card">
         <div class="card-title">4. Sources</div>
-        <div v-for="(items, type) in sourcesByType" :key="type" class="mb12">
-          <div class="text-sm text-mono mb4">{{ type }}</div>
+        <div v-if="sourceRoles.length" class="row gap8 mb12">
+          <button
+            v-for="r in sourceRoles" :key="r"
+            class="btn btn-sm" :class="sourceTab === r ? 'btn-primary' : 'btn-secondary'"
+            @click="sourceTab = r"
+          >{{ roleLabels[r] }}</button>
+        </div>
+        <div v-for="(items, type) in (sourcesByRoleType[sourceTab] || {})" :key="type" class="mb12">
+          <div class="text-sm text-mono mb4">{{ typeLabels[type] || type }}</div>
           <label v-for="s in items" :key="s.attachmentId" class="att-item">
             <input type="checkbox" class="att-check" :value="s.attachmentId" v-model="selectedSources" />
             <span class="att-icon">📎</span>
             <span class="att-name">{{ s.filename }}</span>
-            <span class="text-sm">({{ s.ticketRole }})</span>
           </label>
         </div>
         <div v-if="!ticket.sources.length" class="empty-state">Aucune pièce jointe source disponible.</div>
@@ -219,20 +225,44 @@ const fieldList = computed(() => {
   return Object.entries(ticket.value.fields).map(([key, f]) => ({ key, ...f }))
 })
 
-const categories = computed(() => ticket.value?.program?.categories || {})
+// Les catégories suivent le programme SÉLECTIONNÉ (liste /programs déjà chargée),
+// pas seulement le programme déduit au chargement — sinon le select reste vide
+// quand la déduction échoue ou quand l'utilisateur change de programme.
+const categories = computed(() => {
+  const p = programs.value.find(pr => pr.code === programCode.value)
+  return p?.categories || ticket.value?.program?.categories || {}
+})
 
 const criteria = computed(() => {
   const cat = categories.value[categoryKey.value]
   return cat && Array.isArray(cat.criteria) ? cat.criteria : []
 })
 
-const sourcesByType = computed(() => {
-  const groups = {}
+const sourceTab = ref('')
+const roleLabels = { competence: 'Compétence', intervenant: 'Intervenant', prestataire: 'Prestataire' }
+const typeLabels = {
+  grille_fonctionnelle: 'Grille fonctionnelle',
+  attestation_reference: 'Attestation de référence',
+  certificat_editeur: 'Certificat éditeur',
+  autre: 'Autre',
+}
+
+// Rôles ayant au moins une pièce jointe (ordre : compétence → intervenant → prestataire).
+const sourceRoles = computed(() =>
+  ['competence', 'intervenant', 'prestataire'].filter(
+    r => (ticket.value?.sources || []).some(s => s.ticketRole === r),
+  ),
+)
+
+// Sources groupées par rôle (onglet) puis par type (grille / attestation / autre…).
+const sourcesByRoleType = computed(() => {
+  const out = {}
   for (const s of ticket.value?.sources || []) {
-    if (!groups[s.type]) groups[s.type] = []
-    groups[s.type].push(s)
+    if (!out[s.ticketRole]) out[s.ticketRole] = {}
+    if (!out[s.ticketRole][s.type]) out[s.ticketRole][s.type] = []
+    out[s.ticketRole][s.type].push(s)
   }
-  return groups
+  return out
 })
 
 function computeLive(scores, crit, enabled) {
@@ -288,6 +318,8 @@ async function loadTicket(key) {
     const { data } = await api.get(`/competences/${k}`)
     ticket.value = data
     programCode.value = data.programCode || ''
+    sourceTab.value = ['competence', 'intervenant', 'prestataire']
+      .find(r => (data.sources || []).some(s => s.ticketRole === r)) || ''
 
     if (data.existing) {
       evaluationId.value = data.existing.id
@@ -317,7 +349,7 @@ async function suggestCategory() {
   loading.value.suggest = true
   try {
     const { data } = await api.post(`/competences/${ticket.value.key}/suggest-category`, {
-      programCode: programCode.value, webConsulted: webConsulted.value
+      programCode: programCode.value, webConsulted: webConsulted.value, fields: ticket.value?.fields || {}
     })
     suggestion.value = data.suggestion
     if (data.suggestion?.key) categoryKey.value = data.suggestion.key

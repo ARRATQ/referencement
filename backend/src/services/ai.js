@@ -867,15 +867,17 @@ Sois factuel et cite tes sources si possible.${SYNTH_INSTRUCTION}`;
 }
 
 // Suggère la catégorie de solution la plus probable. categories = { key:{label,ex} }.
-async function suggestCompetenceCategory({ categories, ticketContext, webInsights }) {
+async function suggestCompetenceCategory({ categories, fieldsContext, ticketContext, webInsights }) {
   const cfg = await getAIConfig();
   const list = Object.entries(categories || {})
     .map(([k, c]) => `- ${k} : ${c.label}${c.ex ? ` (ex. ${c.ex})` : ''}`).join('\n');
   const prompt = `${langInstruction(cfg.lang)}\n`
-    + `Voici des catégories de solution informatique :\n${list}\n\n`
-    + `Contexte du ticket :\n${(ticketContext || '').slice(0, 4000)}\n`
+    + `Voici les catégories de solution informatique disponibles :\n${list}\n\n`
+    + `Caractéristiques de la solution à référencer (SOURCE PRIORITAIRE — fonde ta décision sur ces champs, notamment le secteur, la solution et les modules) :\n${(fieldsContext || '(non renseignées)').slice(0, 2000)}\n\n`
+    + `Contexte du ticket (SECONDAIRE — n'utilise PAS l'intitulé générique du ticket, type « Enregistrement compétence » / « Inscription intervenant », pour choisir la catégorie) :\n${(ticketContext || '').slice(0, 2500)}\n`
     + (webInsights ? `\nInfos web :\n${webInsights.slice(0, 2000)}\n` : '')
-    + `\nRéponds en JSON strict : {"key":"<clé exacte>","confidence":<0..1>,"rationale":"<1 phrase>"}.`;
+    + `\nChoisis la catégorie dont le domaine fonctionnel correspond au secteur/métier de la solution (ex. hôtellerie → hotel, ressources humaines → rh, e-commerce → ecom, comptabilité → compta).`
+    + `\nRéponds en JSON strict : {"key":"<clé exacte>","confidence":<0..1>,"rationale":"<1 phrase citant le secteur/la solution>"}.`;
   const raw = await callAI([{ role: 'user', content: prompt }], { temp: 0.1, maxTokens: 400 });
   try {
     const m = raw.match(/\{[\s\S]*\}/);

@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { deduceProgramCode, classifySource, buildPushComment } = require('../src/services/competence');
 
 test('deduceProgramCode : préfixe SYH → GO_SIYAHA', () => {
-  assert.strictEqual(deduceProgramCode('SYH-Acquisition et intégration…', 'PTC'), 'GO_SIYAHA');
+  assert.strictEqual(deduceProgramCode('SYH-Acquisition et intégration…', 'PTC'), 'GO_SIYAHA_V04');
 });
 test('deduceProgramCode : inconnu → null', () => {
   assert.strictEqual(deduceProgramCode('XXX-autre', 'PTC'), null);

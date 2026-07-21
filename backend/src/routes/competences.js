@@ -71,9 +71,14 @@ router.get('/:key', async (req, res, next) => {
 router.post('/:key/suggest-category', async (req, res, next) => {
   try {
     const key = req.params.key.toUpperCase();
-    const { programCode, webConsulted } = req.body;
+    const { programCode, webConsulted, fields } = req.body;
     const program = programCode ? await prisma.program.findUnique({ where: { code: programCode } }) : null;
     if (!program?.categories) return res.status(400).json({ error: 'Programme ou catalogue introuvable' });
+
+    // Contexte prioritaire : les 7 champs rapatriés du ticket compétence (secteur, solution, modules…).
+    const fieldsContext = fields && typeof fields === 'object'
+      ? Object.values(fields).filter(f => f && f.value).map(f => `${f.jiraName} : ${f.value}`).join('\n')
+      : '';
 
     const context = await jira.resolveCompetenceContext(key);
     let webInsights = '';
@@ -81,7 +86,7 @@ router.post('/:key/suggest-category', async (req, res, next) => {
       try { webInsights = (await ai.analyzeSpecs({ filesData: [], prestataire: context.prestataire?.summary || '', solution: context.competence?.summary || '', category: '', modules: [] })).webInsights || ''; }
       catch { webInsights = ''; }
     }
-    const suggestion = await ai.suggestCompetenceCategory({ categories: program.categories, ticketContext: buildTicketContext(context), webInsights });
+    const suggestion = await ai.suggestCompetenceCategory({ categories: program.categories, fieldsContext, ticketContext: buildTicketContext(context), webInsights });
     res.json({ suggestion });
   } catch (err) { next(err); }
 });
