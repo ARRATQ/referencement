@@ -307,12 +307,12 @@ async function confirmPush() {
 .source-tabs { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
 .src-tab { padding: 7px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--text2); cursor: pointer; font-family: var(--sans); transition: all 0.15s; width: auto; }
 .src-tab:hover { border-color: var(--text3); color: var(--text); }
-.src-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(37,99,235,0.08); }
+.src-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(27,58,107,0.08); }
 
 .att-list { display: flex; flex-direction: column; gap: 6px; }
 .att-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
-.att-item:hover { background: rgba(37,99,235,0.04); }
-.att-item.sel { border-color: var(--accent); background: rgba(37,99,235,0.06); }
+.att-item:hover { background: rgba(27,58,107,0.04); }
+.att-item.sel { border-color: var(--accent); background: rgba(27,58,107,0.06); }
 .att-check { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
 .att-icon { font-size: 16px; flex-shrink: 0; }
 .att-name { flex: 1; font-size: 12px; color: var(--text); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

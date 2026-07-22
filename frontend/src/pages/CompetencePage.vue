@@ -578,8 +578,8 @@ async function pushJira() {
 <style scoped>
 .att-list { display: flex; flex-direction: column; gap: 6px; }
 .att-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface2, rgba(0,0,0,0.02)); border: 1px solid var(--border); border-radius: 6px; transition: background 0.12s, border-color 0.12s; }
-.att-item:hover { background: rgba(37,99,235,0.04); }
-.att-item.sel { border-color: var(--accent); background: rgba(37,99,235,0.06); }
+.att-item:hover { background: rgba(27,58,107,0.04); }
+.att-item.sel { border-color: var(--accent); background: rgba(27,58,107,0.06); }
 .att-check { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
 .att-icon { font-size: 16px; flex-shrink: 0; }
 .att-name { flex: 1; font-size: 12px; color: var(--text); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -599,7 +599,7 @@ async function pushJira() {
 .crit-row.disabled .crit-toggle { color: var(--text3); }
 .crit-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .crit-name { font-weight: 600; font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.crit-weight { font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(37,99,235,0.1); border-radius: 4px; padding: 1px 6px; }
+.crit-weight { font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(27,58,107,0.1); border-radius: 4px; padding: 1px 6px; }
 .crit-desc { font-size: 12.5px; color: var(--text2, var(--text3)); line-height: 1.45; }
 .crit-consist { font-size: 12px; color: var(--text3); line-height: 1.45; background: var(--surface2, rgba(0,0,0,0.02)); border-left: 2px solid var(--accent); padding: 5px 9px; border-radius: 0 4px 4px 0; }
 .crit-consist-lbl { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; color: var(--accent); margin-right: 6px; }
@@ -613,7 +613,7 @@ async function pushJira() {
 
 /* Barre d'actions grille (personnaliser / ajouter / réinitialiser) */
 .crit-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.crit-custom-badge { font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.25); border-radius: 10px; padding: 2px 10px; }
+.crit-custom-badge { font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(27,58,107,0.1); border: 1px solid rgba(27,58,107,0.25); border-radius: 10px; padding: 2px 10px; }
 
 /* Formulaire d'édition inline d'un critère */
 .crit-edit { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }

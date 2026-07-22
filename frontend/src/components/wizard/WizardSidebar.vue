@@ -113,7 +113,7 @@ const progressPct = computed(() => Math.round((props.currentStep / (props.steps.
   display: flex; align-items: center; gap: 12px; padding: 12px 20px;
   border-left: 3px solid transparent; transition: all 0.15s; cursor: default;
 }
-.wiz-step-item.is-active { border-left-color: var(--wiz-accent); background: rgba(59,130,246,0.1); }
+.wiz-step-item.is-active { border-left-color: var(--wiz-accent); background: rgba(27,58,107,0.1); }
 .wiz-step-item.is-done { opacity: 0.7; }
 .wiz-step-item.is-clickable { cursor: pointer; opacity: 0.85; }
 .wiz-step-item.is-clickable:hover { background: rgba(255,255,255,0.04); opacity: 1; }
@@ -123,7 +123,7 @@ const progressPct = computed(() => Math.round((props.currentStep / (props.steps.
   justify-content: center; font-size: 11px; font-family: var(--mono); font-weight: 600;
   flex-shrink: 0; border: 1.5px solid var(--wiz-border); color: var(--wiz-text3); transition: all 0.15s;
 }
-.is-active .wiz-step-num { border-color: var(--wiz-accent); color: var(--wiz-accent); background: rgba(59,130,246,0.15); }
+.is-active .wiz-step-num { border-color: var(--wiz-accent); color: var(--wiz-accent); background: rgba(27,58,107,0.15); }
 .is-done .wiz-step-num { border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,0.1); }
 
 .wiz-step-info { min-width: 0; }

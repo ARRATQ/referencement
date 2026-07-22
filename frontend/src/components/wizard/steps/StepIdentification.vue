@@ -224,7 +224,7 @@ function onJqlSelect() {
   transition: all 0.15s; display: flex; flex-direction: column; gap: 4px;
 }
 .mode-card:hover { border-color: rgba(var(--wiz-overlay-rgb),0.2); }
-.mode-card.active { border-color: var(--wiz-accent); background: rgba(59,130,246,0.12); }
+.mode-card.active { border-color: var(--wiz-accent); background: rgba(27,58,107,0.12); }
 .mode-icon { font-size: 24px; margin-bottom: 8px; }
 .mode-label { font-size: 14px; font-weight: 600; }
 .mode-sub { font-size: 12px; color: var(--wiz-text2); }
@@ -265,17 +265,17 @@ option { background: var(--wiz-option-bg); color: var(--wiz-option-text); }
 .hier-intervenant { margin-left: 16px; }
 .hier-competence { margin-left: 36px; color: var(--wiz-text2); }
 .hier-intervenant:hover, .hier-competence:hover { background: rgba(var(--wiz-overlay-rgb),0.04); }
-.hier-intervenant.selected { background: rgba(59,130,246,0.1); }
+.hier-intervenant.selected { background: rgba(27,58,107,0.1); }
 .hier-competence.selected { background: rgba(139,92,246,0.1); }
 .hier-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.dot-prest { background: #3b82f6; }
-.dot-int { background: #3b82f6; }
+.dot-prest { background: var(--wiz-accent); }
+.dot-int { background: var(--wiz-accent); }
 .dot-comp { background: #a78bfa; }
 .hier-badge { margin-left: auto; font-size: 11px; color: var(--wiz-text3); font-family: var(--mono); }
 .hier-sel { font-size: 11px; color: #22c55e; font-family: var(--mono); flex-shrink: 0; }
 
 .recap-card {
-  padding: 16px 20px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.3);
+  padding: 16px 20px; background: rgba(27,58,107,0.08); border: 1px solid rgba(27,58,107,0.3);
   border-radius: 8px; margin-bottom: 24px;
 }
 .recap-label { font-size: 10px; font-family: var(--mono); color: var(--wiz-accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }

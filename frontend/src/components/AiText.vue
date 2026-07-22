@@ -94,9 +94,9 @@ function toBlocks(text) {
 }
 
 .ai-synth {
-  background: rgba(59, 130, 246, 0.07);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-left: 3px solid var(--wiz-accent, var(--accent, #3b82f6));
+  background: rgba(27, 58, 107, 0.07);
+  border: 1px solid rgba(27, 58, 107, 0.2);
+  border-left: 3px solid var(--wiz-accent, var(--accent, #1B3A6B));
   border-radius: 6px;
   padding: 12px 14px;
 }
@@ -104,7 +104,7 @@ function toBlocks(text) {
 .ai-synth-label {
   font-size: 9px;
   font-family: var(--mono);
-  color: var(--wiz-accent, var(--accent, #3b82f6));
+  color: var(--wiz-accent, var(--accent, #1B3A6B));
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
@@ -128,8 +128,8 @@ function toBlocks(text) {
 }
 
 .ai-detail-toggle:hover {
-  color: var(--wiz-accent, var(--accent, #3b82f6));
-  border-color: var(--wiz-accent, var(--accent, #3b82f6));
+  color: var(--wiz-accent, var(--accent, #1B3A6B));
+  border-color: var(--wiz-accent, var(--accent, #1B3A6B));
 }
 
 .ai-detail {
