@@ -29,7 +29,7 @@
 
       <div class="card">
         <div class="card-title">Accès rapide</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
           <RouterLink v-if="auth.isGestionnaire" to="/dossiers" class="btn btn-secondary" style="justify-content:flex-start;">⊞ &nbsp;Parcourir les dossiers Jira</RouterLink>
           <RouterLink to="/consultation" class="btn btn-secondary" style="justify-content:flex-start;">📋 &nbsp;Consulter les évaluations</RouterLink>
           <RouterLink v-if="auth.isAdmin" to="/admin" class="btn btn-secondary" style="justify-content:flex-start;">⚙ &nbsp;Administration</RouterLink>
@@ -102,3 +102,7 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.empty-icon { color: var(--ink3); }
+</style>
