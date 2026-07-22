@@ -5,12 +5,25 @@ const jira = require('../services/jira');
 const ai = require('../services/ai');
 const comp = require('../services/competence');
 const scoring = require('../services/scoring');
+const { mapCompetenceRow } = require('../services/historique');
 const { PrismaClient } = require('@prisma/client');
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 router.use(authMiddleware, requireMinRole('GESTIONNAIRE'));
+
+// Historique : liste des évaluations compétence réalisées (toutes, plus récentes d'abord).
+router.get('/', async (req, res, next) => {
+  try {
+    const rows = await prisma.evaluationCompetence.findMany({
+      take: 200,
+      orderBy: { createdAt: 'desc' },
+      include: { evaluator: { select: { name: true } } }
+    });
+    res.json(rows.map(mapCompetenceRow));
+  } catch (err) { next(err); }
+});
 
 async function fetchSourceFiles(context, sources) {
   const byId = {};
