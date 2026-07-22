@@ -9,7 +9,7 @@
   --line2: #CFC9BD;
   --ink: #1A1D22;
   --ink2: #5A5F68;
-  --ink3: #8E9099;
+  --ink3: #6B6D76;
   --accent: #1B3A6B;
   --accent2: #142B4F;
   --green: #2E7D52;
@@ -30,6 +30,7 @@
   --text2: var(--ink2);
   --text3: var(--ink3);
   --green2: #245F40;
+  --danger: var(--red);
   --radius: var(--r);
   --radius2: var(--r2);
 }

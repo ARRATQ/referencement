@@ -102,7 +102,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-.empty-icon { color: var(--ink3); }
-</style>
