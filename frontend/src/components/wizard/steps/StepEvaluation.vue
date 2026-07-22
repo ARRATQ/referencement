@@ -462,9 +462,9 @@ async function checkCoherence() {
 .eb-save { padding: 5px 12px; background: var(--wiz-accent); border: none; border-radius: 5px; font-size: 12px; color: #fff; cursor: pointer; font-family: var(--sans); font-weight: 500; }
 
 /* AI panel */
-.wiz-ai-panel { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 18px 20px; }
+.wiz-ai-panel { background: rgba(27,58,107,0.06); border: 1px solid rgba(27,58,107,0.2); border-radius: 8px; padding: 18px 20px; }
 .wiz-ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.wiz-ai-badge { font-size: 10px; font-family: var(--mono); background: rgba(59,130,246,0.15); color: var(--wiz-accent); padding: 2px 8px; border-radius: 3px; letter-spacing: 0.08em; border: 1px solid rgba(59,130,246,0.3); }
+.wiz-ai-badge { font-size: 10px; font-family: var(--mono); background: rgba(27,58,107,0.15); color: var(--wiz-accent); padding: 2px 8px; border-radius: 3px; letter-spacing: 0.08em; border: 1px solid rgba(27,58,107,0.3); }
 .wiz-ai-title { font-size: 13px; font-weight: 500; color: var(--wiz-text); }
 .wiz-ai-done { margin-left: auto; font-size: 11px; color: #22c55e; font-family: var(--mono); }
 .wiz-ai-content { font-size: 12px; color: var(--wiz-text2); line-height: 1.7; white-space: pre-wrap; margin-bottom: 14px; max-height: 200px; overflow-y: auto; }

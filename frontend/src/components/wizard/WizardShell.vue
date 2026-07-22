@@ -503,7 +503,7 @@ provide('wizard', {
   --wiz-text: #e8eeff;
   --wiz-text2: #93b4d8;
   --wiz-text3: #4d6e96;
-  --wiz-accent: #3b82f6;
+  --wiz-accent: #6E97D6;
   --wiz-overlay-rgb: 255, 255, 255;
   --wiz-option-bg: #1c2333;
   --wiz-option-text: #e2e8f0;
@@ -517,14 +517,15 @@ provide('wizard', {
 }
 
 .wiz-main {
-  /* Light-blue theme for the working area — overrides the navy vars from .wiz-shell */
-  --wiz-bg: #eef4fb;
-  --wiz-sidebar: #e3edfa;
+  /* Warm-paper theme for the working area — overrides the navy vars from .wiz-shell */
+  --wiz-bg: #FBFAF8;
+  --wiz-sidebar: #F3F1EC;
   --wiz-card: #ffffff;
-  --wiz-border: rgba(30, 75, 140, 0.13);
+  --wiz-border: rgba(20, 25, 35, 0.10);
   --wiz-text: #16243f;
   --wiz-text2: #4d6a94;
-  --wiz-text3: #8aa2c4;
+  --wiz-text3: #6B6D76;
+  --wiz-accent: #1B3A6B;
   --wiz-overlay-rgb: 20, 50, 95;
   --wiz-option-bg: #ffffff;
   --wiz-option-text: #16243f;
